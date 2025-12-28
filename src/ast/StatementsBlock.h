@@ -1,11 +1,10 @@
 #pragma once
 #include <memory>
 #include <vector>
-#include "ASTNode.h"
 #include "Statement.h"
 
 
-class StatementsBlock : public ASTNode
+class StatementsBlock : public Statement
 {
 public:
     explicit StatementsBlock(std::vector<std::unique_ptr<Statement>> statements)
