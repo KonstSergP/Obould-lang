@@ -4,8 +4,6 @@
 #include <vector>
 #include "ASTCore.h"
 #include "ASTDeclarations.h"
-#include "ProcedureParameter.h"
-#include "VariableDeclaration.h"
 
 
 class IdentifierType : public Type

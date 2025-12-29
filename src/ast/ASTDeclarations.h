@@ -4,7 +4,6 @@
 #include <vector>
 #include "ASTCore.h"
 #include "ASTStatements.h"
-#include "ProcedureParameter.h"
 
 
 class Import : public ASTNode
@@ -129,6 +128,23 @@ public:
 };
 
 
+class ProcedureParameter : public ASTNode
+{
+public:
+    ProcedureParameter(const std::string& name, bool isReference, const std::shared_ptr<Type>& type)
+        : name(name),
+          isReference(isReference),
+          type(type) {}
+
+    void accept(ASTVisitor& v) override;
+
+
+    std::string name;
+    bool isReference;
+    std::shared_ptr<Type> type;
+};
+
+
 class ProcedureDeclaration : public ASTNode
 {
 public:
@@ -158,9 +174,9 @@ class Module : public ASTNode
 {
 public:
     Module(const std::string& name,
-              std::vector<std::unique_ptr<Import>> imports,
-              std::unique_ptr<DeclarationsBlock> declarations,
-              std::vector<std::unique_ptr<ProcedureDeclaration>> procedures)
+           std::vector<std::unique_ptr<Import>> imports,
+           std::unique_ptr<DeclarationsBlock> declarations,
+           std::vector<std::unique_ptr<ProcedureDeclaration>> procedures)
         : name(name),
           imports(std::move(imports)),
           declarations(std::move(declarations)),

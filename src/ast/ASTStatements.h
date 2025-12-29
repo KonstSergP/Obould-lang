@@ -1,9 +1,11 @@
 #pragma once
 #include <memory>
 #include <string>
+#include <vector>
 #include "ASTCore.h"
-#include "WhileBranch.h"
 
+
+class StatementsBlock;
 
 class AssignmentStatement : public Statement
 {
@@ -17,6 +19,21 @@ public:
 
     std::unique_ptr<Expression> target;
     std::unique_ptr<Expression> value;
+};
+
+
+class WhileBranch : public ASTNode
+{
+public:
+    WhileBranch(std::unique_ptr<Expression> condition, std::unique_ptr<StatementsBlock> body)
+        : condition(std::move(condition)),
+          body(std::move(body)) {}
+
+    void accept(ASTVisitor& v) override;
+
+
+    std::unique_ptr<Expression> condition;
+    std::unique_ptr<StatementsBlock> body;
 };
 
 
@@ -44,6 +61,36 @@ public:
 
     std::unique_ptr<Expression> condition;
     std::unique_ptr<Statement> body;
+};
+
+
+class CaseLabel : public ASTNode
+{
+public:
+    CaseLabel(std::unique_ptr<Expression> value, std::unique_ptr<Expression> end_value)
+        : value(std::move(value)),
+          endValue(std::move(end_value)) {}
+
+    void accept(ASTVisitor& v) override;
+
+
+    std::unique_ptr<Expression> value;
+    std::unique_ptr<Expression> endValue;
+};
+
+
+class SwitchCase : public ASTNode
+{
+public:
+    SwitchCase(std::vector<CaseLabel> labels, std::unique_ptr<StatementsBlock> body)
+        : labels(std::move(labels)),
+          body(std::move(body)) {}
+
+    void accept(ASTVisitor& v) override;
+
+
+    std::vector<CaseLabel> labels;
+    std::unique_ptr<StatementsBlock> body;
 };
 
 
@@ -113,4 +160,21 @@ public:
 
 
     std::vector<std::unique_ptr<Statement>> statements;
+};
+
+
+class ProcedureCall : public Statement, public Expression
+{
+public:
+    ProcedureCall(std::string procedure_name, std::vector<std::unique_ptr<Expression>> args)
+        : procedureName(std::move(procedure_name)),
+          args(std::move(args)) {}
+
+    void accept(ASTVisitor& v) override;
+
+
+    std::string procedureName;
+    std::vector<std::unique_ptr<Expression>> args;
+
+    bool isTypeGuard = false;
 };
