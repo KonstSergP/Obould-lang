@@ -1,18 +1,29 @@
 #pragma once
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 #include "ASTCore.h"
 
 
-class StatementsBlock;
+class StatementsBlock : public Statement
+{
+public:
+    explicit StatementsBlock(std::vector<std::unique_ptr<Statement>> statements)
+        : statements(std::move(statements)) {}
+
+    void accept(ASTVisitor& v) override;
+
+
+    std::vector<std::unique_ptr<Statement>> statements;
+};
+
 
 class AssignmentStatement : public Statement
 {
 public:
     AssignmentStatement(std::unique_ptr<Expression> target, std::unique_ptr<Expression> value)
-        : target(std::move(target)),
-          value(std::move(value)) {}
+        : target(std::move(target)), value(std::move(value)) {}
 
     void accept(ASTVisitor& v) override;
 
@@ -26,8 +37,7 @@ class WhileBranch : public ASTNode
 {
 public:
     WhileBranch(std::unique_ptr<Expression> condition, std::unique_ptr<StatementsBlock> body)
-        : condition(std::move(condition)),
-          body(std::move(body)) {}
+        : condition(std::move(condition)), body(std::move(body)) {}
 
     void accept(ASTVisitor& v) override;
 
@@ -53,8 +63,7 @@ class DoWhileStatement : public Statement
 {
 public:
     DoWhileStatement(std::unique_ptr<Expression> condition, std::unique_ptr<Statement> body)
-        : condition(std::move(condition)),
-          body(std::move(body)) {}
+        : condition(std::move(condition)), body(std::move(body)) {}
 
     void accept(ASTVisitor& v) override;
 
@@ -68,8 +77,7 @@ class CaseLabel : public ASTNode
 {
 public:
     CaseLabel(std::unique_ptr<Expression> value, std::unique_ptr<Expression> end_value)
-        : value(std::move(value)),
-          endValue(std::move(end_value)) {}
+        : value(std::move(value)), endValue(std::move(end_value)) {}
 
     void accept(ASTVisitor& v) override;
 
@@ -82,14 +90,13 @@ public:
 class SwitchCase : public ASTNode
 {
 public:
-    SwitchCase(std::vector<CaseLabel> labels, std::unique_ptr<StatementsBlock> body)
-        : labels(std::move(labels)),
-          body(std::move(body)) {}
+    SwitchCase(std::vector<std::unique_ptr<CaseLabel>> labels, std::unique_ptr<StatementsBlock> body)
+        : labels(std::move(labels)), body(std::move(body)) {}
 
     void accept(ASTVisitor& v) override;
 
 
-    std::vector<CaseLabel> labels;
+    std::vector<std::unique_ptr<CaseLabel>> labels;
     std::unique_ptr<StatementsBlock> body;
 };
 
@@ -98,8 +105,7 @@ class SwitchStatement : public Statement
 {
 public:
     SwitchStatement(std::unique_ptr<Expression> selector, std::vector<std::unique_ptr<SwitchCase>> cases)
-        : selector(std::move(selector)),
-          cases(std::move(cases)) {}
+        : selector(std::move(selector)), cases(std::move(cases)) {}
 
     void accept(ASTVisitor& v) override;
 
@@ -130,10 +136,10 @@ public:
 class ForStatement : public Statement
 {
 public:
-    ForStatement(const std::string& counterName, std::unique_ptr<Expression> rangeStart,
+    ForStatement(std::string counterName, std::unique_ptr<Expression> rangeStart,
                  std::unique_ptr<Expression> rangeEnd, std::unique_ptr<Expression> step,
                  std::unique_ptr<Statement> body)
-        : counterName(counterName),
+        : counterName(std::move(counterName)),
           rangeStart(std::move(rangeStart)),
           rangeEnd(std::move(rangeEnd)),
           step(std::move(step)),
@@ -150,30 +156,17 @@ public:
 };
 
 
-class StatementsBlock : public Statement
-{
-public:
-    explicit StatementsBlock(std::vector<std::unique_ptr<Statement>> statements)
-        : statements(std::move(statements)) {}
-
-    void accept(ASTVisitor& v) override;
-
-
-    std::vector<std::unique_ptr<Statement>> statements;
-};
-
-
 class ProcedureCall : public Statement, public Expression
 {
 public:
-    ProcedureCall(std::string procedure_name, std::vector<std::unique_ptr<Expression>> args)
-        : procedureName(std::move(procedure_name)),
+    ProcedureCall(std::unique_ptr<Expression> procedureName, std::vector<std::unique_ptr<Expression>> args)
+        : procedureName(std::move(procedureName)),
           args(std::move(args)) {}
 
     void accept(ASTVisitor& v) override;
 
 
-    std::string procedureName;
+    std::unique_ptr<Expression> procedureName;
     std::vector<std::unique_ptr<Expression>> args;
 
     bool isTypeGuard = false;

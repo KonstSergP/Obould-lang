@@ -1,13 +1,14 @@
 #pragma once
 #include <memory>
 #include <string>
+#include <utility>
 #include "ASTCore.h"
 
 
 class BinaryExpression : public Expression
 {
 public:
-    enum class Op { Add, Sub, Mul, FDiv, IDiv, Mod, And, Or, Eq, Neq, Less, Greater, Leq, Geq, Is };
+    enum class Op { Add, Sub, Mul, FDiv, IDiv, Mod, And, Or, Eq, Neq, Lt, Gt, Lte, Gte, Is };
 
     BinaryExpression(std::unique_ptr<Expression> l, std::unique_ptr<Expression> r, Op op)
         : left(std::move(l)), right(std::move(r)), op(op) {}
@@ -80,7 +81,8 @@ public:
 class IdentifierExpression : public Expression
 {
 public:
-    explicit IdentifierExpression(std::string name) : name(std::move(name)) {}
+    explicit IdentifierExpression(std::string moduleName, std::string name)
+        : name(std::move(name)), moduleName(std::move(moduleName)) {}
 
     void accept(ASTVisitor& v) override;
 

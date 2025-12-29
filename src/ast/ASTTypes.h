@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 #include "ASTCore.h"
 #include "ASTDeclarations.h"
@@ -9,9 +10,9 @@
 class IdentifierType : public Type
 {
 public:
-    IdentifierType(const std::string& name, const std::string& moduleName)
-        : name(name),
-          moduleName(moduleName) {}
+    IdentifierType(std::string  moduleName, std::string  name)
+        : name(std::move(name)),
+          moduleName(std::move(moduleName)) {}
 
     void accept(ASTVisitor& v) override;
 

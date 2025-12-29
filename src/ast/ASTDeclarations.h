@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 #include "ASTCore.h"
 #include "ASTStatements.h"
@@ -9,9 +10,9 @@
 class Import : public ASTNode
 {
 public:
-    Import(const std::string& localName, const std::string& realName)
-        : localName(localName),
-          realName(realName) {}
+    Import(std::string localName, std::string realName)
+        : localName(std::move(localName)),
+          realName(std::move(realName)) {}
 
     void accept(ASTVisitor& v) override;
 
@@ -24,8 +25,8 @@ public:
 class ConstantDeclaration : public ASTNode
 {
 public:
-    ConstantDeclaration(const std::string& name, bool isExported, std::unique_ptr<Expression> value)
-        : name(name),
+    ConstantDeclaration(std::string name, bool isExported, std::unique_ptr<Expression> value)
+        : name(std::move(name)),
           isExported(isExported),
           value(std::move(value)) {}
 
@@ -53,8 +54,8 @@ public:
 class TypeDeclaration : public ASTNode
 {
 public:
-    TypeDeclaration(const std::string& name, bool isExported, std::unique_ptr<Type> type)
-        : name(name),
+    TypeDeclaration(std::string name, bool isExported, std::unique_ptr<Type> type)
+        : name(std::move(name)),
           isExported(isExported),
           type(std::move(type)) {}
 
@@ -83,8 +84,8 @@ public:
 class VariableDeclaration : public ASTNode
 {
 public:
-    VariableDeclaration(const std::string& name, bool isExported, std::unique_ptr<Type> type)
-        : name(name),
+    VariableDeclaration(std::string name, bool isExported, std::unique_ptr<Type> type)
+        : name(std::move(name)),
           isExported(isExported),
           type(std::move(type)) {}
 
@@ -131,8 +132,8 @@ public:
 class ProcedureParameter : public ASTNode
 {
 public:
-    ProcedureParameter(const std::string& name, bool isReference, const std::shared_ptr<Type>& type)
-        : name(name),
+    ProcedureParameter(std::string name, bool isReference, const std::shared_ptr<Type>& type)
+        : name(std::move(name)),
           isReference(isReference),
           type(type) {}
 
@@ -148,13 +149,15 @@ public:
 class ProcedureDeclaration : public ASTNode
 {
 public:
-    ProcedureDeclaration(const std::string& name, bool isExported,
+    ProcedureDeclaration(std::string name, bool isExported,
                          std::vector<std::unique_ptr<ProcedureParameter>> parameters, std::unique_ptr<Type> returnType,
-                         std::unique_ptr<StatementsBlock> body, std::unique_ptr<Expression> returnExpression)
-        : name(name),
+                         std::unique_ptr<DeclarationsBlock> declarations, std::unique_ptr<StatementsBlock> body,
+                         std::unique_ptr<Expression> returnExpression)
+        : name(std::move(name)),
           isExported(isExported),
           parameters(std::move(parameters)),
           returnType(std::move(returnType)),
+          declarations(std::move(declarations)),
           body(std::move(body)),
           returnExpression(std::move(returnExpression)) {}
 
@@ -165,6 +168,7 @@ public:
     bool isExported;
     std::vector<std::unique_ptr<ProcedureParameter>> parameters;
     std::unique_ptr<Type> returnType;
+    std::unique_ptr<DeclarationsBlock> declarations;
     std::unique_ptr<StatementsBlock> body;
     std::unique_ptr<Expression> returnExpression;
 };
@@ -173,11 +177,11 @@ public:
 class Module : public ASTNode
 {
 public:
-    Module(const std::string& name,
+    Module(std::string name,
            std::vector<std::unique_ptr<Import>> imports,
            std::unique_ptr<DeclarationsBlock> declarations,
            std::vector<std::unique_ptr<ProcedureDeclaration>> procedures)
-        : name(name),
+        : name(std::move(name)),
           imports(std::move(imports)),
           declarations(std::move(declarations)),
           procedures(std::move(procedures)) {}
