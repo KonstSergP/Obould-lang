@@ -2,4 +2,4 @@
 #include "ASTNode.h"
 
 
-class Type : public ASTNode {};
+class Type : public virtual ASTNode {};

@@ -2,4 +2,4 @@
 #include "ASTNode.h"
 
 
-class Statement : public ASTNode {};
+class Statement : public virtual ASTNode {};
