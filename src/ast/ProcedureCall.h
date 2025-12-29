@@ -18,4 +18,6 @@ public:
 
     std::string procedureName;
     std::vector<std::unique_ptr<Expression>> args;
+
+    bool isTypeGuard = false;
 };
