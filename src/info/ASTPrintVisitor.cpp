@@ -1,9 +1,10 @@
 #include "ASTPrintVisitor.h"
 
-#include <algorithm>
-
 
 ASTPrintVisitor::ASTPrintVisitor(std::ostream& os) : os(os) {}
+
+
+// Helpers
 
 void ASTPrintVisitor::printNodeName(const std::string& name, const std::string& extraInfo) const
 {
@@ -45,6 +46,22 @@ static std::string unOpToString(const UnaryExpression::Op op)
     default: throw std::runtime_error("Unknown unary expression type");
     }
 }
+
+struct IndentGuard
+{
+    std::string& str;
+    size_t originalLength;
+
+    IndentGuard(std::string& s, const std::string& add) : str(s), originalLength(s.length())
+    {
+        s += add;
+    }
+
+    ~IndentGuard()
+    {
+        str.resize(originalLength);
+    }
+};
 
 
 // Expressions
@@ -142,17 +159,15 @@ void ASTPrintVisitor::visit(IfStatement& node)
     bool hasElse = (node.elseBranch != nullptr);
 
     os << indentPrefix << (hasElse ? "├── " : "└── ") << CYAN << "Then" << RESET << std::endl;
-
-    std::string oldIndent = indentPrefix;
-    indentPrefix += (hasElse ? "│   " : "    ");
-    printChild(node.thenBranch, true);
-    indentPrefix = oldIndent;
+    {
+        IndentGuard guard(indentPrefix, (hasElse ? "│   " : "    "));
+        printChild(node.thenBranch, true);
+    }
 
     if (hasElse) {
         os << indentPrefix << "└── " << CYAN << "Else" << RESET << std::endl;
-        indentPrefix += "    ";
+        IndentGuard guard(indentPrefix, "    ");
         printChild(node.elseBranch, true);
-        indentPrefix = oldIndent;
     }
 }
 
@@ -209,7 +224,14 @@ void ASTPrintVisitor::visit(SwitchCase& node)
 
 void ASTPrintVisitor::visit(CaseLabel& node)
 {
-    if (node.endValue) {
+    auto* startInt = dynamic_cast<IntegerLiteral*>(node.value.get());
+    auto* endInt = node.endValue ? dynamic_cast<IntegerLiteral*>(node.endValue.get()) : nullptr;
+
+    if (startInt && endInt) {
+        os << CYAN << "Range " << RESET << GREEN << startInt->value << RESET
+           << " .. " << GREEN << endInt->value << RESET << std::endl;
+    }
+    else if (node.endValue) {
         os << CYAN << "Range" << RESET << std::endl;
         printChild(node.value, false);
         printChild(node.endValue, true);
@@ -258,10 +280,8 @@ void ASTPrintVisitor::visit(StructType& node)
     if (node.baseType) {
         bool hasFields = !node.fields.empty();
         os << indentPrefix << (hasFields ? "├── " : "└── ") << CYAN << "Extends" << RESET << std::endl;
-        std::string oldIndent = indentPrefix;
-        indentPrefix += (hasFields ? "│   " : "    ");
+        IndentGuard guard(indentPrefix, (hasFields ? "│   " : "    "));
         printChild(node.baseType, true);
-        indentPrefix = oldIndent;
     }
     for (size_t i = 0; i < node.fields.size(); ++i) {
         printChild(node.fields[i], i == node.fields.size() - 1);
@@ -288,10 +308,8 @@ void ASTPrintVisitor::visit(ProcedureType& node)
 
     if (hasReturn) {
         os << indentPrefix << "└── " << CYAN << "Returns" << RESET << std::endl;
-        std::string oldIndent = indentPrefix;
-        indentPrefix += "    ";
+        IndentGuard guard(indentPrefix, "    ");
         printChild(node.returnType, true);
-        indentPrefix = oldIndent;
     }
 }
 
@@ -326,20 +344,16 @@ void ASTPrintVisitor::visit(ProcedureDeclaration& node)
 
     if (!node.parameters.empty()) {
         os << indentPrefix << "├── " << GRAY << "Params" << RESET << std::endl;
-        std::string saved = indentPrefix;
-        indentPrefix += "│   ";
+        IndentGuard guard(indentPrefix, "│   ");
         for (int i = 0; i < node.parameters.size(); ++i) {
             printChild(node.parameters[i], i == node.parameters.size() - 1);
         }
-        indentPrefix = saved;
     }
 
     if (node.returnType) {
         os << indentPrefix << "├── " << GRAY << "Returns" << RESET << std::endl;
-        std::string saved = indentPrefix;
-        indentPrefix += "│   ";
+        IndentGuard guard(indentPrefix, "│   ");
         printChild(node.returnType, true);
-        indentPrefix = saved;
     }
 
     if (node.declarations) {
@@ -385,12 +399,10 @@ void ASTPrintVisitor::visit(DeclarationsBlock& node)
     {
         os << indentPrefix << (isLastSection ? "└── " : "├── ") << CYAN << title << RESET << std::endl;
 
-        std::string oldIndent = indentPrefix;
-        indentPrefix += (isLastSection ? "    " : "│   ");
+        IndentGuard guard(indentPrefix, (isLastSection ? "    " : "│   "));
         if (containerPtr) {
             containerPtr->accept(*this);
         }
-        indentPrefix = oldIndent;
     };
 
     if (hasConstants) {
@@ -419,25 +431,21 @@ void ASTPrintVisitor::visit(Module& node)
 
     if (!node.imports.empty()) {
         os << indentPrefix << "├── " << GRAY << "Imports" << RESET << std::endl;
-        std::string old = indentPrefix;
-        indentPrefix += "│   ";
+        IndentGuard guard(indentPrefix, "│   ");
         for (size_t i = 0; i < node.imports.size(); ++i) {
             printChild(node.imports[i], i == node.imports.size() - 1);
         }
-        indentPrefix = old;
     }
 
     if (node.declarations) {
         os << indentPrefix << "├── " << GRAY << "Declarations" << RESET << std::endl;
-        std::string old = indentPrefix;
-        indentPrefix += "│   ";
+        IndentGuard guard(indentPrefix, "│   ");
         node.declarations->accept(*this);
-        indentPrefix = old;
     }
 
     if (!node.procedures.empty()) {
         os << "└── " << GRAY << "Procedures" << RESET << std::endl;
-        indentPrefix += "    ";
+        IndentGuard guard(indentPrefix, "    ");
         for (size_t i = 0; i < node.procedures.size(); ++i) {
             printChild(node.procedures[i], i == node.procedures.size() - 1);
         }
