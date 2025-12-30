@@ -59,9 +59,27 @@ public:
 
 private:
     std::ostream& os;
-    int indentLevel = 0;
 
-    void printIndent() const;
-    static std::string binOpToString(BinaryExpression::Op op);
-    static std::string unOpToString(UnaryExpression::Op op);
+    std::string indentPrefix;
+
+    const std::string RESET = "\033[0m";
+    const std::string GRAY = "\033[90m";
+    const std::string CYAN = "\033[36m";
+    const std::string GREEN = "\033[32m";
+    const std::string YELLOW = "\033[33m";
+    const std::string BLUE = "\033[34m";
+
+    template <typename T>
+    void printChild(const std::unique_ptr<T>& node, bool isLast)
+    {
+        if (!node) return;
+
+        std::string prevIndent = indentPrefix;
+        os << indentPrefix << (isLast ? "└── " : "├── ");
+        indentPrefix += (isLast ? "    " : "│   ");
+        node->accept(*this);
+        indentPrefix = prevIndent;
+    }
+
+    void printNodeName(const std::string& name, const std::string& extraInfo = "") const;
 };
