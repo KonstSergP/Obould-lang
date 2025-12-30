@@ -57,6 +57,13 @@ public:
     void visit(Import& node) override;
     void visit(Module& node) override;
 
+    template <typename T>
+    void printNode(const std::unique_ptr<T>& node)
+    {
+        if (!node) return;
+        node->accept(*this);
+    }
+
 private:
     std::ostream& os;
 
