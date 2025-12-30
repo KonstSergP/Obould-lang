@@ -357,7 +357,9 @@ void ASTPrintVisitor::visit(ProcedureDeclaration& node)
     }
 
     if (node.declarations) {
-        printChild(node.declarations, false);
+        os << indentPrefix << "├── " << GRAY << "Declarations" << RESET << std::endl;
+        IndentGuard guard(indentPrefix, "│   ");
+        node.declarations->accept(*this);
     }
     printChild(node.body, true);
 }
