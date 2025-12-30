@@ -10,7 +10,7 @@
 class IdentifierType : public Type
 {
 public:
-    IdentifierType(std::string  moduleName, std::string  name)
+    IdentifierType(std::string moduleName, std::string name)
         : name(std::move(name)),
           moduleName(std::move(moduleName)) {}
 
@@ -79,16 +79,13 @@ public:
 class StructType : public Type
 {
 public:
-    StructType(const std::string& name, std::unique_ptr<IdentifierType> baseType,
-               std::vector<std::unique_ptr<VariableDeclaration>> fields)
-        : name(name),
-          baseType(std::move(baseType)),
+    StructType(std::unique_ptr<IdentifierType> baseType, std::vector<std::unique_ptr<VariableDeclaration>> fields)
+        : baseType(std::move(baseType)),
           fields(std::move(fields)) {}
 
     void accept(ASTVisitor& v) override;
 
 
-    std::string name;
     std::unique_ptr<IdentifierType> baseType;
     std::vector<std::unique_ptr<VariableDeclaration>> fields;
 };
