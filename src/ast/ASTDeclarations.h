@@ -132,17 +132,17 @@ public:
 class ProcedureParameter : public ASTNode
 {
 public:
-    ProcedureParameter(std::string name, bool isReference, const std::shared_ptr<Type>& type)
+    ProcedureParameter(std::string name, bool isReference, std::unique_ptr<Type> type)
         : name(std::move(name)),
           isReference(isReference),
-          type(type) {}
+          type(std::move(type)) {}
 
     void accept(ASTVisitor& v) override;
 
 
     std::string name;
     bool isReference;
-    std::shared_ptr<Type> type;
+    std::unique_ptr<Type> type;
 };
 
 
