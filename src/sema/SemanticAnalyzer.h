@@ -2,11 +2,12 @@
 #include "ast/ASTVisitor.h"
 
 
-
 class SemanticAnalyzer : public ASTVisitor
 {
 public:
     bool analyze(Module& module);
+    const std::vector<std::string>& getErrors() const;
+    void addError(const std::string& error);
 
     // Expressions
     void visit(IntegerLiteral& node) override;
@@ -54,4 +55,7 @@ public:
     void visit(DeclarationsBlock& node) override;
     void visit(Import& node) override;
     void visit(Module& node) override;
+
+private:
+    std::vector<std::string> errors;
 };
