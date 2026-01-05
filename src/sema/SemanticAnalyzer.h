@@ -1,4 +1,5 @@
 #pragma once
+#include "SymbolTable.h"
 #include "ast/ASTVisitor.h"
 
 
@@ -58,4 +59,5 @@ public:
 
 private:
     std::vector<std::string> errors;
+    SymbolTable symbolTable;
 };
