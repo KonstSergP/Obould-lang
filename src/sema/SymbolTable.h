@@ -6,11 +6,15 @@
 
 class TypeInfo;
 
+enum class SymbolKind { Variable, Constant, Type, Procedure, Module };
+
 
 struct Symbol
 {
+    SymbolKind kind;
     std::string name;
     std::shared_ptr<TypeInfo> type;
+    bool isExported;
 };
 
 
