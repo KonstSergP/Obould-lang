@@ -131,7 +131,7 @@ public:
 class StringLiteral : public Expression
 {
 public:
-    explicit StringLiteral(const std::string& val) : value(val) {}
+    explicit StringLiteral(std::string val) : value(std::move(val)) {}
 
     void accept(ASTVisitor& v) override;
 

@@ -32,9 +32,19 @@ bool SymbolTable::addSymbol(Symbol symbol)
 Symbol* SymbolTable::lookupSymbol(const std::string& name)
 {
     for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) {
-        auto found = it->find(name);
-        if (found != it->end()) {
+        if (auto found = it->find(name); found != it->end()) {
             return &(found->second);
+        }
+    }
+    return nullptr;
+}
+
+Symbol* SymbolTable::lookupSymbolLocal(const std::string& name)
+{
+    if (!scopes.empty()) {
+        auto& currentScope = scopes.back();
+        if (currentScope.find(name) != currentScope.end()) {
+            return &(currentScope.at(name));
         }
     }
     return nullptr;

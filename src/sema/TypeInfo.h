@@ -3,16 +3,30 @@
 #include <string>
 #include <vector>
 
-class SemanticAnalyzer;
-class Expression;
-class Type;
-
 
 enum class TypeKind
 {
-    i64, Byte, f64, Bool, Char, String, Void,
-    Array, Struct, Pointer, Procedure
+    i64, Byte, f64, Bool, Char, String, Void, Nil,
+    Array, Struct, Pointer, Procedure, StubType
 };
+
+inline bool isValidVariableType(TypeKind kind)
+{
+    switch (kind) {
+    case TypeKind::i64:
+    case TypeKind::Byte:
+    case TypeKind::f64:
+    case TypeKind::Bool:
+    case TypeKind::Char:
+    case TypeKind::Array:
+    case TypeKind::Struct:
+    case TypeKind::Pointer:
+    case TypeKind::Procedure:
+        return true;
+    default:
+        return false;
+    }
+}
 
 
 struct TypeInfo;
@@ -34,24 +48,29 @@ struct ParamInfo
 
 struct TypeInfo
 {
+    TypeInfo() : kind(TypeKind::Void) {}
+
+    explicit TypeInfo(const TypeKind k) : kind(k) {}
+
+    bool isAssignableFrom(const std::shared_ptr<TypeInfo>& other) const;
+
+
     TypeKind kind;
+    std::string name;
 
     // Array
-    bool isOpenArray;
+    bool isOpenArray = false;
 
     // String + Array
-    int length;
+    int64_t length = 0;
 
     // Pointer + Array + Struct
     std::shared_ptr<TypeInfo> baseType;
 
     // Struct
-    std::string name;
     std::vector<FieldInfo> fields;
 
     // Procedure
     std::shared_ptr<TypeInfo> returnType;
     std::vector<ParamInfo> parameters;
-
-    bool isAssignableFrom(const std::shared_ptr<TypeInfo>& other) const;
 };

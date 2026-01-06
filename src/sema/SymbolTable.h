@@ -3,8 +3,8 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include "ast/ASTCore.h"
 
-class TypeInfo;
 
 enum class SymbolKind { Variable, Constant, Type, Procedure, Module };
 
@@ -15,6 +15,7 @@ struct Symbol
     std::string name;
     std::shared_ptr<TypeInfo> type;
     bool isExported;
+    std::optional<ConstValue> value;
 };
 
 
@@ -25,6 +26,7 @@ public:
     void exitScope();
     bool addSymbol(Symbol symbol);
     Symbol* lookupSymbol(const std::string& name);
+    Symbol* lookupSymbolLocal(const std::string& name);
 
 private:
     std::deque<std::unordered_map<std::string, Symbol>> scopes;

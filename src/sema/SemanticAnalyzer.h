@@ -58,6 +58,10 @@ public:
     void visit(Module& node) override;
 
 private:
+    enum class AnalyzeStages { Default, CreateType, FillType, ValidateType };
+
+    AnalyzeStages analyzeStage = AnalyzeStages::Default;
+
     std::vector<std::string> errors;
     SymbolTable symbolTable;
 };
