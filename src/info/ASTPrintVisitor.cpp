@@ -95,7 +95,7 @@ void ASTPrintVisitor::visit(BinaryExpression& node)
 {
     printNodeName("BinaryExpr", binOpToString(node.op));
     printChild(node.left, false);
-    printChild(node.right, true);
+    std::visit([this](auto&& nd){printChild(nd, true);}, node.right);
 }
 
 void ASTPrintVisitor::visit(UnaryExpression& node)

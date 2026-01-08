@@ -59,8 +59,9 @@ public:
 
 private:
     enum class AnalyzeStages { Default, CreateType, FillType, ValidateType };
-
     AnalyzeStages analyzeStage = AnalyzeStages::Default;
+
+    std::shared_ptr<TypeInfo> forCounterType;
 
     std::vector<std::string> errors;
     SymbolTable symbolTable;

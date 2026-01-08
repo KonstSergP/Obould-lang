@@ -10,6 +10,18 @@ enum class TypeKind
     Array, Struct, Pointer, Procedure, StubType
 };
 
+inline bool isIntegerType(TypeKind kind) {
+    return kind == TypeKind::i64 || kind == TypeKind::Byte;
+}
+
+inline bool isRealType(TypeKind kind) {
+    return kind == TypeKind::f64;
+}
+
+inline bool isNumericType(TypeKind kind) {
+    return isIntegerType(kind) || isRealType(kind);
+}
+
 inline bool isValidVariableType(TypeKind kind)
 {
     switch (kind) {

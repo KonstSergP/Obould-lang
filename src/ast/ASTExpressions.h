@@ -17,7 +17,7 @@ public:
 
 
     std::unique_ptr<Expression> left;
-    std::unique_ptr<Expression> right;
+    std::variant<std::unique_ptr<Expression>, std::unique_ptr<Type>> right;
     Op op;
 };
 
