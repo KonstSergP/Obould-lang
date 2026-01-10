@@ -385,7 +385,7 @@ void SemanticAnalyzer::visit(ArrayAccessExpression& node)
         return;
     }
 
-    if (!idxType || idxType->kind != TypeKind::i64 || idxType->kind != TypeKind::Byte) {
+    if (!idxType || !isIntegerType(idxType->kind)) {
         addError("Array index must be an integer");
         node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
         return;

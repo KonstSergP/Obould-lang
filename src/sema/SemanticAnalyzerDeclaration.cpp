@@ -23,6 +23,7 @@ void SemanticAnalyzer::visit(ConstantDeclaration& node)
     sym.kind = SymbolKind::Constant;
     sym.type = node.value->resolvedType;
     sym.isExported = node.isExported;
+    sym.readOnly = true;
     sym.value = node.value->constantValue;
 
     if (!symbolTable.addSymbol(sym)) {
@@ -46,6 +47,7 @@ void SemanticAnalyzer::visit(TypeDeclaration& node)
         sym.kind = SymbolKind::Type;
         sym.type = stubType;
         sym.isExported = node.isExported;
+        sym.readOnly = true;
 
         symbolTable.addSymbol(sym);
     }
@@ -91,6 +93,7 @@ void SemanticAnalyzer::visit(VariableDeclaration& node)
     sym.kind = SymbolKind::Variable;
     sym.type = type;
     sym.isExported = node.isExported;
+    sym.readOnly = false;
 
     if (!symbolTable.addSymbol(sym)) {
         addError("Redeclaration of variable '" + node.name + "'");
@@ -163,6 +166,7 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
     procSym.kind = SymbolKind::Procedure;
     procSym.type = procType;
     procSym.isExported = node.isExported;
+    procSym.readOnly = true;
 
     if (!symbolTable.addSymbol(procSym)) {
         addError("Redeclaration of symbol '" + node.name + "'");
@@ -176,6 +180,7 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
         paramSym.kind = SymbolKind::Variable;
         paramSym.type = param->type->resolvedType;
         paramSym.isExported = false;
+        paramSym.readOnly = false;
 
         if (!symbolTable.addSymbol(paramSym)) {
             addError("Duplicate parameter name '" + param->name + "'");
@@ -222,6 +227,7 @@ void SemanticAnalyzer::visit(Import& node)
     modSym.kind = SymbolKind::Module;
     modSym.type = std::make_shared<TypeInfo>(TypeKind::Void);
     modSym.isExported = false;
+    modSym.readOnly = true;
 
     if (!symbolTable.addSymbol(modSym)) {
         addError("Module '" + node.localName + "' already imported");
@@ -238,6 +244,7 @@ static void addBuiltinTypes(SymbolTable& symTable)
         s.kind = SymbolKind::Type;
         s.type = std::make_shared<TypeInfo>(kind);
         s.isExported = false;
+        s.readOnly = true;
         symTable.addSymbol(s);
     };
 
