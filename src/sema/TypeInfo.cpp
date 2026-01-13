@@ -1,11 +1,12 @@
 #include "TypeInfo.h"
 
 
-static bool isBaseTypeOf(const TypeInfo* base, const TypeInfo* derived)
+bool TypeInfo::isBaseTypeOf(const std::shared_ptr<TypeInfo>& other) const
 {
-    const TypeInfo* current = derived;
+    if (!other) return false;
+    auto current = other.get();
     while (current) {
-        if (base == current) {
+        if (this == current) {
             return true;
         }
         current = current->baseType.get();
@@ -25,17 +26,20 @@ bool TypeInfo::isAssignableFrom(const std::shared_ptr<TypeInfo>& other) const
         return false;
     }
 
+    if (other->kind == TypeKind::Nil) {
+        return (this->kind == TypeKind::Pointer || this->kind == TypeKind::Procedure);
+    }
+
     if (this->kind == TypeKind::i64 && other->kind == TypeKind::Byte) {
         return true;
     }
 
-    if (this->kind == TypeKind::Char && other->kind == TypeKind::String) {
-        return other->length == 1;
-    }
-
-    if (this->kind == TypeKind::Array && other->kind == TypeKind::String) {
-        if (this->baseType && this->baseType->kind == TypeKind::Char) {
-            return this->length >= other->length;
+    if (other->kind == TypeKind::String) {
+        if (this->kind == TypeKind::Char) {
+            return other->length == 1;
+        }
+        if (this->kind == TypeKind::Array && this->baseType->kind == TypeKind::Char) {
+            return this->length > other->length;
         }
     }
 
@@ -45,14 +49,24 @@ bool TypeInfo::isAssignableFrom(const std::shared_ptr<TypeInfo>& other) const
 
     switch (this->kind) {
     case TypeKind::Pointer:
-        if (other->kind == TypeKind::Nil) return true;
-        if (!this->baseType || !other->baseType) return false;
-        return isBaseTypeOf(this->baseType.get(), other->baseType.get());
+        if (this->baseType && other->baseType) {
+            return this->baseType->isBaseTypeOf(other->baseType);
+        }
+        return false;
 
     case TypeKind::Struct:
-        return isBaseTypeOf(this, other.get());
+        return this->isBaseTypeOf(other);
 
     case TypeKind::Array:
+        if (this->baseType && other->baseType) {
+            if (this->baseType.get() != other->baseType.get()) {
+                return false;
+            }
+            if (other->isOpenArray) {
+                return true;
+            }
+            return this->length == other->length;
+        }
         return false;
 
     case TypeKind::Procedure:

@@ -145,10 +145,19 @@ void SemanticAnalyzer::visit(ProcedureType& node)
         procInfo->parameters.push_back(pInfo);
     }
 
-    node.returnType->accept(*this);
-    procInfo->returnType = node.returnType->resolvedType;
+    if (node.returnType) {
+        node.returnType->accept(*this);
+        procInfo->returnType = node.returnType->resolvedType;
 
-    // TODO: разобраться какие типы можно возвращать в процедуре
+        if (procInfo->returnType->kind == TypeKind::Array || procInfo->returnType->kind == TypeKind::Struct) {
+            addError(
+                "Procedure cannot return a structured type (Array or Record). Use a pointer or a VAR parameter instead.");
+            procInfo->returnType = std::make_shared<TypeInfo>(TypeKind::Void);
+        }
+    }
+    else {
+        procInfo->returnType = std::make_shared<TypeInfo>(TypeKind::Void);
+    }
 
     node.resolvedType = procInfo;
 }

@@ -65,6 +65,7 @@ struct TypeInfo
     explicit TypeInfo(const TypeKind k) : kind(k) {}
 
     bool isAssignableFrom(const std::shared_ptr<TypeInfo>& other) const;
+    bool isBaseTypeOf(const std::shared_ptr<TypeInfo>& other) const;
 
 
     TypeKind kind;

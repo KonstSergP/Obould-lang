@@ -173,7 +173,7 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
     }
 
     symbolTable.enterScope();
-
+    // TODO: тут проблема с тем что is должен работать с параметрами-переменными
     for (const auto& param : node.parameters) {
         Symbol paramSym;
         paramSym.name = param->name;

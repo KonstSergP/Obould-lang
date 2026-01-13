@@ -6,41 +6,73 @@ void SemanticAnalyzer::visit(ProcedureCall& node)
 {
     node.procedureName->accept(*this);
 
-    // TODO: реализовать Type Guard
     auto procTypeInfo = node.procedureName->resolvedType;
-    if (!procTypeInfo || procTypeInfo->kind != TypeKind::Procedure) {
-        addError("Expression is not a procedure");
-        node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
-        return;
-    }
+    if (procTypeInfo->kind == TypeKind::Procedure) {
+        const auto& params = procTypeInfo->parameters;
 
-    const auto& params = procTypeInfo->parameters;
-
-    if (node.args.size() != params.size()) {
-        addError("Incorrect number of arguments. Expected " + std::to_string(params.size()) +
-            ", got " + std::to_string(node.args.size()));
-        return;
-    }
-
-    for (size_t i = 0; i < node.args.size(); ++i) {
-        node.args[i]->accept(*this);
-        auto argType = node.args[i]->resolvedType;
-        const auto& paramInfo = params[i];
-
-        if (!paramInfo.type->isAssignableFrom(argType)) {
-            addError("Argument " + std::to_string(i + 1) + " type mismatch");
+        if (node.args.size() != params.size()) {
+            addError("Incorrect number of arguments. Expected " + std::to_string(params.size()) +
+                ", got " + std::to_string(node.args.size()));
+            return;
         }
 
-        if (paramInfo.isReference) {
-            if (!node.args[i]->isLvalue) {
-                addError(
-                    "Argument " + std::to_string(i + 1) +
-                    " corresponds to a reference parameter and must be a l-value");
+        for (size_t i = 0; i < node.args.size(); ++i) {
+            node.args[i]->accept(*this);
+            auto argType = node.args[i]->resolvedType;
+            const auto& paramInfo = params[i];
+
+            if (!paramInfo.type->isAssignableFrom(argType)) {
+                addError("Argument " + std::to_string(i + 1) + " type mismatch");
+            }
+
+            if (paramInfo.isReference) {
+                if (!node.args[i]->isLvalue) {
+                    addError(
+                        "Argument " + std::to_string(i + 1) +
+                        " corresponds to a reference parameter and must be a l-value");
+                }
             }
         }
-    }
 
-    node.resolvedType = procTypeInfo->returnType;
+        node.resolvedType = procTypeInfo->returnType;
+    } else if (procTypeInfo->kind == TypeKind::Pointer && procTypeInfo->baseType->kind == TypeKind::Struct) {
+        node.isTypeGuard = true;
+        if (node.args.size() != 1) {
+            addError("Type guard requires only one argument");
+            return;
+        }
+
+        auto* idExpr = dynamic_cast<IdentifierExpression*>(node.args[0].get());
+        if (!idExpr) {
+            addError("Type guard argument must be a type identifier");
+            return;
+        }
+
+        IdentifierType tempTypeNode(idExpr->moduleName, idExpr->name);
+        tempTypeNode.accept(*this);
+        auto targetType = tempTypeNode.resolvedType;
+
+        if (!targetType || targetType->kind == TypeKind::Void) {
+            return;
+        }
+        if (targetType->kind != TypeKind::Struct) {
+            addError("Type guard target type must be a struct");
+            return;
+        }
+        if (!procTypeInfo->baseType->isBaseTypeOf(targetType)) {
+            addError("Type guard extension mismatch");
+            return;
+        }
+
+        auto resultPtr = std::make_shared<TypeInfo>(TypeKind::Pointer);
+        resultPtr->baseType = targetType;
+        node.resolvedType = resultPtr;
+        node.isLvalue = false;
+
+    } else {
+        addError("Expression is not a procedure or type guard");
+        node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
+    }
 }
 
 void SemanticAnalyzer::visit(StatementsBlock& node)
