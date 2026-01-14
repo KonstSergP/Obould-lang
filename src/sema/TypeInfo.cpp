@@ -27,7 +27,7 @@ bool TypeInfo::isAssignableFrom(const std::shared_ptr<TypeInfo>& other) const
     }
 
     if (other->kind == TypeKind::Nil) {
-        return (this->kind == TypeKind::Pointer || this->kind == TypeKind::Procedure);
+        return this->kind == TypeKind::Pointer || this->kind == TypeKind::Procedure;
     }
 
     if (this->kind == TypeKind::i64 && other->kind == TypeKind::Byte) {
@@ -58,14 +58,10 @@ bool TypeInfo::isAssignableFrom(const std::shared_ptr<TypeInfo>& other) const
         return this->isBaseTypeOf(other);
 
     case TypeKind::Array:
-        if (this->baseType && other->baseType) {
-            if (this->baseType.get() != other->baseType.get()) {
-                return false;
+        if (this->isOpenArray) {
+            if (other->kind == TypeKind::Array) {
+                return this->baseType.get() == other->baseType.get();
             }
-            if (other->isOpenArray) {
-                return true;
-            }
-            return this->length == other->length;
         }
         return false;
 
