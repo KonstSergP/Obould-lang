@@ -9,6 +9,7 @@ public:
     bool analyze(Module& module);
     const std::vector<std::string>& getErrors() const;
     void addError(const std::string& error);
+    std::shared_ptr<TypeInfo> getPolymorphicBase(Expression* expr);
 
     // Expressions
     void visit(IntegerLiteral& node) override;

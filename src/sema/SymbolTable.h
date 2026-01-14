@@ -15,7 +15,8 @@ struct Symbol
     std::string name;
     std::shared_ptr<TypeInfo> type;
     bool isExported;
-    bool readOnly;
+    bool isReference;
+    bool isReadOnly;
     std::optional<ConstValue> value;
 };
 

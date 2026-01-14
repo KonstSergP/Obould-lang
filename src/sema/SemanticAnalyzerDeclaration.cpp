@@ -23,7 +23,8 @@ void SemanticAnalyzer::visit(ConstantDeclaration& node)
     sym.kind = SymbolKind::Constant;
     sym.type = node.value->resolvedType;
     sym.isExported = node.isExported;
-    sym.readOnly = true;
+    sym.isReference = false;
+    sym.isReadOnly = true;
     sym.value = node.value->constantValue;
 
     if (!symbolTable.addSymbol(sym)) {
@@ -47,7 +48,8 @@ void SemanticAnalyzer::visit(TypeDeclaration& node)
         sym.kind = SymbolKind::Type;
         sym.type = stubType;
         sym.isExported = node.isExported;
-        sym.readOnly = true;
+        sym.isReference = false;
+        sym.isReadOnly = true;
 
         symbolTable.addSymbol(sym);
     }
@@ -93,7 +95,8 @@ void SemanticAnalyzer::visit(VariableDeclaration& node)
     sym.kind = SymbolKind::Variable;
     sym.type = type;
     sym.isExported = node.isExported;
-    sym.readOnly = false;
+    sym.isReference = false;
+    sym.isReadOnly = false;
 
     if (!symbolTable.addSymbol(sym)) {
         addError("Redeclaration of variable '" + node.name + "'");
@@ -166,21 +169,30 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
     procSym.kind = SymbolKind::Procedure;
     procSym.type = procType;
     procSym.isExported = node.isExported;
-    procSym.readOnly = true;
+    procSym.isReference = false;
+    procSym.isReadOnly = true;
 
     if (!symbolTable.addSymbol(procSym)) {
         addError("Redeclaration of symbol '" + node.name + "'");
     }
 
     symbolTable.enterScope();
-    // TODO: тут проблема с тем что is должен работать с параметрами-переменными
+
     for (const auto& param : node.parameters) {
+        auto& paramType = param->type->resolvedType;
+
+        bool isReadOnly = false;
+        if (!param->isReference) {
+            isReadOnly = paramType->kind == TypeKind::Array || paramType->kind == TypeKind::Struct;
+        }
+
         Symbol paramSym;
         paramSym.name = param->name;
         paramSym.kind = SymbolKind::Variable;
-        paramSym.type = param->type->resolvedType;
+        paramSym.type = paramType;
         paramSym.isExported = false;
-        paramSym.readOnly = false;
+        paramSym.isReference = param->isReference;
+        paramSym.isReadOnly = isReadOnly;
 
         if (!symbolTable.addSymbol(paramSym)) {
             addError("Duplicate parameter name '" + param->name + "'");
@@ -227,7 +239,8 @@ void SemanticAnalyzer::visit(Import& node)
     modSym.kind = SymbolKind::Module;
     modSym.type = std::make_shared<TypeInfo>(TypeKind::Void);
     modSym.isExported = false;
-    modSym.readOnly = true;
+    modSym.isReference = false;
+    modSym.isReadOnly = true;
 
     if (!symbolTable.addSymbol(modSym)) {
         addError("Module '" + node.localName + "' already imported");
@@ -244,7 +257,8 @@ static void addBuiltinTypes(SymbolTable& symTable)
         s.kind = SymbolKind::Type;
         s.type = std::make_shared<TypeInfo>(kind);
         s.isExported = false;
-        s.readOnly = true;
+        s.isReference = false;
+        s.isReadOnly = true;
         symTable.addSymbol(s);
     };
 

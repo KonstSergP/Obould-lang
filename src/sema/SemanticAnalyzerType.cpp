@@ -151,7 +151,7 @@ void SemanticAnalyzer::visit(ProcedureType& node)
 
         if (procInfo->returnType->kind == TypeKind::Array || procInfo->returnType->kind == TypeKind::Struct) {
             addError(
-                "Procedure cannot return a structured type (Array or Record). Use a pointer or a VAR parameter instead.");
+                "Procedure cannot return a structured type (Array or Record). Use a pointer or a reference parameter instead.");
             procInfo->returnType = std::make_shared<TypeInfo>(TypeKind::Void);
         }
     }

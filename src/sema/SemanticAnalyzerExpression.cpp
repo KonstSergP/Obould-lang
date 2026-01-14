@@ -71,7 +71,7 @@ void SemanticAnalyzer::visit(IdentifierExpression& node)
         node.isLvalue = false;
     }
     else {
-        node.isLvalue = not sym->readOnly;
+        node.isLvalue = not sym->isReadOnly;
     }
 }
 
@@ -243,19 +243,32 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
         break;
 
     case BinaryExpression::Op::Is:
+    {
         node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Bool);
-        if (lType->kind == TypeKind::Pointer && lType->baseType->kind == TypeKind::Struct
-            && std::holds_alternative<std::unique_ptr<Type>>(node.right) && rType->kind == TypeKind::Struct) {
-            if (!lType->isBaseTypeOf(rType)) {
-                addError("'is' requires left operand as pointer to struct of base type of right operand");
-                correct = false;
-            }
+
+        auto baseType = getPolymorphicBase(node.left.get());
+        if (!baseType) {
+            addError("'IS' requires a pointer to struct or a reference struct parameter");
+            correct = false;
+            break;
         }
-        else {
-            addError("'is' requires a pointer and a type as operands");
+
+        if (!std::holds_alternative<std::unique_ptr<Type>>(node.right)) {
+            addError("'IS' right operand must be a type");
+            correct = false;
+            break;
+        }
+        if (rType->kind != TypeKind::Struct) {
+            addError("'IS' target type must be a struct");
+            correct = false;
+            break;
+        }
+        if (!baseType->isBaseTypeOf(rType)) {
+            addError("'IS' target type must be an extension of the variable type");
             correct = false;
         }
         break;
+    }
 
     default:
         node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);

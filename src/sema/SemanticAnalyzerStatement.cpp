@@ -52,22 +52,27 @@ void SemanticAnalyzer::visit(ProcedureCall& node)
         tempTypeNode.accept(*this);
         auto targetType = tempTypeNode.resolvedType;
 
-        if (!targetType || targetType->kind == TypeKind::Void) {
-            return;
-        }
-        if (targetType->kind != TypeKind::Struct) {
+        if (!targetType || targetType->kind != TypeKind::Struct) {
             addError("Type guard target type must be a struct");
+            node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
             return;
         }
-        if (!procTypeInfo->baseType->isBaseTypeOf(targetType)) {
+
+        if (!getPolymorphicBase(node.procedureName.get())->isBaseTypeOf(targetType)) {
             addError("Type guard extension mismatch");
             return;
         }
 
-        auto resultPtr = std::make_shared<TypeInfo>(TypeKind::Pointer);
-        resultPtr->baseType = targetType;
-        node.resolvedType = resultPtr;
-        node.isLvalue = false;
+        if (node.procedureName->resolvedType->kind == TypeKind::Pointer) {
+            auto res = std::make_shared<TypeInfo>(TypeKind::Pointer);
+            res->baseType = targetType;
+            node.resolvedType = res;
+            node.isLvalue = false;
+        }
+        else {
+            node.resolvedType = targetType;
+            node.isLvalue = true;
+        }
 
     } else {
         addError("Expression is not a procedure or type guard");
@@ -149,7 +154,8 @@ void SemanticAnalyzer::visit(ForStatement& node)
     sym.kind = SymbolKind::Variable;
     sym.type = std::make_shared<TypeInfo>(TypeKind::i64);
     sym.isExported = false;
-    sym.readOnly = true;
+    sym.isReference = false;
+    sym.isReadOnly = true;
     symbolTable.addSymbol(sym);
 
     node.rangeStart->accept(*this);
