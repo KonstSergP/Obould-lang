@@ -1,10 +1,14 @@
 #pragma once
 #include "ast/ASTVisitor.h"
+#include <memory>
+#include <llvm/IR/IRBuilder.h>
 
 
 class LLVMCodegenVisitor : public ASTVisitor
 {
 public:
+    std::unique_ptr<llvm::Module> codegen(Module& moduleAst);
+
     // Expressions
     void visit(IntegerLiteral& node) override;
     void visit(RealLiteral& node) override;
@@ -51,4 +55,23 @@ public:
     void visit(DeclarationsBlock& node) override;
     void visit(Import& node) override;
     void visit(Module& node) override;
+
+private:
+    llvm::LLVMContext context;
+    std::unique_ptr<llvm::Module> module;
+    std::unique_ptr<llvm::IRBuilder<>> builder;
+
+    llvm::Value* lastValue = nullptr;
+    llvm::Function* currentFunction = nullptr;
+    bool lvalue = false;
+
+    std::unordered_map<std::string, llvm::Value*> locals;
+    std::unordered_map<std::string, llvm::Function*> functions;
+    std::unordered_map<TypeInfo*, llvm::StructType*> structTypes;
+
+    llvm::Type* toLLVMType(const std::shared_ptr<TypeInfo>& typeInfo);
+    llvm::Value* getConstantValue(const Expression& node);
+    llvm::AllocaInst* createEntryAlloca(llvm::Type* type, const std::string& name) const;
+    llvm::Function* declareFunction(ProcedureDeclaration& node);
+    llvm::FunctionType* createFunctionType(const std::shared_ptr<TypeInfo>& type);
 };
