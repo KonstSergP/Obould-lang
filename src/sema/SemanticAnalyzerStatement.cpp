@@ -35,6 +35,7 @@ void SemanticAnalyzer::visit(ProcedureCall& node)
         }
 
         node.resolvedType = procTypeInfo->returnType;
+        node.isLvalue = false;
     } else if (procTypeInfo->kind == TypeKind::Pointer && procTypeInfo->baseType->kind == TypeKind::Struct) {
         node.isTypeGuard = true;
         if (node.args.size() != 1) {
@@ -147,16 +148,8 @@ void SemanticAnalyzer::visit(DoWhileStatement& node)
 
 void SemanticAnalyzer::visit(ForStatement& node)
 {
-    symbolTable.enterScope();
-
-    Symbol sym;
-    sym.name = node.counterName;
-    sym.kind = SymbolKind::Variable;
-    sym.type = std::make_shared<TypeInfo>(TypeKind::i64);
-    sym.isExported = false;
-    sym.isReference = false;
-    sym.isReadOnly = true;
-    symbolTable.addSymbol(sym);
+    auto* sym = symbolTable.lookupSymbol(node.counterName);
+    sym->isReadOnly = true;
 
     node.rangeStart->accept(*this);
     if (!node.rangeStart->resolvedType || !isIntegerType(node.rangeStart->resolvedType->kind)) {
@@ -179,15 +172,16 @@ void SemanticAnalyzer::visit(ForStatement& node)
     }
 
     node.body->accept(*this);
-    symbolTable.exitScope();
+    sym->isReadOnly = false;
 }
 
 void SemanticAnalyzer::visit(SwitchStatement& node)
 {
+    // TODO: реализовать switch по расширениям структуры и char
     node.selector->accept(*this);
     auto selType = node.selector->resolvedType;
     if (!selType) return;
-    forCounterType = selType;
+    switchSelectorType = selType;
 
     bool isValidSelector = isIntegerType(selType->kind) || selType->kind == TypeKind::Char;
     if (!isValidSelector) {
@@ -197,7 +191,7 @@ void SemanticAnalyzer::visit(SwitchStatement& node)
     for (const auto& caseBlock : node.cases) {
         caseBlock->accept(*this);
     }
-    forCounterType = nullptr;
+    switchSelectorType = nullptr;
 }
 
 void SemanticAnalyzer::visit(SwitchCase& node)
@@ -205,15 +199,15 @@ void SemanticAnalyzer::visit(SwitchCase& node)
     for (const auto& label : node.labels) {
         label->accept(*this);
     }
-    const auto& cntrType = forCounterType; // если в теле будет еще один switch
+    const auto& cntrType = switchSelectorType; // если в теле будет еще один switch
     node.body->accept(*this);
-    forCounterType = cntrType;
+    switchSelectorType = cntrType;
 }
 
 void SemanticAnalyzer::visit(CaseLabel& node)
 {
     node.value->accept(*this);
-    if (!node.value->resolvedType || !forCounterType->isAssignableFrom(node.value->resolvedType)) {
+    if (!node.value->resolvedType || !switchSelectorType->isAssignableFrom(node.value->resolvedType)) {
         addError("Case label type mismatch with selector");
     }
     if (!node.value->constantValue.has_value()) {
@@ -222,7 +216,7 @@ void SemanticAnalyzer::visit(CaseLabel& node)
 
     if (node.endValue) {
         node.endValue->accept(*this);
-        if (!node.endValue->resolvedType || !forCounterType->isAssignableFrom(node.endValue->resolvedType)) {
+        if (!node.endValue->resolvedType || !switchSelectorType->isAssignableFrom(node.endValue->resolvedType)) {
             addError("Case range end type mismatch with selector");
         }
         if (!node.endValue->constantValue.has_value()) {

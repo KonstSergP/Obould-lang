@@ -291,8 +291,8 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
                 case BinaryExpression::Op::Mul: node.constantValue = lv * rv;
                     break;
                 case BinaryExpression::Op::IDiv:
-                    if (rv == 0) {
-                        addError("Integer division by zero");
+                    if (rv <= 0) {
+                        addError("Divisor must be positive");
                         return;
                     }
                     node.constantValue = lv / rv - ((lv % rv != 0) && (lv < 0));

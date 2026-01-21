@@ -210,13 +210,15 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
         addError("Procedure '" + node.name + "' does not have a body");
     }
 
-    if (!node.returnType && node.returnExpression) {
-        addError("Procedure '" + node.name + "' does not have a return type");
+    bool isVoid = procType->returnType->kind == TypeKind::Void;
+
+    if (isVoid && node.returnExpression) {
+        addError("Procedure '" + node.name + "' is void but returns a value");
     }
-    else if (node.returnType && !node.returnExpression) {
-        addError("Procedure '" + node.name + "' does not have a return expression");
+    else if (!isVoid && !node.returnExpression) {
+        addError("Procedure '" + node.name + "' must return a value");
     }
-    else if (node.returnType && node.returnExpression) {
+    else if (!isVoid && node.returnExpression) {
         node.returnExpression->accept(*this);
         if (node.returnExpression->resolvedType
             && !procType->returnType->isAssignableFrom(node.returnExpression->resolvedType)) {
@@ -227,10 +229,7 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
     symbolTable.exitScope();
 }
 
-void SemanticAnalyzer::visit(ProcedureParameter& node)
-{
-    addError("SemanticAnalyzer::visit(ProcedureParameter& node) must not be used");
-}
+void SemanticAnalyzer::visit(ProcedureParameter& node) {}
 
 void SemanticAnalyzer::visit(Import& node)
 {
@@ -268,6 +267,7 @@ static void addBuiltinTypes(SymbolTable& symTable)
     add("byte", TypeKind::Byte);
     add("char", TypeKind::Char);
     add("void", TypeKind::Void);
+    // TODO: при нескольких модулях надо чтобы они были одинаковые
 }
 
 void SemanticAnalyzer::visit(Module& node)
