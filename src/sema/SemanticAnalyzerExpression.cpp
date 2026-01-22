@@ -137,13 +137,6 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
         node.op == BinaryExpression::Op::Mul || node.op == BinaryExpression::Op::IDiv ||
         node.op == BinaryExpression::Op::Mod || node.op == BinaryExpression::Op::FDiv;
 
-    auto isStringLike = [](const std::shared_ptr<TypeInfo>& t)
-    {
-        return t->kind == TypeKind::String ||
-            (t->kind == TypeKind::Array && t->baseType && t->baseType->kind == TypeKind::Char);
-    };
-
-
     node.left->accept(*this);
     std::visit([this](auto&& nd) { nd->accept(*this); }, node.right);
 
@@ -226,10 +219,11 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
     case BinaryExpression::Op::Gte:
         node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Bool);
 
-        if (isStringLike(lType) && isStringLike(rType)) {}
-        else if (isIntegerType(lType->kind) && isIntegerType(rType->kind)) {}
+        if (isIntegerType(lType->kind) && isIntegerType(rType->kind)) {}
         else if (isRealType(lType->kind) && isRealType(rType->kind)) {}
         else if (lType->kind == TypeKind::Char && rType->kind == TypeKind::Char) {}
+        else if (lType->kind == TypeKind::Char && rType->kind == TypeKind::String && rType->length == 1) {}
+        else if (rType->kind == TypeKind::Char && lType->kind == TypeKind::String && lType->length == 1) {}
         else if (((lType->kind == TypeKind::Pointer && rType->kind == TypeKind::Nil)
             || (lType->kind == TypeKind::Nil && rType->kind == TypeKind::Pointer)
             || (lType->kind == TypeKind::Pointer && rType->kind == TypeKind::Pointer))) {

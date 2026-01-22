@@ -8,11 +8,11 @@ void LLVMCodegenVisitor::visit(ProcedureCall& node)
     lvalue = false;
     node.procedureName->accept(*this);
     auto* callee = lastValue;
-
     if (!callee) {
         lastValue = nullptr;
         return;
     }
+
     auto procTypeInfo = node.procedureName->resolvedType;
     auto* funcType = createFunctionType(procTypeInfo);
 
@@ -24,9 +24,13 @@ void LLVMCodegenVisitor::visit(ProcedureCall& node)
         auto& argExpr = node.args[i];
         lvalue = params[i].isReference;
         argExpr->accept(*this);
+
         if (isIntegerType(argExpr->resolvedType->kind) && isIntegerType(params[i].type->kind)) {
             lastValue = builder->CreateZExtOrTrunc(lastValue, toLLVMType(params[i].type));
+        } else if (argExpr->resolvedType->kind == TypeKind::String) {
+            lastValue = builder->CreateLoad(toLLVMType(params[i].type), lastValue);
         }
+
         args.push_back(lastValue);
     }
     lvalue = oldLvalue;
@@ -48,17 +52,27 @@ void LLVMCodegenVisitor::visit(AssignmentStatement& node)
     // TODO: присваивание строки массиву и символа char'у надо обработать
     lvalue = false;
     node.value->accept(*this);
-    if (isIntegerType(node.target->resolvedType->kind) && isIntegerType(node.value->resolvedType->kind)) {
-        lastValue = builder->CreateZExtOrTrunc(lastValue, toLLVMType(node.target->resolvedType));
-    }
     auto* rhs = lastValue;
     lvalue = true;
     node.target->accept(*this);
-    auto* addr = lastValue;
-    if (!rhs || !addr) {
+    auto* lhs = lastValue;
+    if (!rhs || !lhs) {
         return;
     }
-    builder->CreateStore(rhs, addr);
+
+    if (isIntegerType(node.target->resolvedType->kind) && isIntegerType(node.value->resolvedType->kind)) {
+        rhs = builder->CreateZExtOrTrunc(rhs, toLLVMType(node.target->resolvedType));
+    } else if (node.value->resolvedType->kind == TypeKind::String) {
+        if (node.target->resolvedType->kind == TypeKind::Char) {
+            rhs = builder->CreateLoad(toLLVMType(node.target->resolvedType), rhs);
+        } else { // array of chars
+            lhs = builder->CreateBitCast(lhs, llvm::PointerType::getUnqual(llvm::Type::getInt8Ty(context)));
+            llvm::Value* sizeVal = llvm::ConstantInt::get(llvm::Type::getInt64Ty(context), node.value->resolvedType->length+1); // + нулевой символ
+            builder->CreateMemCpy(lhs, llvm::MaybeAlign(1), rhs, llvm::MaybeAlign(1), sizeVal);
+            return;
+        }
+    }
+    builder->CreateStore(rhs, lhs);
 }
 
 void LLVMCodegenVisitor::visit(IfStatement& node)
@@ -215,14 +229,28 @@ void LLVMCodegenVisitor::visit(ForStatement& node)
     builder->SetInsertPoint(afterBB);
 }
 
+static int64_t getLabelValue(const ConstValue& val) {
+    if (std::holds_alternative<int64_t>(val)) {
+        return std::get<int64_t>(val);
+    }
+    if (std::holds_alternative<std::string>(val)) {
+        const auto& s = std::get<std::string>(val);
+        if (!s.empty()) return static_cast<uint8_t>(s[0]);
+    }
+    return 0;
+}
+
 void LLVMCodegenVisitor::visit(SwitchStatement& node)
 {
     lvalue = false;
     node.selector->accept(*this);
-    auto* selectorVal = lastValue;
-    if (!selectorVal) return;
-    auto* selTy = llvm::Type::getInt64Ty(context);
-    selectorVal = builder->CreateZExtOrTrunc(selectorVal, selTy, "switch.sel");
+    auto* selector = lastValue;
+    if (!selector) return;
+    auto* selectorType = llvm::Type::getInt64Ty(context);
+
+    auto origType = node.selector->resolvedType->kind;
+    bool isSignedCast = origType != TypeKind::Byte && origType != TypeKind::Char;
+    selector = builder->CreateIntCast(selector, selectorType, isSignedCast, "switch.sel");
 
     auto* endBB = llvm::BasicBlock::Create(context, "switch.end");
     auto* checkBB = llvm::BasicBlock::Create(context, "switch.check", currentFunction);
@@ -239,24 +267,21 @@ void LLVMCodegenVisitor::visit(SwitchStatement& node)
         llvm::Value* caseCond = nullptr;
 
         for (const auto& labelPtr : casePtr->labels) {
-            auto startConst = labelPtr->value->constantValue;
-            int64_t startVal = std::get<int64_t>(*startConst);
+            int64_t startVal = getLabelValue(*labelPtr->value->constantValue);
             int64_t endVal = startVal;
-
             if (labelPtr->endValue) {
-                endVal = std::get<int64_t>(*labelPtr->endValue->constantValue);
+                endVal = getLabelValue(*labelPtr->endValue->constantValue);
             }
             if (endVal < startVal) std::swap(startVal, endVal);
-
             llvm::Value* labelCond = nullptr;
             if (startVal == endVal) {
-                auto* val = llvm::ConstantInt::get(selTy, startVal, true);
-                labelCond = builder->CreateICmpEQ(selectorVal, val);
+                auto* val = llvm::ConstantInt::get(selectorType, startVal, true);
+                labelCond = builder->CreateICmpEQ(selector, val);
             } else {
-                auto* low = llvm::ConstantInt::get(selTy, startVal, true);
-                auto* high = llvm::ConstantInt::get(selTy, endVal, true);
-                auto* ge = builder->CreateICmpSGE(selectorVal, low);
-                auto* le = builder->CreateICmpSLE(selectorVal, high);
+                auto* low = llvm::ConstantInt::get(selectorType, startVal, true);
+                auto* high = llvm::ConstantInt::get(selectorType, endVal, true);
+                auto* ge = builder->CreateICmpSGE(selector, low);
+                auto* le = builder->CreateICmpSLE(selector, high);
                 labelCond = builder->CreateAnd(ge, le);
             }
 

@@ -67,6 +67,10 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
         } else if (node.left->resolvedType->kind == TypeKind::Byte && right->resolvedType->kind == TypeKind::i64) {
             lhs = builder->CreateZExt(lhs, llvm::Type::getInt64Ty(context));
         }
+    } else if (node.left->resolvedType->kind == TypeKind::String) {
+        lhs = builder->CreateLoad(toLLVMType(right->resolvedType), lhs);
+    } else if (right->resolvedType->kind == TypeKind::String) {
+        rhs = builder->CreateLoad(toLLVMType(node.left->resolvedType), rhs);
     }
 
     switch (node.op) {
