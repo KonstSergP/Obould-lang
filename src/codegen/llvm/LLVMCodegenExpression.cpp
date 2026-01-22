@@ -35,19 +35,17 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
         return;
     }
     node.left->accept(*this);
-    llvm::Value* lhs = lastValue;
+    auto* lhs = lastValue;
 
-    llvm::Value* rhs = nullptr;
-    if (std::holds_alternative<std::unique_ptr<Expression>>(node.right)) {
-        std::get<std::unique_ptr<Expression>>(node.right)->accept(*this);
-        rhs = lastValue;
-    }
-    else {
+    if (std::holds_alternative<std::unique_ptr<Type>>(node.right)) {
         // TODO: реализовать для IS
         lastValue = nullptr;
         return;
     }
 
+    auto& right = std::get<std::unique_ptr<Expression>>(node.right);
+    right->accept(*this);
+    auto* rhs = lastValue;
     if (!lhs || !rhs) {
         lastValue = nullptr;
         return;
@@ -62,6 +60,14 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
     bool isInt = lhs->getType()->isIntegerTy();
     bool isReal = lhs->getType()->isFloatingPointTy();
     using Op = BinaryExpression::Op;
+
+    if (isIntegerType(resultType->kind)) {
+        if (node.left->resolvedType->kind == TypeKind::i64 && right->resolvedType->kind == TypeKind::Byte) {
+            rhs = builder->CreateZExt(rhs, llvm::Type::getInt64Ty(context));
+        } else if (node.left->resolvedType->kind == TypeKind::Byte && right->resolvedType->kind == TypeKind::i64) {
+            lhs = builder->CreateZExt(lhs, llvm::Type::getInt64Ty(context));
+        }
+    }
 
     switch (node.op) {
     case Op::Add:

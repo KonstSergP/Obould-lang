@@ -17,6 +17,21 @@ std::unique_ptr<llvm::Module> LLVMCodegenVisitor::codegen(Module& moduleAst)
     return std::move(module);
 }
 
+llvm::FunctionType* LLVMCodegenVisitor::createFunctionType(const std::shared_ptr<TypeInfo>& type) {
+    llvm::Type* retType = toLLVMType(type->returnType);
+    std::vector<llvm::Type*> argTypes;
+    llvm::Type* t;
+    for (const auto& param : type->parameters) {
+        if (param.isReference) {
+            t = llvm::PointerType::getUnqual(context);
+        } else {
+            t = toLLVMType(param.type);
+        }
+        argTypes.push_back(t);
+    }
+    return llvm::FunctionType::get(retType, argTypes, false);
+}
+
 llvm::Type* LLVMCodegenVisitor::toLLVMType(const std::shared_ptr<TypeInfo>& typeInfo)
 {
     if (!typeInfo) {

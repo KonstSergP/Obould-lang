@@ -167,8 +167,11 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
     case BinaryExpression::Op::Add:
     case BinaryExpression::Op::Sub:
     case BinaryExpression::Op::Mul:
-        if (isIntegerType(lType->kind) && isIntegerType(rType->kind)) {
+        if (lType->kind == TypeKind::i64 || rType->kind == TypeKind::i64) {
             node.resolvedType = std::make_shared<TypeInfo>(TypeKind::i64);
+        }
+        else if (lType->kind == TypeKind::Byte && rType->kind == TypeKind::Byte) {
+            node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Byte);
         }
         else if (isRealType(lType->kind) && isRealType(rType->kind)) {
             node.resolvedType = std::make_shared<TypeInfo>(TypeKind::f64);

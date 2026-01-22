@@ -2,34 +2,19 @@
 #include "sema/TypeInfo.h"
 
 
-llvm::FunctionType* LLVMCodegenVisitor::createFunctionType(const std::shared_ptr<TypeInfo>& type) {
-    llvm::Type* retType = toLLVMType(type->returnType);
-    std::vector<llvm::Type*> argTypes;
-    llvm::Type* t;
-    for (const auto& param : type->parameters) {
-        if (param.isReference) {
-            t = llvm::PointerType::getUnqual(context);
-        } else {
-            t = toLLVMType(param.type);
-        }
-        argTypes.push_back(t);
-    }
-    return llvm::FunctionType::get(retType, argTypes, false);
-}
-
 void LLVMCodegenVisitor::visit(ProcedureCall& node)
 {
     bool oldLvalue = lvalue;
     lvalue = false;
     node.procedureName->accept(*this);
-    llvm::Value* callee = lastValue;
+    auto* callee = lastValue;
 
     if (!callee) {
         lastValue = nullptr;
         return;
     }
     auto procTypeInfo = node.procedureName->resolvedType;
-    llvm::FunctionType* funcType = createFunctionType(procTypeInfo);
+    auto* funcType = createFunctionType(procTypeInfo);
 
     const auto& params = procTypeInfo->parameters;
     std::vector<llvm::Value*> args;
@@ -39,6 +24,9 @@ void LLVMCodegenVisitor::visit(ProcedureCall& node)
         auto& argExpr = node.args[i];
         lvalue = params[i].isReference;
         argExpr->accept(*this);
+        if (isIntegerType(argExpr->resolvedType->kind) && isIntegerType(params[i].type->kind)) {
+            lastValue = builder->CreateZExtOrTrunc(lastValue, toLLVMType(params[i].type));
+        }
         args.push_back(lastValue);
     }
     lvalue = oldLvalue;
@@ -58,10 +46,13 @@ void LLVMCodegenVisitor::visit(StatementsBlock& node)
 void LLVMCodegenVisitor::visit(AssignmentStatement& node)
 {
     // TODO: присваивание строки массиву и символа char'у надо обработать
-    lvalue = true;
-    node.value->accept(*this);
-    auto* rhs = lastValue;
     lvalue = false;
+    node.value->accept(*this);
+    if (isIntegerType(node.target->resolvedType->kind) && isIntegerType(node.value->resolvedType->kind)) {
+        lastValue = builder->CreateZExtOrTrunc(lastValue, toLLVMType(node.target->resolvedType));
+    }
+    auto* rhs = lastValue;
+    lvalue = true;
     node.target->accept(*this);
     auto* addr = lastValue;
     if (!rhs || !addr) {
@@ -177,7 +168,8 @@ void LLVMCodegenVisitor::visit(ForStatement& node)
     auto* endV = lastValue;
     if (!startV || !endV) return;
 
-    llvm::Type* loopType = startV->getType();
+    auto* counterPtr = locals[node.counterName];
+    auto* counterType = startV->getType();
     llvm::Value* stepV = nullptr;
     bool isNegativeStep = false;
 
@@ -188,21 +180,21 @@ void LLVMCodegenVisitor::visit(ForStatement& node)
             if (c->isNegative()) isNegativeStep = true;
         }
         // TODO: есть ли вариант получше?
+        stepV = builder->CreateZExtOrTrunc(stepV, counterType);
     } else {
-        stepV = llvm::ConstantInt::get(loopType, 1, true);
+        stepV = llvm::ConstantInt::get(counterType, 1, true);
     }
-    auto* counterPtr = locals[node.counterName];
     builder->CreateStore(startV, counterPtr);
 
-    llvm::BasicBlock* condBB = llvm::BasicBlock::Create(context, "for.cond", currentFunction);
-    llvm::BasicBlock* bodyBB = llvm::BasicBlock::Create(context, "for.body", currentFunction);
-    llvm::BasicBlock* stepBB = llvm::BasicBlock::Create(context, "for.step", currentFunction);
-    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(context, "for.end", currentFunction);
+    auto* condBB = llvm::BasicBlock::Create(context, "for.cond", currentFunction);
+    auto* bodyBB = llvm::BasicBlock::Create(context, "for.body", currentFunction);
+    auto* stepBB = llvm::BasicBlock::Create(context, "for.step", currentFunction);
+    auto* afterBB = llvm::BasicBlock::Create(context, "for.end", currentFunction);
 
     builder->CreateBr(condBB);
     builder->SetInsertPoint(condBB);
 
-    auto* cur = builder->CreateLoad(loopType, counterPtr, node.counterName);
+    auto* cur = builder->CreateLoad(counterType, counterPtr, node.counterName);
     auto pred = isNegativeStep ? llvm::CmpInst::ICMP_SGE : llvm::CmpInst::ICMP_SLE;
     auto* cond = builder->CreateICmp(pred, cur, endV, "forcond");
     builder->CreateCondBr(cond, bodyBB, afterBB);

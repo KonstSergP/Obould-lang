@@ -30,7 +30,7 @@ bool TypeInfo::isAssignableFrom(const std::shared_ptr<TypeInfo>& other) const
         return this->kind == TypeKind::Pointer || this->kind == TypeKind::Procedure;
     }
 
-    if (this->kind == TypeKind::i64 && other->kind == TypeKind::Byte) {
+    if (isIntegerType(this->kind) && isIntegerType(other->kind)) {
         return true;
     }
 
