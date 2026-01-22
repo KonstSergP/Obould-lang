@@ -49,7 +49,6 @@ void LLVMCodegenVisitor::visit(StatementsBlock& node)
 
 void LLVMCodegenVisitor::visit(AssignmentStatement& node)
 {
-    // TODO: присваивание строки массиву и символа char'у надо обработать
     lvalue = false;
     node.value->accept(*this);
     auto* rhs = lastValue;
@@ -71,6 +70,16 @@ void LLVMCodegenVisitor::visit(AssignmentStatement& node)
             builder->CreateMemCpy(lhs, llvm::MaybeAlign(1), rhs, llvm::MaybeAlign(1), sizeVal);
             return;
         }
+    } else if (node.target->resolvedType->kind == TypeKind::Array || node.target->resolvedType->kind == TypeKind::Struct) {
+        auto* objType = toLLVMType(node.target->resolvedType);
+        auto sizeBytes = module->getDataLayout().getTypeAllocSize(objType);
+        auto* sizeVal = llvm::ConstantInt::get(llvm::Type::getInt64Ty(context), sizeBytes);
+
+        auto* i8PtrTy = llvm::PointerType::getUnqual(llvm::Type::getInt8Ty(context));
+        lhs = builder->CreateBitCast(lhs, i8PtrTy);
+        rhs = builder->CreateBitCast(rhs, i8PtrTy);
+        builder->CreateMemCpy(lhs, llvm::MaybeAlign(1), rhs, llvm::MaybeAlign(1), sizeVal);
+        return;
     }
     builder->CreateStore(rhs, lhs);
 }
