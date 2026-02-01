@@ -1,6 +1,7 @@
 #include "ASTPrintVisitor.h"
 
-
+namespace obould
+{
 ASTPrintVisitor::ASTPrintVisitor(std::ostream& os) : os(os) {}
 
 
@@ -95,7 +96,7 @@ void ASTPrintVisitor::visit(BinaryExpression& node)
 {
     printNodeName("BinaryExpr", binOpToString(node.op));
     printChild(node.left, false);
-    std::visit([this](auto&& nd){printChild(nd, true);}, node.right);
+    std::visit([this](auto&& nd) { printChild(nd, true); }, node.right);
 }
 
 void ASTPrintVisitor::visit(UnaryExpression& node)
@@ -229,7 +230,7 @@ void ASTPrintVisitor::visit(CaseLabel& node)
 
     if (startInt && endInt) {
         os << CYAN << "Range " << RESET << GREEN << startInt->value << RESET
-           << " .. " << GREEN << endInt->value << RESET << std::endl;
+            << " .. " << GREEN << endInt->value << RESET << std::endl;
     }
     else if (node.endValue) {
         os << CYAN << "Range" << RESET << std::endl;
@@ -452,4 +453,5 @@ void ASTPrintVisitor::visit(Module& node)
             printChild(node.procedures[i], i == node.procedures.size() - 1);
         }
     }
+}
 }

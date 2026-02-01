@@ -6,7 +6,16 @@
 #include "ast/ASTCore.h"
 
 
-enum class SymbolKind { Variable, Constant, Type, Procedure, Module };
+namespace obould
+{
+enum class SymbolKind
+{
+    Variable,
+    Constant,
+    Type,
+    Procedure,
+    Module
+};
 
 
 struct Symbol
@@ -33,3 +42,4 @@ public:
 private:
     std::deque<std::unordered_map<std::string, Symbol>> scopes;
 };
+}

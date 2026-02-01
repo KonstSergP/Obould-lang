@@ -3,7 +3,8 @@
 #include "TypeInfo.h"
 #include "ast/ASTDeclarations.h"
 
-
+namespace obould
+{
 void SemanticAnalyzer::visit(ConstantDeclaration& node)
 {
     node.value->accept(*this);
@@ -289,4 +290,5 @@ void SemanticAnalyzer::visit(Module& node)
     }
 
     symbolTable.exitScope();
+}
 }

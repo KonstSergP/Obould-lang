@@ -1,7 +1,8 @@
 #include "LLVMCodegen.h"
 #include "sema/TypeInfo.h"
 
-
+namespace obould
+{
 void LLVMCodegenVisitor::visit(ProcedureCall& node)
 {
     bool oldLvalue = lvalue;
@@ -27,7 +28,8 @@ void LLVMCodegenVisitor::visit(ProcedureCall& node)
 
         if (isIntegerType(argExpr->resolvedType->kind) && isIntegerType(params[i].type->kind)) {
             lastValue = builder->CreateZExtOrTrunc(lastValue, toLLVMType(params[i].type));
-        } else if (argExpr->resolvedType->kind == TypeKind::String) {
+        }
+        else if (argExpr->resolvedType->kind == TypeKind::String) {
             lastValue = builder->CreateLoad(toLLVMType(params[i].type), lastValue);
         }
 
@@ -61,16 +63,21 @@ void LLVMCodegenVisitor::visit(AssignmentStatement& node)
 
     if (isIntegerType(node.target->resolvedType->kind) && isIntegerType(node.value->resolvedType->kind)) {
         rhs = builder->CreateZExtOrTrunc(rhs, toLLVMType(node.target->resolvedType));
-    } else if (node.value->resolvedType->kind == TypeKind::String) {
+    }
+    else if (node.value->resolvedType->kind == TypeKind::String) {
         if (node.target->resolvedType->kind == TypeKind::Char) {
             rhs = builder->CreateLoad(toLLVMType(node.target->resolvedType), rhs);
-        } else { // array of chars
+        }
+        else { // array of chars
             lhs = builder->CreateBitCast(lhs, llvm::PointerType::getUnqual(llvm::Type::getInt8Ty(context)));
-            llvm::Value* sizeVal = llvm::ConstantInt::get(llvm::Type::getInt64Ty(context), node.value->resolvedType->length+1); // + нулевой символ
+            llvm::Value* sizeVal = llvm::ConstantInt::get(llvm::Type::getInt64Ty(context),
+                                                          node.value->resolvedType->length + 1); // + нулевой символ
             builder->CreateMemCpy(lhs, llvm::MaybeAlign(1), rhs, llvm::MaybeAlign(1), sizeVal);
             return;
         }
-    } else if (node.target->resolvedType->kind == TypeKind::Array || node.target->resolvedType->kind == TypeKind::Struct) {
+    }
+    else if (node.target->resolvedType->kind == TypeKind::Array || node.target->resolvedType->kind ==
+        TypeKind::Struct) {
         auto* objType = toLLVMType(node.target->resolvedType);
         auto sizeBytes = module->getDataLayout().getTypeAllocSize(objType);
         auto* sizeVal = llvm::ConstantInt::get(llvm::Type::getInt64Ty(context), sizeBytes);
@@ -130,7 +137,7 @@ void LLVMCodegenVisitor::visit(WhileStatement& node)
 
         auto* condVal = lastValue;
         if (!condVal) {
-             condVal = llvm::ConstantInt::getFalse(context);
+            condVal = llvm::ConstantInt::getFalse(context);
         }
         condVal = builder->CreateTruncOrBitCast(condVal, llvm::Type::getInt1Ty(context), "cond");
 
@@ -139,7 +146,8 @@ void LLVMCodegenVisitor::visit(WhileStatement& node)
         llvm::BasicBlock* nextCondBB = nullptr;
         if (isLastBranch) {
             nextCondBB = afterBB;
-        } else {
+        }
+        else {
             nextCondBB = llvm::BasicBlock::Create(context, "while.cond");
         }
         builder->CreateCondBr(condVal, bodyBB, nextCondBB);
@@ -204,7 +212,8 @@ void LLVMCodegenVisitor::visit(ForStatement& node)
         }
         // TODO: есть ли вариант получше?
         stepV = builder->CreateZExtOrTrunc(stepV, counterType);
-    } else {
+    }
+    else {
         stepV = llvm::ConstantInt::get(counterType, 1, true);
     }
     builder->CreateStore(startV, counterPtr);
@@ -238,7 +247,8 @@ void LLVMCodegenVisitor::visit(ForStatement& node)
     builder->SetInsertPoint(afterBB);
 }
 
-static int64_t getLabelValue(const ConstValue& val) {
+static int64_t getLabelValue(const ConstValue& val)
+{
     if (std::holds_alternative<int64_t>(val)) {
         return std::get<int64_t>(val);
     }
@@ -271,8 +281,8 @@ void LLVMCodegenVisitor::visit(SwitchStatement& node)
 
         auto* bodyBB = llvm::BasicBlock::Create(context, "switch.body", currentFunction);
         auto* nextCheckBB = (i == node.cases.size() - 1)
-                                        ? endBB
-                                        : llvm::BasicBlock::Create(context, "switch.check", currentFunction);
+                                ? endBB
+                                : llvm::BasicBlock::Create(context, "switch.check", currentFunction);
         llvm::Value* caseCond = nullptr;
 
         for (const auto& labelPtr : casePtr->labels) {
@@ -286,7 +296,8 @@ void LLVMCodegenVisitor::visit(SwitchStatement& node)
             if (startVal == endVal) {
                 auto* val = llvm::ConstantInt::get(selectorType, startVal, true);
                 labelCond = builder->CreateICmpEQ(selector, val);
-            } else {
+            }
+            else {
                 auto* low = llvm::ConstantInt::get(selectorType, startVal, true);
                 auto* high = llvm::ConstantInt::get(selectorType, endVal, true);
                 auto* ge = builder->CreateICmpSGE(selector, low);
@@ -296,7 +307,8 @@ void LLVMCodegenVisitor::visit(SwitchStatement& node)
 
             if (caseCond) {
                 caseCond = builder->CreateOr(caseCond, labelCond);
-            } else {
+            }
+            else {
                 caseCond = labelCond;
             }
         }
@@ -313,3 +325,4 @@ void LLVMCodegenVisitor::visit(SwitchStatement& node)
 
 void LLVMCodegenVisitor::visit(SwitchCase& node) {}
 void LLVMCodegenVisitor::visit(CaseLabel& node) {}
+}

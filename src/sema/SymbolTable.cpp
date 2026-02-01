@@ -1,6 +1,7 @@
 #include "SymbolTable.h"
 
-
+namespace obould
+{
 void SymbolTable::enterScope()
 {
     scopes.push_back(std::unordered_map<std::string, Symbol>());
@@ -48,4 +49,5 @@ Symbol* SymbolTable::lookupSymbolLocal(const std::string& name)
         }
     }
     return nullptr;
+}
 }

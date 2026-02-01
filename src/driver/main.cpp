@@ -119,7 +119,7 @@ int main(int argc, char* argv[]) {
             }
 
             if (outputPath.empty()) {
-                ASTPrintVisitor printer(std::cout);
+                obould::ASTPrintVisitor printer(std::cout);
                 module->accept(printer);
             } else {
                 std::ofstream outFile(outputPath);
@@ -127,7 +127,7 @@ int main(int argc, char* argv[]) {
                     std::cerr << "Cannot open output file: " << outputPath << "\n";
                     return 1;
                 }
-                ASTPrintVisitor printer(outFile);
+                obould::ASTPrintVisitor printer(outFile);
                 module->accept(printer);
                 std::cout << "AST written to: " << outputPath << "\n";
             }

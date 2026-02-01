@@ -6,6 +6,8 @@
 #include "ASTCore.h"
 
 
+namespace obould
+{
 class StatementsBlock : public Statement
 {
 public:
@@ -171,3 +173,4 @@ public:
 
     bool isTypeGuard = false;
 };
+}

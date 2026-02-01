@@ -1,7 +1,8 @@
 #include "LLVMCodegen.h"
 #include "sema/TypeInfo.h"
 
-
+namespace obould
+{
 std::unique_ptr<llvm::Module> LLVMCodegenVisitor::codegen(Module& moduleAst)
 {
     locals.clear();
@@ -17,14 +18,16 @@ std::unique_ptr<llvm::Module> LLVMCodegenVisitor::codegen(Module& moduleAst)
     return std::move(module);
 }
 
-llvm::FunctionType* LLVMCodegenVisitor::createFunctionType(const std::shared_ptr<TypeInfo>& type) {
+llvm::FunctionType* LLVMCodegenVisitor::createFunctionType(const std::shared_ptr<TypeInfo>& type)
+{
     llvm::Type* retType = toLLVMType(type->returnType);
     std::vector<llvm::Type*> argTypes;
     llvm::Type* t;
     for (const auto& param : type->parameters) {
         if (param.isReference) {
             t = llvm::PointerType::getUnqual(context);
-        } else {
+        }
+        else {
             t = toLLVMType(param.type);
         }
         argTypes.push_back(t);
@@ -123,4 +126,5 @@ llvm::AllocaInst* LLVMCodegenVisitor::createEntryAlloca(llvm::Type* type, const 
     llvm::BasicBlock& entryBB = currentFunction->getEntryBlock();
     llvm::IRBuilder entryBuilder(&entryBB, entryBB.begin());
     return entryBuilder.CreateAlloca(type, nullptr, name);
+}
 }

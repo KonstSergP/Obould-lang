@@ -4,7 +4,8 @@
 #include "ASTTypes.h"
 #include "ASTDeclarations.h"
 
-
+namespace obould
+{
 // Expressions
 void IntegerLiteral::accept(ASTVisitor& v) { v.visit(*this); }
 void RealLiteral::accept(ASTVisitor& v) { v.visit(*this); }
@@ -51,3 +52,4 @@ void VariableDeclarations::accept(ASTVisitor& v) { v.visit(*this); }
 void DeclarationsBlock::accept(ASTVisitor& v) { v.visit(*this); }
 void Import::accept(ASTVisitor& v) { v.visit(*this); }
 void Module::accept(ASTVisitor& v) { v.visit(*this); }
+}

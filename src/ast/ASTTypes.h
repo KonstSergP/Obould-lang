@@ -7,6 +7,8 @@
 #include "ASTDeclarations.h"
 
 
+namespace obould
+{
 class IdentifierType : public Type
 {
 public:
@@ -89,3 +91,4 @@ public:
     std::unique_ptr<IdentifierType> baseType;
     std::vector<std::unique_ptr<VariableDeclaration>> fields;
 };
+}

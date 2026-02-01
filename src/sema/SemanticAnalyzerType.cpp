@@ -2,7 +2,8 @@
 #include "SymbolTable.h"
 #include "TypeInfo.h"
 
-
+namespace obould
+{
 void SemanticAnalyzer::visit(IdentifierType& node)
 {
     Symbol* sym = nullptr;
@@ -160,4 +161,5 @@ void SemanticAnalyzer::visit(ProcedureType& node)
     }
 
     node.resolvedType = procInfo;
+}
 }

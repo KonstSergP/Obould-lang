@@ -1,7 +1,8 @@
 #include "LLVMCodegen.h"
 #include "sema/TypeInfo.h"
 
-
+namespace obould
+{
 void LLVMCodegenVisitor::visit(IntegerLiteral& node)
 {
     lastValue = getConstantValue(node);
@@ -64,12 +65,15 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
     if (isIntegerType(resultType->kind)) {
         if (node.left->resolvedType->kind == TypeKind::i64 && right->resolvedType->kind == TypeKind::Byte) {
             rhs = builder->CreateZExt(rhs, llvm::Type::getInt64Ty(context));
-        } else if (node.left->resolvedType->kind == TypeKind::Byte && right->resolvedType->kind == TypeKind::i64) {
+        }
+        else if (node.left->resolvedType->kind == TypeKind::Byte && right->resolvedType->kind == TypeKind::i64) {
             lhs = builder->CreateZExt(lhs, llvm::Type::getInt64Ty(context));
         }
-    } else if (node.left->resolvedType->kind == TypeKind::String) {
+    }
+    else if (node.left->resolvedType->kind == TypeKind::String) {
         lhs = builder->CreateLoad(toLLVMType(right->resolvedType), lhs);
-    } else if (right->resolvedType->kind == TypeKind::String) {
+    }
+    else if (right->resolvedType->kind == TypeKind::String) {
         rhs = builder->CreateLoad(toLLVMType(node.left->resolvedType), rhs);
     }
 
@@ -411,4 +415,5 @@ void LLVMCodegenVisitor::visit(DereferenceExpression& node)
         llvm::Type* pointeeTy = toLLVMType(node.resolvedType);
         lastValue = builder->CreateLoad(pointeeTy, ptrVal, "deref");
     }
+}
 }

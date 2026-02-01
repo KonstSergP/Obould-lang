@@ -1,7 +1,8 @@
 #include "SemanticAnalyzer.h"
 #include "TypeInfo.h"
 
-
+namespace obould
+{
 bool SemanticAnalyzer::analyze(Module& module)
 {
     errors.clear();
@@ -38,4 +39,5 @@ std::shared_ptr<TypeInfo> SemanticAnalyzer::getPolymorphicBase(Expression* expr)
     }
 
     return nullptr;
+}
 }

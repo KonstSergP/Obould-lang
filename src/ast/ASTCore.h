@@ -5,6 +5,8 @@
 #include <variant>
 
 
+namespace obould
+{
 class ASTVisitor;
 class TypeInfo;
 
@@ -33,3 +35,4 @@ class Type : public virtual ASTNode
 public:
     std::shared_ptr<TypeInfo> resolvedType;
 };
+}

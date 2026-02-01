@@ -5,6 +5,8 @@
 #include "ASTCore.h"
 
 
+namespace obould
+{
 class BinaryExpression : public Expression
 {
 public:
@@ -145,3 +147,4 @@ class Nil : public Expression
 public:
     void accept(ASTVisitor& v) override;
 };
+}

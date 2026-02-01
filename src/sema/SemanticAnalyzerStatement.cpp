@@ -1,7 +1,8 @@
 #include "SemanticAnalyzer.h"
 #include "TypeInfo.h"
 
-
+namespace obould
+{
 void SemanticAnalyzer::visit(ProcedureCall& node)
 {
     node.procedureName->accept(*this);
@@ -36,7 +37,8 @@ void SemanticAnalyzer::visit(ProcedureCall& node)
 
         node.resolvedType = procTypeInfo->returnType;
         node.isLvalue = false;
-    } else if (procTypeInfo->kind == TypeKind::Pointer && procTypeInfo->baseType->kind == TypeKind::Struct) {
+    }
+    else if (procTypeInfo->kind == TypeKind::Pointer && procTypeInfo->baseType->kind == TypeKind::Struct) {
         node.isTypeGuard = true;
         if (node.args.size() != 1) {
             addError("Type guard requires only one argument");
@@ -74,8 +76,8 @@ void SemanticAnalyzer::visit(ProcedureCall& node)
             node.resolvedType = targetType;
             node.isLvalue = true;
         }
-
-    } else {
+    }
+    else {
         addError("Expression is not a procedure or type guard");
         node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
     }
@@ -223,4 +225,5 @@ void SemanticAnalyzer::visit(CaseLabel& node)
             addError("Case range end must be a constant");
         }
     }
+}
 }

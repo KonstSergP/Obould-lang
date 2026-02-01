@@ -3,7 +3,8 @@
 #include <string>
 #include "ast/ASTVisitor.h"
 
-
+namespace obould
+{
 class ASTPrintVisitor : public ASTVisitor
 {
 public:
@@ -90,3 +91,4 @@ private:
 
     void printNodeName(const std::string& name, const std::string& extraInfo = "") const;
 };
+}

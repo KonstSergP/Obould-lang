@@ -2,7 +2,8 @@
 #include "SymbolTable.h"
 #include "ast/ASTVisitor.h"
 
-
+namespace obould
+{
 class SemanticAnalyzer : public ASTVisitor
 {
 public:
@@ -60,6 +61,7 @@ public:
 
 private:
     enum class AnalyzeStages { Default, CreateType, FillType, ValidateType };
+
     AnalyzeStages analyzeStage = AnalyzeStages::Default;
 
     std::shared_ptr<TypeInfo> switchSelectorType;
@@ -67,3 +69,4 @@ private:
     std::vector<std::string> errors;
     SymbolTable symbolTable;
 };
+}

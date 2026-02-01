@@ -3,7 +3,8 @@
 #include <memory>
 #include <llvm/IR/IRBuilder.h>
 
-
+namespace obould
+{
 class LLVMCodegenVisitor : public ASTVisitor
 {
 public:
@@ -75,3 +76,4 @@ private:
     llvm::Function* declareFunction(ProcedureDeclaration& node);
     llvm::FunctionType* createFunctionType(const std::shared_ptr<TypeInfo>& type);
 };
+}

@@ -1,6 +1,8 @@
 #include "TypeInfo.h"
 
 
+namespace obould
+{
 bool TypeInfo::isBaseTypeOf(const std::shared_ptr<TypeInfo>& other) const
 {
     if (!other) return false;
@@ -85,4 +87,5 @@ bool TypeInfo::isAssignableFrom(const std::shared_ptr<TypeInfo>& other) const
     default:
         return true;
     }
+}
 }

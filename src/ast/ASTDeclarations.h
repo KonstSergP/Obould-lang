@@ -6,7 +6,8 @@
 #include "ASTCore.h"
 #include "ASTStatements.h"
 
-
+namespace obould
+{
 class Import : public ASTNode
 {
 public:
@@ -150,7 +151,8 @@ class ProcedureDeclaration : public ASTNode
 {
 public:
     ProcedureDeclaration(std::string name, bool isExported,
-                         std::vector<std::unique_ptr<ProcedureParameter>> parameters, std::unique_ptr<Type> returnType,
+                         std::vector<std::unique_ptr<ProcedureParameter>> parameters,
+                         std::unique_ptr<Type> returnType,
                          std::unique_ptr<DeclarationsBlock> declarations, std::unique_ptr<StatementsBlock> body,
                          std::unique_ptr<Expression> returnExpression)
         : name(std::move(name)),
@@ -194,3 +196,4 @@ public:
     std::unique_ptr<DeclarationsBlock> declarations;
     std::vector<std::unique_ptr<ProcedureDeclaration>> procedures;
 };
+}

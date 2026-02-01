@@ -1,7 +1,8 @@
 #include "LLVMCodegen.h"
 #include "sema/TypeInfo.h"
 
-
+namespace obould
+{
 void LLVMCodegenVisitor::visit(ConstantDeclaration& node) {}
 void LLVMCodegenVisitor::visit(TypeDeclaration& node) {}
 
@@ -171,4 +172,5 @@ void LLVMCodegenVisitor::visit(Module& node)
     for (const auto& proc : node.procedures) {
         proc->accept(*this);
     }
+}
 }

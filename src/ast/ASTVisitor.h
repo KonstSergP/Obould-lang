@@ -6,7 +6,10 @@
 #include "ASTTypes.h"
 
 
-class ASTVisitor {
+namespace obould
+{
+class ASTVisitor
+{
 public:
     virtual ~ASTVisitor() = default;
 
@@ -57,3 +60,4 @@ public:
     virtual void visit(Import& node) = 0;
     virtual void visit(Module& node) = 0;
 };
+}

@@ -4,21 +4,37 @@
 #include <vector>
 
 
+namespace obould
+{
 enum class TypeKind
 {
-    i64, Byte, f64, Bool, Char, String, Void, Nil,
-    Array, Struct, Pointer, Procedure, StubType
+    i64,
+    Byte,
+    f64,
+    Bool,
+    Char,
+    String,
+    Void,
+    Nil,
+    Array,
+    Struct,
+    Pointer,
+    Procedure,
+    StubType
 };
 
-inline bool isIntegerType(TypeKind kind) {
+inline bool isIntegerType(TypeKind kind)
+{
     return kind == TypeKind::i64 || kind == TypeKind::Byte;
 }
 
-inline bool isRealType(TypeKind kind) {
+inline bool isRealType(TypeKind kind)
+{
     return kind == TypeKind::f64;
 }
 
-inline bool isNumericType(TypeKind kind) {
+inline bool isNumericType(TypeKind kind)
+{
     return isIntegerType(kind) || isRealType(kind);
 }
 
@@ -87,3 +103,4 @@ struct TypeInfo
     std::shared_ptr<TypeInfo> returnType;
     std::vector<ParamInfo> parameters;
 };
+}

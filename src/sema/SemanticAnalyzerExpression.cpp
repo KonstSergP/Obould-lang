@@ -1,7 +1,8 @@
 #include "SemanticAnalyzer.h"
 #include "TypeInfo.h"
 
-
+namespace obould
+{
 void SemanticAnalyzer::visit(IntegerLiteral& node)
 {
     node.resolvedType = std::make_shared<TypeInfo>(TypeKind::i64);
@@ -473,4 +474,5 @@ void SemanticAnalyzer::visit(DereferenceExpression& node)
 
     node.resolvedType = type->baseType;
     node.isLvalue = true;
+}
 }
