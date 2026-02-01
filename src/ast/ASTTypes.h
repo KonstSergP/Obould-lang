@@ -18,10 +18,6 @@ public:
 
     void accept(ASTVisitor& v) override;
 
-    std::unique_ptr<Type> clone() const override {
-        return std::make_unique<IdentifierType>(moduleName, name);
-    }
-
     std::string name;
     std::string moduleName;
 };
@@ -36,13 +32,6 @@ public:
 
     void accept(ASTVisitor& v) override;
 
-    std::unique_ptr<Type> clone() const override {
-        return std::make_unique<ArrayType>(
-            elementType ? elementType->clone() : nullptr,
-            length ? length->clone() : nullptr
-        );
-    }
-
     std::unique_ptr<Type> elementType;
     std::unique_ptr<Expression> length;
 };
@@ -55,10 +44,6 @@ public:
 
     void accept(ASTVisitor& v) override;
 
-    std::unique_ptr<Type> clone() const override {
-        return std::make_unique<OpenArrayType>(elementType ? elementType->clone() : nullptr);
-    }
-
     std::unique_ptr<Type> elementType;
 };
 
@@ -69,10 +54,6 @@ public:
     explicit PointerType(std::unique_ptr<Type> type) : type(std::move(type)) {}
 
     void accept(ASTVisitor& v) override;
-
-    std::unique_ptr<Type> clone() const override {
-        return std::make_unique<PointerType>(type ? type->clone() : nullptr);
-    }
 
     std::unique_ptr<Type> type;
 };
@@ -87,8 +68,6 @@ public:
 
     void accept(ASTVisitor& v) override;
 
-    std::unique_ptr<Type> clone() const override;
-
     std::vector<std::unique_ptr<ProcedureParameter>> parameters;
     std::unique_ptr<Type> returnType;
 };
@@ -102,8 +81,6 @@ public:
           fields(std::move(fields)) {}
 
     void accept(ASTVisitor& v) override;
-
-    std::unique_ptr<Type> clone() const override;
 
     std::unique_ptr<IdentifierType> baseType;
     std::vector<std::unique_ptr<VariableDeclaration>> fields;

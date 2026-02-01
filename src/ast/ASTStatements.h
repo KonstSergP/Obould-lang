@@ -167,8 +167,6 @@ public:
 
     void accept(ASTVisitor& v) override;
 
-    std::unique_ptr<Expression> clone() const override;
-
     std::unique_ptr<Expression> procedureName;
     std::vector<std::unique_ptr<Expression>> args;
 

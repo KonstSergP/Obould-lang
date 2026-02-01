@@ -23,11 +23,9 @@ public:
 class Expression : public virtual ASTNode
 {
 public:
-    virtual std::unique_ptr<Expression> clone() const = 0;
-
     std::shared_ptr<TypeInfo> resolvedType;
     std::optional<ConstValue> constantValue;
-    bool isLvalue;
+    bool isLvalue = false;
 };
 
 class Statement : public virtual ASTNode {};
@@ -35,8 +33,6 @@ class Statement : public virtual ASTNode {};
 class Type : public virtual ASTNode
 {
 public:
-    virtual std::unique_ptr<Type> clone() const = 0;
-
     std::shared_ptr<TypeInfo> resolvedType;
 };
 }

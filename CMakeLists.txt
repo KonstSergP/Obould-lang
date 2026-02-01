@@ -52,10 +52,11 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Catch2)
 
-file(GLOB_RECURSE UNIT_TEST_SOURCES "tests/unit/*.cpp")
+file(GLOB_RECURSE UNIT_TEST_SOURCES CONFIGURE_DEPENDS "tests/unit/*.cpp")
 
 if(UNIT_TEST_SOURCES)
     add_executable(unit_tests ${UNIT_TEST_SOURCES})
+    include(Catch)
     target_link_libraries(unit_tests PRIVATE obould_lib Catch2::Catch2WithMain)
-    add_test(NAME AllTests COMMAND unit_tests)
+    catch_discover_tests(unit_tests)
 endif()

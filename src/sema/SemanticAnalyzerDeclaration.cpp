@@ -79,7 +79,9 @@ void SemanticAnalyzer::visit(TypeDeclaration& node)
 
 void SemanticAnalyzer::visit(VariableDeclaration& node)
 {
-    node.type->accept(*this);
+    if (!node.type->resolvedType) {
+        node.type->accept(*this);
+    }
 
     auto type = node.type->resolvedType;
     if (!type || !isValidVariableType(type->kind)) {

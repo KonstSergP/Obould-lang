@@ -78,7 +78,7 @@ private:
     const std::string BLUE = "\033[34m";
 
     template <typename T>
-    void printChild(const std::unique_ptr<T>& node, bool isLast)
+    void printChild(const T& node, bool isLast)
     {
         if (!node) return;
 

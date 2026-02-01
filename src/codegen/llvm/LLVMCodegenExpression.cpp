@@ -415,5 +415,8 @@ void LLVMCodegenVisitor::visit(DereferenceExpression& node)
         llvm::Type* pointeeTy = toLLVMType(node.resolvedType);
         lastValue = builder->CreateLoad(pointeeTy, ptrVal, "deref");
     }
+    else {
+        lastValue = nullptr;
+    }
 }
 }

@@ -1,18 +1,18 @@
 module TypeGuardExample                                                                                                                                                               
                                                                                                                                                                                         
-  type {                                                                                                                                                                                
+  type {
       // Base type                                                                                                                                                                      
-      Shape: struct {                                                                                                                                                                   
-          x, y: i64;                                                                                                                                                                    
-      };                                                                                                                                                                                
+      Shape: struct {
+          x, y: i64;
+      };
                                                                                                                                                                                         
       // Derived types                                                                                                                                                                  
-      Circle: struct (Shape) {                                                                                                                                                          
+      Circle: struct (Shape) {
           radius: f64;                                                                                                                                                                  
-      };                                                                                                                                                                                
+      };
                                                                                                                                                                                         
-      Rectangle: struct (Shape) {                                                                                                                                                       
-          width, height: f64;                                                                                                                                                           
+      Rectangle: struct (Shape) {
+          width, height: f64;
       };                                                                                                                                                                                
   }                                                                                                                                                                                     
                                                                                                                                                                                         

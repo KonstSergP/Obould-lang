@@ -85,7 +85,7 @@ public:
 class VariableDeclaration : public ASTNode
 {
 public:
-    VariableDeclaration(std::string name, bool isExported, std::unique_ptr<Type> type)
+    VariableDeclaration(std::string name, bool isExported, std::shared_ptr<Type> type)
         : name(std::move(name)),
           isExported(isExported),
           type(std::move(type)) {}
@@ -95,7 +95,7 @@ public:
 
     std::string name;
     bool isExported;
-    std::unique_ptr<Type> type;
+    std::shared_ptr<Type> type;
 };
 
 
@@ -133,20 +133,16 @@ public:
 class ProcedureParameter : public ASTNode
 {
 public:
-    ProcedureParameter(std::string name, bool isReference, std::unique_ptr<Type> type)
+    ProcedureParameter(std::string name, bool isReference, std::shared_ptr<Type> type)
         : name(std::move(name)),
           isReference(isReference),
           type(std::move(type)) {}
 
     void accept(ASTVisitor& v) override;
 
-    std::unique_ptr<ProcedureParameter> clone() const {
-        return std::make_unique<ProcedureParameter>(name, isReference, type ? type->clone() : nullptr);
-    }
-
     std::string name;
     bool isReference;
-    std::unique_ptr<Type> type;
+    std::shared_ptr<Type> type;
 };
 
 

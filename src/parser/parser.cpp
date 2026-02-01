@@ -289,20 +289,14 @@ std::vector<std::unique_ptr<VariableDeclaration>> Parser::parseIdentifierListWit
     } while (match(TokenType::COMMA));
 
     expect(TokenType::COLON, "Expected ':' after identifier list");
-    auto type = parseType();
+    auto type = std::shared_ptr(parseType());
 
     std::vector<std::unique_ptr<VariableDeclaration>> result;
-    for (size_t i = 0; i < identifiers.size(); ++i) {
-        std::unique_ptr<Type> typeClone;
-        if (i == identifiers.size() - 1) {
-            typeClone = std::move(type);
-        } else {
-            typeClone = type->clone();
-        }
+    for (auto& identifier : identifiers) {
         result.push_back(std::make_unique<VariableDeclaration>(
-            identifiers[i].first,
-            identifiers[i].second,
-            std::move(typeClone)
+            identifier.first,
+            identifier.second,
+            type
         ));
     }
 
@@ -381,21 +375,11 @@ std::vector<std::unique_ptr<ProcedureParameter>> Parser::parseFormalParameters()
             expect(TokenType::COLON, "Expected ':' after parameter names");
 
             bool isReference = match(TokenType::AMPERSAND);
-            auto type = parseType();
+            auto type = std::shared_ptr(parseType());
 
-            for (size_t i = 0; i < names.size(); ++i) {
-                std::unique_ptr<Type> paramType;
-                if (i == names.size() - 1) {
-                    paramType = std::move(type);
-                } else {
-                    if (auto* idType = dynamic_cast<IdentifierType*>(type.get())) {
-                        paramType = std::make_unique<IdentifierType>(idType->moduleName, idType->name);
-                    } else {
-                        throw error("Complex types in multi-parameter declarations not fully supported");
-                    }
-                }
+            for (auto & name : names) {
                 params.push_back(std::make_unique<ProcedureParameter>(
-                    names[i], isReference, std::move(paramType)
+                    name, isReference, type
                 ));
             }
         } while (match(TokenType::COMMA));
