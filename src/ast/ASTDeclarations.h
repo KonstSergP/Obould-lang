@@ -139,6 +139,9 @@ public:
 
     void accept(ASTVisitor& v) override;
 
+    std::unique_ptr<ProcedureParameter> clone() const {
+        return std::make_unique<ProcedureParameter>(name, isReference, type ? type->clone() : nullptr);
+    }
 
     std::string name;
     bool isReference;

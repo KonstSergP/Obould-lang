@@ -15,6 +15,7 @@ public:
 
     void accept(ASTVisitor& v) override;
 
+    std::unique_ptr<Expression> clone() const override;
 
     std::unique_ptr<Expression> left;
     std::variant<std::unique_ptr<Expression>, std::unique_ptr<Type>> right;
@@ -32,6 +33,9 @@ public:
 
     void accept(ASTVisitor& v) override;
 
+    std::unique_ptr<Expression> clone() const override {
+        return std::make_unique<UnaryExpression>(operand->clone(), op);
+    }
 
     std::unique_ptr<Expression> operand;
     Op op;
@@ -46,6 +50,9 @@ public:
 
     void accept(ASTVisitor& v) override;
 
+    std::unique_ptr<Expression> clone() const override {
+        return std::make_unique<ArrayAccessExpression>(array->clone(), index->clone());
+    }
 
     std::unique_ptr<Expression> array;
     std::unique_ptr<Expression> index;
@@ -60,6 +67,9 @@ public:
 
     void accept(ASTVisitor& v) override;
 
+    std::unique_ptr<Expression> clone() const override {
+        return std::make_unique<MemberAccessExpression>(object->clone(), memberName);
+    }
 
     std::unique_ptr<Expression> object;
     std::string memberName;
@@ -73,6 +83,9 @@ public:
 
     void accept(ASTVisitor& v) override;
 
+    std::unique_ptr<Expression> clone() const override {
+        return std::make_unique<DereferenceExpression>(ptr->clone());
+    }
 
     std::unique_ptr<Expression> ptr;
 };
@@ -86,6 +99,9 @@ public:
 
     void accept(ASTVisitor& v) override;
 
+    std::unique_ptr<Expression> clone() const override {
+        return std::make_unique<IdentifierExpression>(moduleName, name);
+    }
 
     std::string name;
     std::string moduleName;
@@ -99,6 +115,9 @@ public:
 
     void accept(ASTVisitor& v) override;
 
+    std::unique_ptr<Expression> clone() const override {
+        return std::make_unique<BooleanLiteral>(value);
+    }
 
     bool value;
 };
@@ -111,6 +130,9 @@ public:
 
     void accept(ASTVisitor& v) override;
 
+    std::unique_ptr<Expression> clone() const override {
+        return std::make_unique<IntegerLiteral>(value);
+    }
 
     int64_t value;
 };
@@ -123,6 +145,9 @@ public:
 
     void accept(ASTVisitor& v) override;
 
+    std::unique_ptr<Expression> clone() const override {
+        return std::make_unique<RealLiteral>(value);
+    }
 
     double value;
 };
@@ -135,6 +160,9 @@ public:
 
     void accept(ASTVisitor& v) override;
 
+    std::unique_ptr<Expression> clone() const override {
+        return std::make_unique<StringLiteral>(value);
+    }
 
     std::string value;
 };
@@ -144,4 +172,8 @@ class Nil : public Expression
 {
 public:
     void accept(ASTVisitor& v) override;
+
+    std::unique_ptr<Expression> clone() const override {
+        return std::make_unique<Nil>();
+    }
 };
