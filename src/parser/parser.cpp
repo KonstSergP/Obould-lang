@@ -297,17 +297,7 @@ std::vector<std::unique_ptr<VariableDeclaration>> Parser::parseIdentifierListWit
         if (i == identifiers.size() - 1) {
             typeClone = std::move(type);
         } else {
-            // Need to clone the type for each variable
-            // Now we use for simplicity IdentifierType
-            // var x, y: i64; OK -> can clone IdentifierType
-            // var x, y: *i64; ERROR -> can not clone PointerType
-            // var x, y: i64[10]; ERROR -> can not clone ArrayType
-            // We need to add a clone() method to all Type subclasses
-            if (auto* idType = dynamic_cast<IdentifierType*>(type.get())) {
-                typeClone = std::make_unique<IdentifierType>(idType->moduleName, idType->name);
-            } else {
-                throw error("Complex types in multi-variable declarations not fully supported");
-            }
+            typeClone = type->clone();
         }
         result.push_back(std::make_unique<VariableDeclaration>(
             identifiers[i].first,

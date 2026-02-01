@@ -6,6 +6,59 @@
 
 namespace obould
 {
+
+std::unique_ptr<Expression> BinaryExpression::clone() const {
+    std::variant<std::unique_ptr<Expression>, std::unique_ptr<Type>> clonedRight;
+    if (std::holds_alternative<std::unique_ptr<Expression>>(right)) {
+        clonedRight = std::get<std::unique_ptr<Expression>>(right)->clone();
+    } else {
+        clonedRight = std::get<std::unique_ptr<Type>>(right)->clone();
+    }
+    auto result = std::make_unique<BinaryExpression>(left->clone(), nullptr, op);
+    result->right = std::move(clonedRight);
+    return result;
+}
+
+std::unique_ptr<Type> ProcedureType::clone() const {
+    std::vector<std::unique_ptr<ProcedureParameter>> clonedParams;
+    for (const auto& param : parameters) {
+        clonedParams.push_back(param->clone());
+    }
+    return std::make_unique<ProcedureType>(
+        std::move(clonedParams),
+        returnType ? returnType->clone() : nullptr
+    );
+}
+
+std::unique_ptr<Type> StructType::clone() const {
+    std::vector<std::unique_ptr<VariableDeclaration>> clonedFields;
+    for (const auto& field : fields) {
+        clonedFields.push_back(std::make_unique<VariableDeclaration>(
+            field->name,
+            field->isExported,
+            field->type ? field->type->clone() : nullptr
+        ));
+    }
+    return std::make_unique<StructType>(
+        baseType ? std::make_unique<IdentifierType>(baseType->moduleName, baseType->name) : nullptr,
+        std::move(clonedFields)
+    );
+}
+
+std::unique_ptr<Expression> ProcedureCall::clone() const {
+    std::vector<std::unique_ptr<Expression>> clonedArgs;
+    for (const auto& arg : args) {
+        clonedArgs.push_back(arg->clone());
+    }
+    auto result = std::make_unique<ProcedureCall>(
+        procedureName ? procedureName->clone() : nullptr,
+        std::move(clonedArgs)
+    );
+    result->isTypeGuard = isTypeGuard;
+    return result;
+}
+
+
 // Expressions
 void IntegerLiteral::accept(ASTVisitor& v) { v.visit(*this); }
 void RealLiteral::accept(ASTVisitor& v) { v.visit(*this); }
