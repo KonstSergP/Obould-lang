@@ -93,7 +93,10 @@ static bool findFieldDuplication(const std::string& name, const std::shared_ptr<
 void SemanticAnalyzer::visit(StructType& node)
 {
     auto structInfo = std::make_shared<TypeInfo>(TypeKind::Struct);
-    structInfo->baseType = node.baseType->resolvedType;
+    if (node.baseType) {
+        node.baseType->accept(*this);
+        structInfo->baseType = node.baseType->resolvedType;
+    }
 
     for (const auto& varDecl : node.fields) {
         varDecl->type->accept(*this);

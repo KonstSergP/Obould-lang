@@ -8,12 +8,14 @@
 #include "parser/Parser.h"
 #include "info/ASTPrintVisitor.h"
 
-enum class OutputMode {
+enum class OutputMode
+{
     TOKENS,
     AST
 };
 
-void printUsage(const char* programName) {
+void printUsage(const char* programName)
+{
     std::cerr << "Obould Compiler\n\n";
     std::cerr << "Usage: " << programName << " [options] <input_file> [output_file]\n\n";
     std::cerr << "Options:\n";
@@ -25,7 +27,8 @@ void printUsage(const char* programName) {
     std::cerr << "  output_file     Output file (optional, defaults to stdout)\n";
 }
 
-std::string readFile(const std::string& path) {
+std::string readFile(const std::string& path)
+{
     std::ifstream file(path);
     if (!file) {
         throw std::runtime_error("Cannot open file: " + path);
@@ -35,13 +38,15 @@ std::string readFile(const std::string& path) {
     return buffer.str();
 }
 
-void writeTokens(const std::vector<obould::Token>& tokens, std::ostream& out) {
+void writeTokens(const std::vector<obould::Token>& tokens, std::ostream& out)
+{
     for (const auto& token : tokens) {
         out << token << "\n";
     }
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
     OutputMode mode = OutputMode::TOKENS;
     std::string inputPath;
     std::string outputPath;
@@ -49,20 +54,26 @@ int main(int argc, char* argv[]) {
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--tokens") == 0 || strcmp(argv[i], "-t") == 0) {
             mode = OutputMode::TOKENS;
-        } else if (strcmp(argv[i], "--ast") == 0 || strcmp(argv[i], "-a") == 0) {
+        }
+        else if (strcmp(argv[i], "--ast") == 0 || strcmp(argv[i], "-a") == 0) {
             mode = OutputMode::AST;
-        } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
+        }
+        else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
             printUsage(argv[0]);
             return 0;
-        } else if (argv[i][0] == '-') {
+        }
+        else if (argv[i][0] == '-') {
             std::cerr << "Unknown option: " << argv[i] << "\n";
             printUsage(argv[0]);
             return 1;
-        } else if (inputPath.empty()) {
+        }
+        else if (inputPath.empty()) {
             inputPath = argv[i];
-        } else if (outputPath.empty()) {
+        }
+        else if (outputPath.empty()) {
             outputPath = argv[i];
-        } else {
+        }
+        else {
             std::cerr << "Too many arguments\n";
             printUsage(argv[0]);
             return 1;
@@ -91,7 +102,8 @@ int main(int argc, char* argv[]) {
         if (mode == OutputMode::TOKENS) {
             if (outputPath.empty()) {
                 writeTokens(tokens, std::cout);
-            } else {
+            }
+            else {
                 std::ofstream outFile(outputPath);
                 if (!outFile) {
                     std::cerr << "Cannot open output file: " << outputPath << "\n";
@@ -100,7 +112,8 @@ int main(int argc, char* argv[]) {
                 writeTokens(tokens, outFile);
                 std::cout << "Lexemes written to: " << outputPath << "\n";
             }
-        } else {
+        }
+        else {
             // Parse and output AST
             obould::Parser parser(tokens);
             auto module = parser.parse();
@@ -121,7 +134,8 @@ int main(int argc, char* argv[]) {
             if (outputPath.empty()) {
                 obould::ASTPrintVisitor printer(std::cout);
                 module->accept(printer);
-            } else {
+            }
+            else {
                 std::ofstream outFile(outputPath);
                 if (!outFile) {
                     std::cerr << "Cannot open output file: " << outputPath << "\n";
@@ -134,8 +148,8 @@ int main(int argc, char* argv[]) {
         }
 
         return 0;
-
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << "\n";
         return 1;
     }

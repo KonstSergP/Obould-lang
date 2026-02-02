@@ -75,7 +75,7 @@ void SemanticAnalyzer::visit(TypeDeclaration& node)
             }
         }
         else if (type->kind == TypeKind::Struct) {
-            if (type->name == type->baseType->name) {
+            if (type->baseType && type->name == type->baseType->name) {
                 addError("Struct cannot use itself as base type");
             }
             // TODO: проверка что структура не содержит себя + не содержат родители
