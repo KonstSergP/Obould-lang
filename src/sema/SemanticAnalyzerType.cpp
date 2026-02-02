@@ -93,16 +93,7 @@ static bool findFieldDuplication(const std::string& name, const std::shared_ptr<
 void SemanticAnalyzer::visit(StructType& node)
 {
     auto structInfo = std::make_shared<TypeInfo>(TypeKind::Struct);
-
-    if (node.baseType) {
-        node.baseType->accept(*this);
-        if (auto base = node.baseType->resolvedType; base && base->kind == TypeKind::Struct) {
-            structInfo->baseType = base;
-        }
-        else {
-            addError("Base type of a struct must be a struct");
-        }
-    }
+    structInfo->baseType = node.baseType->resolvedType;
 
     for (const auto& varDecl : node.fields) {
         varDecl->type->accept(*this);
@@ -149,17 +140,10 @@ void SemanticAnalyzer::visit(ProcedureType& node)
     if (node.returnType) {
         node.returnType->accept(*this);
         procInfo->returnType = node.returnType->resolvedType;
-
-        if (procInfo->returnType->kind == TypeKind::Array || procInfo->returnType->kind == TypeKind::Struct) {
-            addError(
-                "Procedure cannot return a structured type (Array or Record). Use a pointer or a reference parameter instead.");
-            procInfo->returnType = std::make_shared<TypeInfo>(TypeKind::Void);
-        }
     }
     else {
         procInfo->returnType = std::make_shared<TypeInfo>(TypeKind::Void);
     }
-
     node.resolvedType = procInfo;
 }
 }

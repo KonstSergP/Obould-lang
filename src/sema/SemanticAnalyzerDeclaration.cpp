@@ -74,6 +74,24 @@ void SemanticAnalyzer::visit(TypeDeclaration& node)
                 addError("Pointer base type must be a Struct in '" + node.name + "'");
             }
         }
+        else if (type->kind == TypeKind::Struct) {
+            if (type->name == type->baseType->name) {
+                addError("Struct cannot use itself as base type");
+            }
+            // TODO: проверка что структура не содержит себя + не содержат родители
+        }
+        else if (type->kind == TypeKind::Array) {
+            if (type->name == type->baseType->name) {
+                addError("Array cannot use itself as element type");
+            }
+        }
+        else if (type->kind == TypeKind::Procedure) {
+            if (type->returnType->kind == TypeKind::Array || type->returnType->kind == TypeKind::Struct) {
+                addError(
+                    "Procedure cannot return a structured type (Array or Record). Use a pointer or a reference parameter instead.");
+            }
+            // TODO: проверка параметров
+        }
     }
 }
 
