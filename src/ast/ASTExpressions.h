@@ -11,14 +11,15 @@ class BinaryExpression : public Expression
 {
 public:
     enum class Op { Add, Sub, Mul, FDiv, IDiv, Mod, And, Or, Eq, Neq, Lt, Gt, Lte, Gte, Is };
+    using RightType = std::variant<std::unique_ptr<Expression>, std::unique_ptr<Type>>;
 
-    BinaryExpression(std::unique_ptr<Expression> l, std::unique_ptr<Expression> r, Op op)
+    BinaryExpression(std::unique_ptr<Expression> l, RightType r, Op op)
         : left(std::move(l)), right(std::move(r)), op(op) {}
 
     void accept(ASTVisitor& v) override;
 
     std::unique_ptr<Expression> left;
-    std::variant<std::unique_ptr<Expression>, std::unique_ptr<Type>> right;
+    RightType right;
     Op op;
 };
 

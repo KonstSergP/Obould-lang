@@ -59,7 +59,7 @@ int main()
         bool semaSuccess = sema.analyze(*module);
 
         if (!semaSuccess) {
-            std::cerr << "Semantic analysis warnings (continuing):\n";
+            std::cerr << "Semantic analysis errors:\n";
             for (const auto& error : sema.getErrors()) {
                 std::cerr << "  " << error << "\n";
             }

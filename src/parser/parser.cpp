@@ -710,7 +710,12 @@ std::unique_ptr<Expression> Parser::parseExpression() {
             default: throw error("Unexpected relational operator");
         }
 
-        auto right = parseSimpleExpression();
+        BinaryExpression::RightType right;
+        if (op == BinaryExpression::Op::Is) {
+            right = parseIdentifierType();
+        } else {
+            right = parseSimpleExpression();
+        }
         left = std::make_unique<BinaryExpression>(std::move(left), std::move(right), op);
     }
 
