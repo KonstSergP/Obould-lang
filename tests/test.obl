@@ -1,36 +1,34 @@
-module TypeGuardExample                                                                                                                                                               
-                                                                                                                                                                                        
-  type {
-      // Base type                                                                                                                                                                      
-      Shape: struct {
-          x, y: i64;
-      };
-                                                                                                                                                                                        
-      // Derived types                                                                                                                                                                  
-      Circle: struct (Shape) {
-          radius: f64;                                                                                                                                                                  
-      };
-                                                                                                                                                                                        
-      Rectangle: struct (Shape) {
-          width, height: f64;
-      };                                                                                                                                                                                
-  }                                                                                                                                                                                     
-                                                                                                                                                                                        
-  var shapePtr: *Shape;                                                                                                                                                                 
-                                                                                                                                                                                        
-  fn ProcessShape(s: *Shape) -> void                                                                                                                                                    
-  var area: f64;                                                                                                                                                                        
-  {
-      // Type guard: check if s is actually a Circle, then access radius
-      // This is written as: s(Circle).radius
+module TypeGuardExample
 
-      if s is Circle {
-          // s(Circle) - type guard: treat s as Circle
-          area = 3.14 * s(Circle).radius * s(Circle).radius;                                                                                                                            
-      }                                                                                                                                                                                 
-                                                                                                                                                                                        
-      if s is Rectangle {                                                                                                                                                               
-          // s(Rectangle) - type guard: treat s as Rectangle                                                                                                                           
-          area = s(Rectangle).width * s(Rectangle).height;                                                                                                                              
-      }                                                                                                                                                                                 
-  }
+type {
+    // Base type
+    Shape: struct {
+        x, y: i64;
+    };
+
+    // Derived types
+    Circle: struct (Shape) {
+        radius: f64;
+    };
+
+    Rectangle: struct (Shape) {
+        width, height: f64;
+    };
+}
+
+var shapePtr: *Shape;
+
+fn ProcessShape(s: *Shape) -> void
+var area: f64;
+{
+    // Type guard: check if s is actually a Circle, then access radius
+    // This is written as: s(Circle).radius
+
+    if s is Circle {
+        area = 3.14 * s(Circle).radius * s(Circle).radius;
+    }
+
+    if s is Rectangle {
+        area = s(Rectangle).width * s(Rectangle).height;
+    }
+}
