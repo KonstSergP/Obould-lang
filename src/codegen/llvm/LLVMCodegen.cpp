@@ -43,23 +43,23 @@ llvm::Type* LLVMCodegenVisitor::toLLVMType(const std::shared_ptr<TypeInfo>& type
 
     switch (typeInfo->kind) {
     case TypeKind::i64:
-        return llvm::Type::getInt64Ty(context);
+        return builder->getInt64Ty();
     case TypeKind::Byte:
     case TypeKind::Char:
-        return llvm::Type::getInt8Ty(context);
+        return builder->getInt8Ty();
     case TypeKind::Bool:
-        return llvm::Type::getInt1Ty(context);
+        return builder->getInt1Ty();
     case TypeKind::f64:
-        return llvm::Type::getDoubleTy(context);
+        return builder->getDoubleTy();
     case TypeKind::Void:
-        return llvm::Type::getVoidTy(context);
+        return builder->getVoidTy();
     case TypeKind::Pointer:
-        return llvm::PointerType::getUnqual(context);
+        return builder->getPtrTy();
     case TypeKind::Array:
     {
         llvm::Type* elemTy = toLLVMType(typeInfo->baseType);
         if (typeInfo->isOpenArray) {
-            return llvm::PointerType::getUnqual(elemTy);
+            return builder->getPtrTy();
         }
         const uint64_t len = static_cast<uint64_t>(std::max<int64_t>(typeInfo->length, 0));
         return llvm::ArrayType::get(elemTy, len);
@@ -80,7 +80,7 @@ llvm::Type* LLVMCodegenVisitor::toLLVMType(const std::shared_ptr<TypeInfo>& type
         }
         std::reverse(chain.begin(), chain.end());
 
-        fieldTypes.push_back(llvm::PointerType::getUnqual(context));
+        fieldTypes.push_back(builder->getPtrTy());
         for (const auto* info : chain) {
             for (const auto& field : info->fields) {
                 fieldTypes.push_back(toLLVMType(field.type));
@@ -94,7 +94,7 @@ llvm::Type* LLVMCodegenVisitor::toLLVMType(const std::shared_ptr<TypeInfo>& type
         return structTy;
     }
     case TypeKind::Procedure:
-        return llvm::PointerType::getUnqual(llvm::Type::getInt8Ty(context));
+        return builder->getPtrTy();
     default:
         return llvm::Type::getVoidTy(context);
     }
@@ -106,15 +106,14 @@ llvm::Value* LLVMCodegenVisitor::getConstantValue(const Expression& node)
     auto& val = node.constantValue.value();
 
     if (std::holds_alternative<int64_t>(val)) {
-        auto* ty = llvm::Type::getInt64Ty(context);
-        return llvm::ConstantInt::getSigned(ty, std::get<int64_t>(val));
+        return builder->getInt64(std::get<int64_t>(val));
     }
     if (std::holds_alternative<double>(val)) {
         auto* ty = llvm::Type::getDoubleTy(context);
         return llvm::ConstantFP::get(ty, std::get<double>(val));
     }
     if (std::holds_alternative<bool>(val)) {
-        return llvm::ConstantInt::getBool(context, std::get<bool>(val));
+        return builder->getInt1(std::get<bool>(val));
     }
     if (std::holds_alternative<std::string>(val)) {
         return builder->CreateGlobalStringPtr(std::get<std::string>(val), "str", 0, module.get());
@@ -134,8 +133,8 @@ llvm::GlobalVariable* LLVMCodegenVisitor::createStructDescriptor(const std::shar
     std::string name = "struct_desc." + type->name;
     int64_t depth = type->depth;
 
-    auto* ptrType = llvm::PointerType::getUnqual(context);
-    auto* intType = llvm::IntegerType::getInt64Ty(context);
+    auto* ptrType = builder->getPtrTy();
+    auto* intType = builder->getInt64Ty();
     auto* arrayType = llvm::ArrayType::get(ptrType, depth + 1);
     llvm::StructType* structTy = llvm::StructType::create({intType, arrayType}, name);
 

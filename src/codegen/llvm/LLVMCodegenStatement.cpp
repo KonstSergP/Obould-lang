@@ -70,8 +70,8 @@ void LLVMCodegenVisitor::visit(AssignmentStatement& node)
             rhs = builder->CreateLoad(toLLVMType(node.target->resolvedType), rhs);
         }
         else { // array of chars
-            lhs = builder->CreateBitCast(lhs, llvm::PointerType::getUnqual(llvm::Type::getInt8Ty(context)));
-            llvm::Value* sizeVal = llvm::ConstantInt::get(llvm::Type::getInt64Ty(context),
+            lhs = builder->CreateBitCast(lhs, builder->getPtrTy());
+            llvm::Value* sizeVal = llvm::ConstantInt::get(builder->getInt64Ty(),
                                                           node.value->resolvedType->length + 1); // + нулевой символ
             builder->CreateMemCpy(lhs, llvm::MaybeAlign(1), rhs, llvm::MaybeAlign(1), sizeVal);
             return;
@@ -81,9 +81,9 @@ void LLVMCodegenVisitor::visit(AssignmentStatement& node)
         TypeKind::Struct) {
         auto* objType = toLLVMType(node.target->resolvedType);
         auto sizeBytes = module->getDataLayout().getTypeAllocSize(objType);
-        auto* sizeVal = llvm::ConstantInt::get(llvm::Type::getInt64Ty(context), sizeBytes);
+        auto* sizeVal = llvm::ConstantInt::get(builder->getInt64Ty(), sizeBytes);
 
-        auto* i8PtrTy = llvm::PointerType::getUnqual(llvm::Type::getInt8Ty(context));
+        auto* i8PtrTy = llvm::PointerType::getUnqual(builder->getInt8Ty());
         lhs = builder->CreateBitCast(lhs, i8PtrTy);
         rhs = builder->CreateBitCast(rhs, i8PtrTy);
         builder->CreateMemCpy(lhs, llvm::MaybeAlign(1), rhs, llvm::MaybeAlign(1), sizeVal);
@@ -98,7 +98,7 @@ void LLVMCodegenVisitor::visit(IfStatement& node)
     node.condition->accept(*this);
     llvm::Value* condVal = lastValue;
     if (!condVal) return;
-    condVal = builder->CreateTruncOrBitCast(condVal, llvm::Type::getInt1Ty(context), "ifcond");
+    condVal = builder->CreateTruncOrBitCast(condVal, builder->getInt1Ty(), "ifcond");
 
     auto* thenBB = llvm::BasicBlock::Create(context, "then", currentFunction);
     auto* elseBB = llvm::BasicBlock::Create(context, "else");
@@ -140,7 +140,7 @@ void LLVMCodegenVisitor::visit(WhileStatement& node)
         if (!condVal) {
             condVal = llvm::ConstantInt::getFalse(context);
         }
-        condVal = builder->CreateTruncOrBitCast(condVal, llvm::Type::getInt1Ty(context), "cond");
+        condVal = builder->CreateTruncOrBitCast(condVal, builder->getInt1Ty(), "cond");
 
         auto* bodyBB = llvm::BasicBlock::Create(context, "while.body", currentFunction);
 
@@ -184,7 +184,7 @@ void LLVMCodegenVisitor::visit(DoWhileStatement& node)
     if (!condVal) {
         condVal = llvm::ConstantInt::getFalse(context);
     }
-    condVal = builder->CreateTruncOrBitCast(condVal, llvm::Type::getInt1Ty(context), "cond");
+    condVal = builder->CreateTruncOrBitCast(condVal, builder->getInt1Ty(), "cond");
 
     builder->CreateCondBr(condVal, bodyBB, afterBB);
     afterBB->insertInto(currentFunction);
@@ -263,7 +263,7 @@ void LLVMCodegenVisitor::visit(SwitchStatement& node)
     node.selector->accept(*this);
     auto* selector = lastValue;
     if (!selector) return;
-    auto* selectorType = llvm::Type::getInt64Ty(context);
+    auto* selectorType = builder->getInt64Ty();
 
     auto origType = node.selector->resolvedType->kind;
     bool isSignedCast = origType != TypeKind::Byte && origType != TypeKind::Char;

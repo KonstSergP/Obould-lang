@@ -26,22 +26,49 @@ void LLVMCodegenVisitor::visit(StringLiteral& node)
 
 void LLVMCodegenVisitor::visit(Nil& node)
 {
-    auto* ty = llvm::PointerType::getUnqual(llvm::Type::getInt8Ty(context));
-    lastValue = llvm::ConstantPointerNull::get(ty);
+    lastValue = llvm::ConstantPointerNull::get(builder->getPtrTy());
 }
 
 void LLVMCodegenVisitor::visit(BinaryExpression& node)
 {
+    using Op = BinaryExpression::Op;
     if (node.constantValue.has_value()) {
         lastValue = getConstantValue(node);
         return;
     }
     node.left->accept(*this);
-    auto* lhs = lastValue;
+    llvm::Value* lhs = lastValue;
 
-    if (std::holds_alternative<std::unique_ptr<Type>>(node.right)) {
-        // TODO: реализовать для IS
-        lastValue = nullptr;
+    if (node.op == Op::Is) {
+        auto& rType = std::get<std::unique_ptr<Type>>(node.right)->resolvedType;
+        auto* rDesc = descriptors[rType.get()];
+
+        llvm::Value* typeTagPtrAddr = builder->CreateStructGEP(toLLVMType(node.left->resolvedType), lhs, 0);
+        llvm::Value* lDesc = builder->CreateLoad(builder->getPtrTy(), typeTagPtrAddr, "obj.tag");
+
+        auto* startBB = llvm::BasicBlock::Create(context, "is.start", currentFunction);
+        auto* contBB = llvm::BasicBlock::Create(context, "is.cont", currentFunction);
+        auto* endBB = llvm::BasicBlock::Create(context, "is.end", currentFunction);
+
+        builder->CreateBr(startBB);
+        llvm::Value* objDepth = builder->CreateLoad(builder->getInt64Ty(), lDesc);
+        llvm::Value* depthCheck = builder->CreateICmpSGE(objDepth, builder->getInt64(rType->depth));
+        builder->CreateCondBr(depthCheck, contBB, endBB);
+
+        auto* structTy = llvm::StructType::create({builder->getInt64Ty(), builder->getPtrTy()});
+
+        builder->SetInsertPoint(contBB);
+        llvm::Value* arrayPtr = builder->CreateStructGEP(structTy, lDesc, 1);
+        llvm::Value* ancestorPtrAddr = builder->CreateGEP(builder->getPtrTy(), arrayPtr, builder->getInt64(rType->depth));
+        llvm::Value* ancestorPtr = builder->CreateLoad(builder->getPtrTy(), ancestorPtrAddr, "ancestor.tag");
+        llvm::Value* instCheck = builder->CreateICmpEQ(ancestorPtr, rDesc, "is.inst");
+        builder->CreateBr(endBB);
+
+        builder->SetInsertPoint(endBB);
+        llvm::PHINode* phi = builder->CreatePHI(builder->getInt1Ty(), 2, "is.res");
+        phi->addIncoming(llvm::ConstantInt::getFalse(context), startBB);
+        phi->addIncoming(instCheck, contBB);
+        lastValue = phi;
         return;
     }
 
@@ -61,14 +88,13 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
 
     bool isInt = lhs->getType()->isIntegerTy();
     bool isReal = lhs->getType()->isFloatingPointTy();
-    using Op = BinaryExpression::Op;
 
     if (isIntegerType(resultType->kind)) {
         if (node.left->resolvedType->kind == TypeKind::i64 && right->resolvedType->kind == TypeKind::Byte) {
-            rhs = builder->CreateZExt(rhs, llvm::Type::getInt64Ty(context));
+            rhs = builder->CreateZExt(rhs, builder->getInt64Ty());
         }
         else if (node.left->resolvedType->kind == TypeKind::Byte && right->resolvedType->kind == TypeKind::i64) {
-            lhs = builder->CreateZExt(lhs, llvm::Type::getInt64Ty(context));
+            lhs = builder->CreateZExt(lhs, builder->getInt64Ty());
         }
     }
     else if (node.left->resolvedType->kind == TypeKind::String) {
@@ -201,9 +227,6 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
         break;
 
     case Op::Is:
-        lastValue = nullptr;
-        break;
-
     default:
         lastValue = nullptr;
         break;
@@ -295,10 +318,10 @@ void LLVMCodegenVisitor::visit(ArrayAccessExpression& node)
     }
 
     if (index->getType()->isIntegerTy(8)) {
-        index = builder->CreateSExt(index, llvm::Type::getInt64Ty(context), "idxext");
+        index = builder->CreateSExt(index, builder->getInt64Ty(), "idxext");
     }
     else if (!index->getType()->isIntegerTy(64)) {
-        index = builder->CreateIntCast(index, llvm::Type::getInt64Ty(context), true, "idxcast");
+        index = builder->CreateIntCast(index, builder->getInt64Ty(), true, "idxcast");
     }
 
     auto arrTypeInfo = node.array->resolvedType;
@@ -314,7 +337,7 @@ void LLVMCodegenVisitor::visit(ArrayAccessExpression& node)
     }
     else {
         llvm::Type* arrTy = toLLVMType(arrTypeInfo);
-        llvm::Value* zero = llvm::ConstantInt::get(llvm::Type::getInt64Ty(context), 0);
+        llvm::Value* zero = llvm::ConstantInt::get(builder->getInt64Ty(), 0);
         elemPtr = builder->CreateGEP(arrTy, arr, {zero, index}, "elem.ptr");
     }
 
@@ -382,10 +405,8 @@ void LLVMCodegenVisitor::visit(MemberAccessExpression& node)
     }
 
     auto* structTy = llvm::cast<llvm::StructType>(toLLVMType(structInfo));
-    auto* zero = llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), 0);
-    auto* idxVal = llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), fieldIndex);
 
-    llvm::Value* fieldPtr = builder->CreateGEP(structTy, basePtr, {zero, idxVal}, "field.ptr");
+    llvm::Value* fieldPtr = builder->CreateStructGEP(structTy, basePtr, fieldIndex, "field.ptr");
     if (!fieldPtr) {
         lastValue = nullptr;
         return;

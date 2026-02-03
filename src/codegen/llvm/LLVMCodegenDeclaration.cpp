@@ -89,8 +89,7 @@ llvm::Function* LLVMCodegenVisitor::declareFunction(ProcedureDeclaration& node)
     for (const auto& param : node.parameters) {
         auto paramTypeInfo = param->type->resolvedType;
         if (param->isReference) {
-            paramTypes.push_back(
-                llvm::PointerType::getUnqual(llvm::Type::getInt8Ty(context)));
+            paramTypes.push_back(builder->getPtrTy());
         }
         else {
             paramTypes.push_back(toLLVMType(paramTypeInfo));
