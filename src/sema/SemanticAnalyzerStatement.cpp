@@ -1,6 +1,7 @@
 #include "SemanticAnalyzer.h"
 #include "TypeInfo.h"
 
+
 namespace obould
 {
 void SemanticAnalyzer::visit(ProcedureCall& node)
@@ -201,7 +202,7 @@ void SemanticAnalyzer::visit(SwitchCase& node)
     for (const auto& label : node.labels) {
         label->accept(*this);
     }
-    const auto& cntrType = switchSelectorType; // если в теле будет еще один switch
+    const auto& cntrType = switchSelectorType;
     node.body->accept(*this);
     switchSelectorType = cntrType;
 }

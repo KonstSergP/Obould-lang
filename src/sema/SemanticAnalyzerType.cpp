@@ -2,17 +2,18 @@
 #include "SymbolTable.h"
 #include "TypeInfo.h"
 
+
 namespace obould
 {
 void SemanticAnalyzer::visit(IdentifierType& node)
 {
     Symbol* sym = nullptr;
 
-    if (!node.moduleName.empty()) {
-        // TODO: реализовать поиск в других модулях
+    if (node.moduleName.empty()) {
+        sym = symbolTable.lookupSymbol(node.name);
     }
     else {
-        sym = symbolTable.lookupSymbol(node.name);
+        // TODO: реализовать поиск в других модулях
     }
 
     if (!sym) {
@@ -96,6 +97,12 @@ void SemanticAnalyzer::visit(StructType& node)
     if (node.baseType) {
         node.baseType->accept(*this);
         structInfo->baseType = node.baseType->resolvedType;
+
+        // depth заполняется в конце определений типов. Условие выполнится только если этот узел в VariableDeclaration
+        // к этому моменту depth других структур уже заполнены
+        if (node.baseType->resolvedType->depth != -1) {
+            structInfo->depth = node.baseType->resolvedType->depth + 1;
+        }
     }
 
     for (const auto& varDecl : node.fields) {

@@ -69,11 +69,13 @@ private:
     std::unordered_map<std::string, llvm::Value*> locals;
     std::unordered_map<std::string, llvm::Function*> functions;
     std::unordered_map<TypeInfo*, llvm::StructType*> structTypes;
+    std::unordered_map<TypeInfo*, llvm::GlobalVariable*> descriptors;
 
     llvm::Type* toLLVMType(const std::shared_ptr<TypeInfo>& typeInfo);
     llvm::Value* getConstantValue(const Expression& node);
     llvm::AllocaInst* createEntryAlloca(llvm::Type* type, const std::string& name) const;
     llvm::Function* declareFunction(ProcedureDeclaration& node);
     llvm::FunctionType* createFunctionType(const std::shared_ptr<TypeInfo>& type);
+    llvm::GlobalVariable* createStructDescriptor(const std::shared_ptr<TypeInfo>& type);
 };
 }

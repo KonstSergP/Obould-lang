@@ -3,6 +3,7 @@
 #include "TypeInfo.h"
 #include "ast/ASTDeclarations.h"
 
+
 namespace obould
 {
 void SemanticAnalyzer::visit(ConstantDeclaration& node)
@@ -33,6 +34,15 @@ void SemanticAnalyzer::visit(ConstantDeclaration& node)
     }
 }
 
+static void updateStructDepth(const std::shared_ptr<TypeInfo>& type)
+{
+    if (auto base = type->baseType) {
+        if (base->depth == -1) updateStructDepth(base);
+        type->depth = base->depth + 1;
+    }
+    else type->depth = 0;
+}
+
 void SemanticAnalyzer::visit(TypeDeclaration& node)
 {
     if (analyzeStage == AnalyzeStages::CreateType) {
@@ -58,11 +68,12 @@ void SemanticAnalyzer::visit(TypeDeclaration& node)
         node.type->accept(*this);
 
         Symbol* sym = symbolTable.lookupSymbolLocal(node.name);
-        auto realType = node.type->resolvedType;
-        auto stubType = sym->type;
+        auto& realType = node.type->resolvedType;
+        auto& symType = sym->type;
 
-        *stubType = *realType;
-        stubType->name = node.name;
+        *symType = *realType;
+        realType = symType;
+        symType->name = node.name;
     }
     else if (analyzeStage == AnalyzeStages::ValidateType) {
         Symbol* sym = symbolTable.lookupSymbolLocal(node.name);
@@ -78,7 +89,8 @@ void SemanticAnalyzer::visit(TypeDeclaration& node)
             if (type->baseType && type->name == type->baseType->name) {
                 addError("Struct cannot use itself as base type");
             }
-            // TODO: проверка что структура не содержит себя + не содержат родители
+            // TODO: проверка что структура не содержит себя + не содержат родители + не наследуется от себя или наследника
+            updateStructDepth(type);
         }
         else if (type->kind == TypeKind::Array) {
             if (type->name == type->baseType->name) {

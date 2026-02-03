@@ -4,7 +4,7 @@ namespace obould
 {
 void SymbolTable::enterScope()
 {
-    scopes.push_back(std::unordered_map<std::string, Symbol>());
+    scopes.emplace_back();
 }
 
 

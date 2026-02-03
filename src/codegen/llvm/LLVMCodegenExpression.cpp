@@ -1,6 +1,7 @@
 #include "LLVMCodegen.h"
 #include "sema/TypeInfo.h"
 
+
 namespace obould
 {
 void LLVMCodegenVisitor::visit(IntegerLiteral& node)
@@ -332,7 +333,7 @@ void LLVMCodegenVisitor::visit(ArrayAccessExpression& node)
 static int getStructFieldIndex(const std::shared_ptr<TypeInfo>& structInfo, const std::string& fieldName)
 {
     if (!structInfo) return -1;
-    int index = 0;
+    int index = 1; // first field is pointer to struct descriptor
     std::vector<TypeInfo*> chain;
     auto current = structInfo;
     while (current) {

@@ -4,11 +4,15 @@
 namespace obould
 {
 void LLVMCodegenVisitor::visit(ConstantDeclaration& node) {}
-void LLVMCodegenVisitor::visit(TypeDeclaration& node) {}
 
+void LLVMCodegenVisitor::visit(TypeDeclaration& node)
+{
+    node.type->accept(*this);
+}
 
 void LLVMCodegenVisitor::visit(VariableDeclaration& node)
 {
+    node.type->accept(*this);
     llvm::Type* ty = toLLVMType(node.type->resolvedType);
 
     if (currentFunction == nullptr) {

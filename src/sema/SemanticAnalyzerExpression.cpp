@@ -1,6 +1,7 @@
 #include "SemanticAnalyzer.h"
 #include "TypeInfo.h"
 
+
 namespace obould
 {
 void SemanticAnalyzer::visit(IntegerLiteral& node)

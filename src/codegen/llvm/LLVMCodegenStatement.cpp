@@ -1,6 +1,7 @@
 #include "LLVMCodegen.h"
 #include "sema/TypeInfo.h"
 
+
 namespace obould
 {
 void LLVMCodegenVisitor::visit(ProcedureCall& node)
@@ -206,11 +207,8 @@ void LLVMCodegenVisitor::visit(ForStatement& node)
 
     if (node.step) {
         node.step->accept(*this);
-        stepV = lastValue;
-        if (auto* c = llvm::dyn_cast<llvm::ConstantInt>(stepV)) {
-            if (c->isNegative()) isNegativeStep = true;
-        }
-        // TODO: есть ли вариант получше?
+        auto* c = llvm::dyn_cast<llvm::ConstantInt>(lastValue);
+        if (c->isNegative()) isNegativeStep = true;
         stepV = builder->CreateZExtOrTrunc(stepV, counterType);
     }
     else {
