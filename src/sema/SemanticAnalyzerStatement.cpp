@@ -55,6 +55,7 @@ void SemanticAnalyzer::visit(ProcedureCall& node)
         IdentifierType tempTypeNode(idExpr->moduleName, idExpr->name);
         tempTypeNode.accept(*this);
         auto targetType = tempTypeNode.resolvedType;
+        node.args[0]->resolvedType = targetType;
 
         if (!targetType || targetType->kind != TypeKind::Struct) {
             addError("Type guard target type must be a struct");

@@ -40,35 +40,13 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
     llvm::Value* lhs = lastValue;
 
     if (node.op == Op::Is) {
+        auto* typeTagPtrAddr = builder->CreateStructGEP(toLLVMType(node.left->resolvedType), lhs, 0);
+        auto* lDesc = builder->CreateLoad(builder->getPtrTy(), typeTagPtrAddr, "obj.tag");
+
         auto& rType = std::get<std::unique_ptr<Type>>(node.right)->resolvedType;
         auto* rDesc = descriptors[rType.get()];
 
-        llvm::Value* typeTagPtrAddr = builder->CreateStructGEP(toLLVMType(node.left->resolvedType), lhs, 0);
-        llvm::Value* lDesc = builder->CreateLoad(builder->getPtrTy(), typeTagPtrAddr, "obj.tag");
-
-        auto* startBB = llvm::BasicBlock::Create(context, "is.start", currentFunction);
-        auto* contBB = llvm::BasicBlock::Create(context, "is.cont", currentFunction);
-        auto* endBB = llvm::BasicBlock::Create(context, "is.end", currentFunction);
-
-        builder->CreateBr(startBB);
-        llvm::Value* objDepth = builder->CreateLoad(builder->getInt64Ty(), lDesc);
-        llvm::Value* depthCheck = builder->CreateICmpSGE(objDepth, builder->getInt64(rType->depth));
-        builder->CreateCondBr(depthCheck, contBB, endBB);
-
-        auto* structTy = llvm::StructType::create({builder->getInt64Ty(), builder->getPtrTy()});
-
-        builder->SetInsertPoint(contBB);
-        llvm::Value* arrayPtr = builder->CreateStructGEP(structTy, lDesc, 1);
-        llvm::Value* ancestorPtrAddr = builder->CreateGEP(builder->getPtrTy(), arrayPtr, builder->getInt64(rType->depth));
-        llvm::Value* ancestorPtr = builder->CreateLoad(builder->getPtrTy(), ancestorPtrAddr, "ancestor.tag");
-        llvm::Value* instCheck = builder->CreateICmpEQ(ancestorPtr, rDesc, "is.inst");
-        builder->CreateBr(endBB);
-
-        builder->SetInsertPoint(endBB);
-        llvm::PHINode* phi = builder->CreatePHI(builder->getInt1Ty(), 2, "is.res");
-        phi->addIncoming(llvm::ConstantInt::getFalse(context), startBB);
-        phi->addIncoming(instCheck, contBB);
-        lastValue = phi;
+        makeStructCastCheck(lDesc, rDesc, rType->depth);
         return;
     }
 

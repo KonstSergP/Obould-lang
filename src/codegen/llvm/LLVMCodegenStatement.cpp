@@ -14,32 +14,55 @@ void LLVMCodegenVisitor::visit(ProcedureCall& node)
         lastValue = nullptr;
         return;
     }
-
     auto procTypeInfo = node.procedureName->resolvedType;
-    auto* funcType = createFunctionType(procTypeInfo);
 
-    const auto& params = procTypeInfo->parameters;
-    std::vector<llvm::Value*> args;
-    args.reserve(node.args.size());
+    if (node.isTypeGuard) {
+        auto* typeTagPtrAddr = builder->CreateStructGEP(toLLVMType(node.procedureName->resolvedType), callee, 0);
+        auto* lDesc = builder->CreateLoad(builder->getPtrTy(), typeTagPtrAddr, "obj.tag");
 
-    for (size_t i = 0; i < node.args.size(); ++i) {
-        auto& argExpr = node.args[i];
-        lvalue = params[i].isReference;
-        argExpr->accept(*this);
+        auto& rType = node.args[0]->resolvedType;
+        auto* rDesc = descriptors[rType.get()];
 
-        if (isIntegerType(argExpr->resolvedType->kind) && isIntegerType(params[i].type->kind)) {
-            lastValue = builder->CreateZExtOrTrunc(lastValue, toLLVMType(params[i].type));
-        }
-        else if (argExpr->resolvedType->kind == TypeKind::String) {
-            lastValue = builder->CreateLoad(toLLVMType(params[i].type), lastValue);
-        }
+        makeStructCastCheck(lDesc, rDesc, rType->depth);
 
-        args.push_back(lastValue);
+        auto* failBB = llvm::BasicBlock::Create(context, "guard.fail", currentFunction);
+        auto* succBB = llvm::BasicBlock::Create(context, "guard.succ", currentFunction);
+        builder->CreateCondBr(lastValue, succBB, failBB);
+
+        builder->SetInsertPoint(failBB);
+        auto abortFunc = module->getOrInsertFunction("abort", llvm::FunctionType::get(builder->getVoidTy(), false));
+        builder->CreateCall(abortFunc);
+        builder->CreateUnreachable();
+
+        builder->SetInsertPoint(succBB);
+        lastValue = callee;
     }
-    lvalue = oldLvalue;
+    else {
+        auto* funcType = createFunctionType(procTypeInfo);
 
-    auto* call = builder->CreateCall(funcType, callee, args, "call");
-    lastValue = funcType->getReturnType()->isVoidTy() ? nullptr : call;
+        const auto& params = procTypeInfo->parameters;
+        std::vector<llvm::Value*> args;
+        args.reserve(node.args.size());
+
+        for (size_t i = 0; i < node.args.size(); ++i) {
+            auto& argExpr = node.args[i];
+            lvalue = params[i].isReference;
+            argExpr->accept(*this);
+
+            if (isIntegerType(argExpr->resolvedType->kind) && isIntegerType(params[i].type->kind)) {
+                lastValue = builder->CreateZExtOrTrunc(lastValue, toLLVMType(params[i].type));
+            }
+            else if (argExpr->resolvedType->kind == TypeKind::String) {
+                lastValue = builder->CreateLoad(toLLVMType(params[i].type), lastValue);
+            }
+
+            args.push_back(lastValue);
+        }
+        lvalue = oldLvalue;
+
+        auto* call = builder->CreateCall(funcType, callee, args, "call");
+        lastValue = funcType->getReturnType()->isVoidTy() ? nullptr : call;
+    }
 }
 
 void LLVMCodegenVisitor::visit(StatementsBlock& node)

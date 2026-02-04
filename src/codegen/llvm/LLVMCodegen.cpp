@@ -165,4 +165,31 @@ llvm::GlobalVariable* LLVMCodegenVisitor::createStructDescriptor(const std::shar
     gVar->setInitializer(initValue);
     return gVar;
 }
+
+void LLVMCodegenVisitor::makeStructCastCheck(llvm::Value* left, llvm::Value* right, int64_t rDepth)
+{
+    auto* startBB = llvm::BasicBlock::Create(context, "is.start", currentFunction);
+    auto* contBB = llvm::BasicBlock::Create(context, "is.cont", currentFunction);
+    auto* endBB = llvm::BasicBlock::Create(context, "is.end", currentFunction);
+
+    builder->CreateBr(startBB);
+    llvm::Value* objDepth = builder->CreateLoad(builder->getInt64Ty(), left);
+    llvm::Value* depthCheck = builder->CreateICmpSGE(objDepth, builder->getInt64(rDepth));
+    builder->CreateCondBr(depthCheck, contBB, endBB);
+
+    auto* structTy = llvm::StructType::create({builder->getInt64Ty(), builder->getPtrTy()});
+
+    builder->SetInsertPoint(contBB);
+    llvm::Value* arrayPtr = builder->CreateStructGEP(structTy, left, 1);
+    llvm::Value* ancestorPtrAddr = builder->CreateGEP(builder->getPtrTy(), arrayPtr, builder->getInt64(rDepth));
+    llvm::Value* ancestorPtr = builder->CreateLoad(builder->getPtrTy(), ancestorPtrAddr, "ancestor.tag");
+    llvm::Value* instCheck = builder->CreateICmpEQ(ancestorPtr, right, "is.inst");
+    builder->CreateBr(endBB);
+
+    builder->SetInsertPoint(endBB);
+    llvm::PHINode* phi = builder->CreatePHI(builder->getInt1Ty(), 2, "is.res");
+    phi->addIncoming(builder->getFalse(), startBB);
+    phi->addIncoming(instCheck, contBB);
+    lastValue = phi;
+}
 }

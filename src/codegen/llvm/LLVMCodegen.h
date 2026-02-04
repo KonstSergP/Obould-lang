@@ -77,5 +77,6 @@ private:
     llvm::Function* declareFunction(ProcedureDeclaration& node);
     llvm::FunctionType* createFunctionType(const std::shared_ptr<TypeInfo>& type);
     llvm::GlobalVariable* createStructDescriptor(const std::shared_ptr<TypeInfo>& type);
+    void makeStructCastCheck(llvm::Value* left, llvm::Value* right, int64_t rDepth);
 };
 }
