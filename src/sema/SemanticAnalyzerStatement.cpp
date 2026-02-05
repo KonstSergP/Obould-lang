@@ -181,19 +181,28 @@ void SemanticAnalyzer::visit(ForStatement& node)
 
 void SemanticAnalyzer::visit(SwitchStatement& node)
 {
-    // TODO: реализовать switch по расширениям структуры и char
     node.selector->accept(*this);
     auto selType = node.selector->resolvedType;
     if (!selType) return;
-    switchSelectorType = selType;
 
-    bool isValidSelector = isIntegerType(selType->kind) || selType->kind == TypeKind::Char;
-    if (!isValidSelector) {
-        addError("CASE selector must be integer or char");
+    if (selType->kind == TypeKind::Pointer || selType->kind == TypeKind::Struct) {
+        switchSelectorType = getPolymorphicBase(node.selector.get());
+        if (!switchSelectorType) {
+            addError("Type switch selector must be ptr/ref to struct");
+            return;
+        }
+        for (const auto& caseBlock : node.cases) {
+            caseBlock->accept(*this);
+        }
     }
-
-    for (const auto& caseBlock : node.cases) {
-        caseBlock->accept(*this);
+    else if (isIntegerType(selType->kind) || selType->kind == TypeKind::Char) {
+        switchSelectorType = selType;
+        for (const auto& caseBlock : node.cases) {
+            caseBlock->accept(*this);
+        }
+    }
+    else {
+        addError("CASE selector must be integer, char or ptr/ref to struct");
     }
     switchSelectorType = nullptr;
 }
@@ -210,8 +219,28 @@ void SemanticAnalyzer::visit(SwitchCase& node)
 
 void SemanticAnalyzer::visit(CaseLabel& node)
 {
+    if (switchSelectorType->kind == TypeKind::Struct) {
+        auto* idExpr = dynamic_cast<IdentifierExpression*>(node.value.get());
+        if (!idExpr) {
+            addError("Struct switch label must be a type identifier");
+            return;
+        }
+        IdentifierType tempTypeNode(idExpr->moduleName, idExpr->name);
+        tempTypeNode.accept(*this);
+        auto targetType = tempTypeNode.resolvedType;
+        node.value->resolvedType = targetType;
+
+        if (!switchSelectorType->isAssignableFrom(node.value->resolvedType)) {
+            addError("Switch selector must be assignable of case label type");
+        }
+        if (node.endValue) {
+            addError("Struct label must have only one value");
+        }
+        return;
+    }
+
     node.value->accept(*this);
-    if (!node.value->resolvedType || !switchSelectorType->isAssignableFrom(node.value->resolvedType)) {
+    if (!switchSelectorType->isAssignableFrom(node.value->resolvedType)) {
         addError("Case label type mismatch with selector");
     }
     if (!node.value->constantValue.has_value()) {

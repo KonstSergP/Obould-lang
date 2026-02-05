@@ -40,7 +40,9 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
     llvm::Value* lhs = lastValue;
 
     if (node.op == Op::Is) {
-        auto* typeTagPtrAddr = builder->CreateStructGEP(toLLVMType(node.left->resolvedType), lhs, 0);
+        auto lType = node.left->resolvedType;
+        if (lType->kind == TypeKind::Pointer) lType = lType->baseType;
+        auto* typeTagPtrAddr = builder->CreateStructGEP(toLLVMType(lType), lhs, 0);
         auto* lDesc = builder->CreateLoad(builder->getPtrTy(), typeTagPtrAddr, "obj.tag");
 
         auto& rType = std::get<std::unique_ptr<Type>>(node.right)->resolvedType;

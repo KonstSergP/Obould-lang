@@ -17,7 +17,9 @@ void LLVMCodegenVisitor::visit(ProcedureCall& node)
     auto procTypeInfo = node.procedureName->resolvedType;
 
     if (node.isTypeGuard) {
-        auto* typeTagPtrAddr = builder->CreateStructGEP(toLLVMType(node.procedureName->resolvedType), callee, 0);
+        auto lType = node.procedureName->resolvedType;
+        if (lType->kind == TypeKind::Pointer) lType = lType->baseType;
+        auto* typeTagPtrAddr = builder->CreateStructGEP(toLLVMType(lType), callee, 0);
         auto* lDesc = builder->CreateLoad(builder->getPtrTy(), typeTagPtrAddr, "obj.tag");
 
         auto& rType = node.args[0]->resolvedType;
@@ -249,7 +251,7 @@ void LLVMCodegenVisitor::visit(ForStatement& node)
 
     auto* cur = builder->CreateLoad(counterType, counterPtr, node.counterName);
     auto pred = isNegativeStep ? llvm::CmpInst::ICMP_SGE : llvm::CmpInst::ICMP_SLE;
-    auto* cond = builder->CreateICmp(pred, cur, endV, "forcond");
+    auto* cond = builder->CreateICmp(pred, cur, endV);
     builder->CreateCondBr(cond, bodyBB, afterBB);
 
     bodyBB->insertInto(currentFunction);
@@ -286,13 +288,19 @@ void LLVMCodegenVisitor::visit(SwitchStatement& node)
     node.selector->accept(*this);
     auto* selector = lastValue;
     if (!selector) return;
-    auto* selectorType = builder->getInt64Ty();
 
-    auto origType = node.selector->resolvedType->kind;
-    bool isSignedCast = origType != TypeKind::Byte && origType != TypeKind::Char;
-    selector = builder->CreateIntCast(selector, selectorType, isSignedCast, "switch.sel");
+    llvm::Type* selectorType;
+    if (selector->getType()->isPointerTy()) {
+        selectorType = builder->getPtrTy();
+    }
+    else {
+        selectorType = builder->getInt64Ty();
+        auto origType = node.selector->resolvedType->kind;
+        bool isSignedCast = origType != TypeKind::Byte && origType != TypeKind::Char;
+        selector = builder->CreateIntCast(selector, selectorType, isSignedCast, "switch.sel");
+    }
 
-    auto* endBB = llvm::BasicBlock::Create(context, "switch.end");
+    auto* endBB = llvm::BasicBlock::Create(context, "switch.end", currentFunction);
     auto* checkBB = llvm::BasicBlock::Create(context, "switch.check", currentFunction);
     builder->CreateBr(checkBB);
 
@@ -306,31 +314,45 @@ void LLVMCodegenVisitor::visit(SwitchStatement& node)
                                 : llvm::BasicBlock::Create(context, "switch.check", currentFunction);
         llvm::Value* caseCond = nullptr;
 
-        for (const auto& labelPtr : casePtr->labels) {
-            int64_t startVal = getLabelValue(*labelPtr->value->constantValue);
-            int64_t endVal = startVal;
-            if (labelPtr->endValue) {
-                endVal = getLabelValue(*labelPtr->endValue->constantValue);
-            }
-            if (endVal < startVal) std::swap(startVal, endVal);
-            llvm::Value* labelCond = nullptr;
-            if (startVal == endVal) {
-                auto* val = llvm::ConstantInt::get(selectorType, startVal, true);
-                labelCond = builder->CreateICmpEQ(selector, val);
-            }
-            else {
-                auto* low = llvm::ConstantInt::get(selectorType, startVal, true);
-                auto* high = llvm::ConstantInt::get(selectorType, endVal, true);
-                auto* ge = builder->CreateICmpSGE(selector, low);
-                auto* le = builder->CreateICmpSLE(selector, high);
-                labelCond = builder->CreateAnd(ge, le);
-            }
+        for (const auto& lbl : casePtr->labels) {
+            if (auto type = node.selector->resolvedType->kind; type == TypeKind::Struct || type == TypeKind::Pointer) {
+                auto lType = node.selector->resolvedType;
+                if (lType->kind == TypeKind::Pointer) lType = lType->baseType;
+                auto* typeTagPtrAddr = builder->CreateStructGEP(toLLVMType(lType), selector, 0);
+                auto* lDesc = builder->CreateLoad(builder->getPtrTy(), typeTagPtrAddr, "obj.tag");
 
-            if (caseCond) {
-                caseCond = builder->CreateOr(caseCond, labelCond);
+                auto& rType = lbl->value->resolvedType;
+                auto* rDesc = descriptors[rType.get()];
+
+                makeStructCastCheck(lDesc, rDesc, rType->depth);
+                caseCond = lastValue;
             }
             else {
-                caseCond = labelCond;
+                int64_t startVal = getLabelValue(*lbl->value->constantValue);
+                int64_t endVal = startVal;
+                if (lbl->endValue) {
+                    endVal = getLabelValue(*lbl->endValue->constantValue);
+                }
+                if (endVal < startVal) std::swap(startVal, endVal);
+                llvm::Value* labelCond = nullptr;
+                if (startVal == endVal) {
+                    auto* val = llvm::ConstantInt::get(selectorType, startVal, true);
+                    labelCond = builder->CreateICmpEQ(selector, val);
+                }
+                else {
+                    auto* low = llvm::ConstantInt::get(selectorType, startVal, true);
+                    auto* high = llvm::ConstantInt::get(selectorType, endVal, true);
+                    auto* ge = builder->CreateICmpSGE(selector, low);
+                    auto* le = builder->CreateICmpSLE(selector, high);
+                    labelCond = builder->CreateAnd(ge, le);
+                }
+
+                if (caseCond) {
+                    caseCond = builder->CreateOr(caseCond, labelCond);
+                }
+                else {
+                    caseCond = labelCond;
+                }
             }
         }
         builder->CreateCondBr(caseCond, bodyBB, nextCheckBB);
@@ -340,7 +362,6 @@ void LLVMCodegenVisitor::visit(SwitchStatement& node)
         builder->CreateBr(endBB);
         checkBB = nextCheckBB;
     }
-    endBB->insertInto(currentFunction);
     builder->SetInsertPoint(endBB);
 }
 
