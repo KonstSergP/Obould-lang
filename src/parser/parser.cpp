@@ -428,12 +428,12 @@ std::unique_ptr<IdentifierType> Parser::parseIdentifierType() {
     return std::make_unique<IdentifierType>(moduleName, name);
 }
 
-std::unique_ptr<ArrayType> Parser::parseArrayType(std::unique_ptr<Type> elementType) {
+std::unique_ptr<Type> Parser::parseArrayType(std::unique_ptr<Type> elementType) {
     expect(TokenType::LBRACKET, "Expected '[' for array type");
 
     if (match(TokenType::RBRACKET)) {
         // Open array type (no size specified)
-        return std::make_unique<ArrayType>(std::move(elementType), nullptr);
+        return std::make_unique<OpenArrayType>(std::move(elementType));
     }
 
     auto length = parseExpression();

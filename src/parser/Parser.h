@@ -76,7 +76,7 @@ private:
     // Type parsing
     std::unique_ptr<Type> parseType();
     std::unique_ptr<IdentifierType> parseIdentifierType();
-    std::unique_ptr<ArrayType> parseArrayType(std::unique_ptr<Type> elementType);
+    std::unique_ptr<Type> parseArrayType(std::unique_ptr<Type> elementType);
     std::unique_ptr<StructType> parseStructType();
     std::unique_ptr<PointerType> parsePointerType();
     std::unique_ptr<Type> parseProcedureType();
