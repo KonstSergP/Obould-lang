@@ -43,8 +43,7 @@ void LLVMCodegenVisitor::visit(ProcedureCall& node)
         auto* funcType = createFunctionType(procTypeInfo);
 
         const auto& params = procTypeInfo->parameters;
-        std::vector<llvm::Value*> args;
-        args.reserve(node.args.size());
+        std::vector<llvm::Value*> args(node.args.size()), hiddenParams;
 
         for (size_t i = 0; i < node.args.size(); ++i) {
             auto& argExpr = node.args[i];
@@ -54,17 +53,22 @@ void LLVMCodegenVisitor::visit(ProcedureCall& node)
             if (isIntegerType(argExpr->resolvedType->kind) && isIntegerType(params[i].type->kind)) {
                 lastValue = builder->CreateZExtOrTrunc(lastValue, toLLVMType(params[i].type));
             }
-            else if (argExpr->resolvedType->kind == TypeKind::String) {
-                lastValue = builder->CreateLoad(toLLVMType(params[i].type), lastValue);
-            }
-
             args.push_back(lastValue);
+
+            auto factType = argExpr->resolvedType;
+            auto formalType = params[i].type;
+            while (formalType->isOpenArray) {
+                hiddenParams.push_back(lengths[factType.get()]);
+                formalType = formalType->baseType;
+                factType = factType->baseType;
+            }
         }
-        lvalue = oldLvalue;
+        args.insert(args.end(), hiddenParams.begin(), hiddenParams.end());
 
         auto* call = builder->CreateCall(funcType, callee, args, "call");
         lastValue = funcType->getReturnType()->isVoidTy() ? nullptr : call;
     }
+    lvalue = oldLvalue;
 }
 
 void LLVMCodegenVisitor::visit(StatementsBlock& node)
@@ -108,9 +112,6 @@ void LLVMCodegenVisitor::visit(AssignmentStatement& node)
         auto sizeBytes = module->getDataLayout().getTypeAllocSize(objType);
         auto* sizeVal = llvm::ConstantInt::get(builder->getInt64Ty(), sizeBytes);
 
-        auto* i8PtrTy = llvm::PointerType::getUnqual(builder->getInt8Ty());
-        lhs = builder->CreateBitCast(lhs, i8PtrTy);
-        rhs = builder->CreateBitCast(rhs, i8PtrTy);
         builder->CreateMemCpy(lhs, llvm::MaybeAlign(1), rhs, llvm::MaybeAlign(1), sizeVal);
         return;
     }
@@ -159,6 +160,7 @@ void LLVMCodegenVisitor::visit(WhileStatement& node)
         currentCondBB->insertInto(currentFunction);
         builder->SetInsertPoint(currentCondBB);
 
+        lvalue = false;
         branch->condition->accept(*this);
 
         auto* condVal = lastValue;
@@ -203,6 +205,7 @@ void LLVMCodegenVisitor::visit(DoWhileStatement& node)
     builder->CreateBr(condBB);
     condBB->insertInto(currentFunction);
     builder->SetInsertPoint(condBB);
+    lvalue = false;
     node.condition->accept(*this);
 
     llvm::Value* condVal = lastValue;

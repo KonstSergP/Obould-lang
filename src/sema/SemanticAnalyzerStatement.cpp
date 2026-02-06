@@ -23,7 +23,7 @@ void SemanticAnalyzer::visit(ProcedureCall& node)
             auto argType = node.args[i]->resolvedType;
             const auto& paramInfo = params[i];
 
-            if (!paramInfo.type->isAssignableFrom(argType)) {
+            if (!paramInfo.type->isAssignableFrom(argType) && !paramInfo.type->isArrayConvertibleFrom(argType)) {
                 addError("Argument " + std::to_string(i + 1) + " type mismatch");
             }
 

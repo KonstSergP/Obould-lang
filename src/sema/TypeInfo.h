@@ -82,6 +82,7 @@ struct TypeInfo
 
     bool isAssignableFrom(const std::shared_ptr<TypeInfo>& other) const;
     bool isBaseTypeOf(const std::shared_ptr<TypeInfo>& other) const;
+    bool isArrayConvertibleFrom(const std::shared_ptr<TypeInfo>& other) const;
 
 
     TypeKind kind;

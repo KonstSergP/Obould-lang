@@ -83,18 +83,23 @@ llvm::Function* LLVMCodegenVisitor::declareFunction(ProcedureDeclaration& node)
         return it->second;
     }
 
-    std::vector<llvm::Type*> paramTypes;
+    std::vector<llvm::Type*> paramTypes, hiddenParams;
     paramTypes.reserve(node.parameters.size());
 
     for (const auto& param : node.parameters) {
-        auto paramTypeInfo = param->type->resolvedType;
-        if (param->isReference) {
+        auto paramType = param->type->resolvedType;
+        if (param->isReference || paramType->kind == TypeKind::Array || paramType->kind == TypeKind::Struct) {
             paramTypes.push_back(builder->getPtrTy());
+            while (paramType->kind == TypeKind::Array) {
+                hiddenParams.push_back(builder->getInt64Ty());
+                paramType = paramType->baseType;
+            }
         }
         else {
-            paramTypes.push_back(toLLVMType(paramTypeInfo));
+            paramTypes.push_back(toLLVMType(paramType));
         }
     }
+    paramTypes.insert(paramTypes.end(), hiddenParams.begin(), hiddenParams.end());
 
     auto* fnType = llvm::FunctionType::get(toLLVMType(node.returnType->resolvedType), paramTypes, false);
     auto* fn = llvm::Function::Create(fnType, llvm::Function::InternalLinkage, node.name, *module);
@@ -106,6 +111,7 @@ llvm::Function* LLVMCodegenVisitor::declareFunction(ProcedureDeclaration& node)
     for (auto& arg : fn->args()) {
         arg.setName(node.parameters[idx]->name);
         ++idx;
+        if (idx == node.parameters.size()) break;
     }
 
     functions[node.name] = fn;
@@ -118,7 +124,6 @@ void LLVMCodegenVisitor::visit(ProcedureDeclaration& node)
     if (!fn->empty()) {
         return;
     }
-
     currentFunction = fn;
     locals.clear();
 
@@ -126,16 +131,24 @@ void LLVMCodegenVisitor::visit(ProcedureDeclaration& node)
     builder->SetInsertPoint(entryBB);
 
     size_t idx = 0;
+    std::vector<TypeInfo*> arrays;
     for (auto& arg : fn->args()) {
-        const auto& paramDecl = node.parameters[idx];
+        if (idx < node.parameters.size()) {
+            const auto& paramDecl = node.parameters[idx];
+            auto* allocaInst = createEntryAlloca(arg.getType(), std::string(arg.getName()));
+            builder->CreateStore(&arg, allocaInst);
+            locals[paramDecl->name] = allocaInst;
 
-        if (paramDecl->isReference) {
-            locals[paramDecl->name] = &arg;
+            auto& info = node.parameters[idx]->type->resolvedType;
+            while (info->isOpenArray) {
+                arrays.push_back(info.get());
+                info = info->baseType;
+            }
         }
         else {
             auto* allocaInst = createEntryAlloca(arg.getType(), std::string(arg.getName()));
             builder->CreateStore(&arg, allocaInst);
-            locals[paramDecl->name] = allocaInst;
+            lengths[arrays[idx - node.parameters.size()]] = allocaInst;
         }
         ++idx;
     }

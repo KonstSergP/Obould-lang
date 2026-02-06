@@ -21,18 +21,22 @@ std::unique_ptr<llvm::Module> LLVMCodegenVisitor::codegen(Module& moduleAst)
 llvm::FunctionType* LLVMCodegenVisitor::createFunctionType(const std::shared_ptr<TypeInfo>& type)
 {
     llvm::Type* retType = toLLVMType(type->returnType);
-    std::vector<llvm::Type*> argTypes;
-    llvm::Type* t;
+    std::vector<llvm::Type*> paramTypes, hiddenParams;
     for (const auto& param : type->parameters) {
-        if (param.isReference) {
-            t = llvm::PointerType::getUnqual(context);
+        auto paramType = param.type;
+        if (param.isReference || paramType->kind == TypeKind::Array || paramType->kind == TypeKind::Struct) {
+            paramTypes.push_back(builder->getPtrTy());
+            while (paramType->kind == TypeKind::Array) {
+                hiddenParams.push_back(builder->getInt64Ty());
+                paramType = paramType->baseType;
+            }
         }
         else {
-            t = toLLVMType(param.type);
+            paramTypes.push_back(toLLVMType(paramType));
         }
-        argTypes.push_back(t);
     }
-    return llvm::FunctionType::get(retType, argTypes, false);
+    paramTypes.insert(paramTypes.end(), hiddenParams.begin(), hiddenParams.end());
+    return llvm::FunctionType::get(retType, paramTypes, false);
 }
 
 llvm::Type* LLVMCodegenVisitor::toLLVMType(const std::shared_ptr<TypeInfo>& typeInfo)

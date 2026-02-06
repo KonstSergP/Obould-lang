@@ -188,7 +188,7 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
 
     for (const auto& param : node.parameters) {
         param->type->accept(*this);
-
+        // TODO: нет никаких проверок
         ParamInfo info;
         info.name = param->name;
         info.type = param->type->resolvedType;

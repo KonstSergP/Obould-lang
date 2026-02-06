@@ -24,55 +24,55 @@ bool TypeInfo::isAssignableFrom(const std::shared_ptr<TypeInfo>& other) const
         return true;
     }
 
-    if (this->kind == TypeKind::Void || other->kind == TypeKind::Void) {
+    if (kind == TypeKind::Void || other->kind == TypeKind::Void) {
         return false;
     }
 
     if (other->kind == TypeKind::Nil) {
-        return this->kind == TypeKind::Pointer || this->kind == TypeKind::Procedure;
+        return kind == TypeKind::Pointer || kind == TypeKind::Procedure;
     }
 
-    if (isIntegerType(this->kind) && isIntegerType(other->kind)) {
+    if (isIntegerType(kind) && isIntegerType(other->kind)) {
         return true;
     }
 
     if (other->kind == TypeKind::String) {
-        if (this->kind == TypeKind::Char) {
+        if (kind == TypeKind::Char) {
             return other->length == 1;
         }
-        if (this->kind == TypeKind::Array && this->baseType->kind == TypeKind::Char) {
-            return this->length > other->length;
+        if (kind == TypeKind::Array && baseType->kind == TypeKind::Char) {
+            return length > other->length;
         }
     }
 
-    if (this->kind != other->kind) {
+    if (kind != other->kind) {
         return false;
     }
 
-    switch (this->kind) {
+    switch (kind) {
     case TypeKind::Pointer:
-        if (this->baseType && other->baseType) {
-            return this->baseType->isBaseTypeOf(other->baseType);
+        if (baseType && other->baseType) {
+            return baseType->isBaseTypeOf(other->baseType);
         }
         return false;
 
     case TypeKind::Struct:
-        return this->isBaseTypeOf(other);
+        return isBaseTypeOf(other);
 
     case TypeKind::Array:
-        if (this->isOpenArray) {
+        if (isOpenArray) {
             if (other->kind == TypeKind::Array) {
-                return this->baseType.get() == other->baseType.get();
+                return baseType.get() == other->baseType.get();
             }
         }
         return false;
 
     case TypeKind::Procedure:
-        if (!this->returnType->isAssignableFrom(other->returnType)) return false;
-        if (this->parameters.size() != other->parameters.size()) return false;
+        if (!returnType->isAssignableFrom(other->returnType)) return false;
+        if (parameters.size() != other->parameters.size()) return false;
 
-        for (size_t i = 0; i < this->parameters.size(); ++i) {
-            const auto& p1 = this->parameters[i];
+        for (size_t i = 0; i < parameters.size(); ++i) {
+            const auto& p1 = parameters[i];
             const auto& p2 = other->parameters[i];
 
             if (p1.isReference != p2.isReference) return false;
@@ -87,5 +87,17 @@ bool TypeInfo::isAssignableFrom(const std::shared_ptr<TypeInfo>& other) const
     default:
         return true;
     }
+}
+
+bool TypeInfo::isArrayConvertibleFrom(const std::shared_ptr<TypeInfo>& other) const
+{
+    if (!other) return false;
+    if (kind != TypeKind::Array || other->kind != TypeKind::Array) return false;
+    if (!isOpenArray) return false;
+
+    if (baseType->isOpenArray) {
+        return baseType->isArrayConvertibleFrom(other->baseType);
+    }
+    return baseType == other->baseType;
 }
 }
