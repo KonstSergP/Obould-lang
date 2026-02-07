@@ -291,6 +291,7 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
                     break;
                 case BinaryExpression::Op::IDiv:
                     if (rv <= 0) {
+                        node.constantValue = 0;
                         addError("Divisor must be positive");
                         return;
                     }
@@ -298,6 +299,7 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
                     break;
                 case BinaryExpression::Op::Mod:
                     if (rv == 0) {
+                        node.constantValue = 0;
                         addError("Modulo by zero");
                         return;
                     }
@@ -333,6 +335,7 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
                     break;
                 case BinaryExpression::Op::FDiv:
                     if (rv == 0.0) {
+                        node.constantValue = 0.0;
                         addError("Division by zero");
                         return;
                     }

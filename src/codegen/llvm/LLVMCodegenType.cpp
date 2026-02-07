@@ -8,13 +8,10 @@ void LLVMCodegenVisitor::visit(IdentifierType& node) {}
 
 void LLVMCodegenVisitor::visit(ArrayType& node)
 {
-    auto& type = node.resolvedType;
-    while (type->kind == TypeKind::Array) {
-        if (lengths.find(type.get()) == lengths.end()) {
-            lengths[type.get()] = builder->getInt64(std::get<int64_t>(*node.length->constantValue));
-        }
-        type = type->baseType;
+    if (lengths.find(node.resolvedType.get()) == lengths.end()) {
+        lengths[node.resolvedType.get()] = builder->getInt64(std::get<int64_t>(*node.length->constantValue));
     }
+    node.elementType->accept(*this);
 }
 
 void LLVMCodegenVisitor::visit(OpenArrayType& node) {}

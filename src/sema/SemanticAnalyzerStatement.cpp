@@ -39,7 +39,7 @@ void SemanticAnalyzer::visit(ProcedureCall& node)
         node.resolvedType = procTypeInfo->returnType;
         node.isLvalue = false;
     }
-    else if (procTypeInfo->kind == TypeKind::Pointer && procTypeInfo->baseType->kind == TypeKind::Struct) {
+    else if (auto baseType = getPolymorphicBase(node.procedureName.get())) {
         node.isTypeGuard = true;
         if (node.args.size() != 1) {
             addError("Type guard requires only one argument");
@@ -63,7 +63,7 @@ void SemanticAnalyzer::visit(ProcedureCall& node)
             return;
         }
 
-        if (!getPolymorphicBase(node.procedureName.get())->isBaseTypeOf(targetType)) {
+        if (!baseType->isBaseTypeOf(targetType)) {
             addError("Type guard extension mismatch");
             return;
         }
@@ -153,6 +153,16 @@ void SemanticAnalyzer::visit(DoWhileStatement& node)
 void SemanticAnalyzer::visit(ForStatement& node)
 {
     auto* sym = symbolTable.lookupSymbol(node.counterName);
+    if (!sym) {
+        addError("For counter " + node.counterName + " is not declared.");
+        return;
+    }
+    if (sym->kind != SymbolKind::Variable) {
+        addError("For counter " + node.counterName + " must be a variable.");
+        return;
+    }
+
+    bool prevReadOnly = sym->isReadOnly;
     sym->isReadOnly = true;
 
     node.rangeStart->accept(*this);
@@ -176,7 +186,7 @@ void SemanticAnalyzer::visit(ForStatement& node)
     }
 
     node.body->accept(*this);
-    sym->isReadOnly = false;
+    sym->isReadOnly = prevReadOnly;
 }
 
 void SemanticAnalyzer::visit(SwitchStatement& node)

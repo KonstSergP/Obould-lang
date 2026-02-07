@@ -3,7 +3,7 @@
 
 namespace obould
 {
-void LLVMCodegenVisitor::visit(ConstantDeclaration& node) {}
+void LLVMCodegenVisitor::visit(ConstantDeclaration& node) {} // константы вычисляются на этапе семантического анализа
 
 void LLVMCodegenVisitor::visit(TypeDeclaration& node)
 {
@@ -13,10 +13,21 @@ void LLVMCodegenVisitor::visit(TypeDeclaration& node)
 void LLVMCodegenVisitor::visit(VariableDeclaration& node)
 {
     node.type->accept(*this);
-    llvm::Type* ty = toLLVMType(node.type->resolvedType);
+    auto info = node.type->resolvedType;
+    auto* ty = toLLVMType(info);
 
     if (currentFunction == nullptr) {
-        auto* initValue = llvm::Constant::getNullValue(ty);
+        llvm::Constant* initValue = llvm::Constant::getNullValue(ty);
+        if (info->kind == TypeKind::Struct) {
+            auto* structTy = llvm::cast<llvm::StructType>(ty);
+            std::vector<llvm::Constant*> fields;
+            fields.push_back(descriptors[info.get()]);
+            for (int i = 1; i < structTy->getNumElements(); i++) {
+                fields.push_back(llvm::Constant::getNullValue(structTy->getElementType(i)));
+            }
+            initValue = llvm::ConstantStruct::get(structTy, fields);
+        }
+
         auto* gVar = new llvm::GlobalVariable(
             *module,
             ty,
@@ -32,6 +43,10 @@ void LLVMCodegenVisitor::visit(VariableDeclaration& node)
     else {
         auto* allocaInst = createEntryAlloca(ty, node.name);
         builder->CreateStore(llvm::Constant::getNullValue(ty), allocaInst);
+        if (info->kind == TypeKind::Struct) {
+            auto* fieldPtr = builder->CreateStructGEP(ty, allocaInst, 0);
+            builder->CreateStore(descriptors[info.get()], fieldPtr);
+        }
         locals[node.name] = allocaInst;
     }
 }
@@ -135,11 +150,17 @@ void LLVMCodegenVisitor::visit(ProcedureDeclaration& node)
     for (auto& arg : fn->args()) {
         if (idx < node.parameters.size()) {
             const auto& paramDecl = node.parameters[idx];
-            auto* allocaInst = createEntryAlloca(arg.getType(), std::string(arg.getName()));
-            builder->CreateStore(&arg, allocaInst);
-            locals[paramDecl->name] = allocaInst;
+            auto info = paramDecl->type->resolvedType;
+            llvm::Value* val;
+            if (paramDecl->isReference || info->kind == TypeKind::Array || info->kind == TypeKind::Struct) {
+                val = &arg;
+            }
+            else {
+                val = createEntryAlloca(arg.getType(), std::string(arg.getName()));
+                builder->CreateStore(&arg, val);
+            }
+            locals[paramDecl->name] = val;
 
-            auto& info = node.parameters[idx]->type->resolvedType;
             while (info->isOpenArray) {
                 arrays.push_back(info.get());
                 info = info->baseType;
@@ -180,7 +201,8 @@ void LLVMCodegenVisitor::visit(Import& node) {}
 
 void LLVMCodegenVisitor::visit(Module& node)
 {
-    node.declarations->accept(*this);
+    if (node.declarations)
+        node.declarations->accept(*this);
 
     for (const auto& proc : node.procedures) {
         declareFunction(*proc);

@@ -38,7 +38,7 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
         return;
     }
     node.left->accept(*this);
-    llvm::Value* lhs = lastValue;
+    auto* lhs = lastValue;
 
     if (node.op == Op::Is) {
         auto lType = node.left->resolvedType;
@@ -54,6 +54,48 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
     }
 
     auto& right = std::get<std::unique_ptr<Expression>>(node.right);
+
+    if (node.op == Op::And) {
+        auto* func = builder->GetInsertBlock()->getParent();
+        auto* originalBB = builder->GetInsertBlock();
+        auto* evalRightBB = llvm::BasicBlock::Create(context, "and.rhs", func);
+        auto* mergeBB = llvm::BasicBlock::Create(context, "and.merge", func);
+        builder->CreateCondBr(lhs, evalRightBB, mergeBB);
+
+        builder->SetInsertPoint(evalRightBB);
+        right->accept(*this);
+        auto* rightVal = lastValue;
+        auto* rightEndBB = builder->GetInsertBlock();
+        builder->CreateBr(mergeBB);
+        builder->SetInsertPoint(mergeBB);
+
+        auto* phi = builder->CreatePHI(builder->getInt1Ty(), 2, "and.res");
+        phi->addIncoming(rightVal, rightEndBB);
+        phi->addIncoming(builder->getFalse(), originalBB);
+        lastValue = phi;
+        return;
+    }
+    if (node.op == Op::Or) {
+        auto* func = builder->GetInsertBlock()->getParent();
+        auto* originalBB = builder->GetInsertBlock();
+        auto* evalRightBB = llvm::BasicBlock::Create(context, "or.rhs", func);
+        auto* mergeBB = llvm::BasicBlock::Create(context, "or.merge", func);
+        builder->CreateCondBr(lhs, mergeBB, evalRightBB);
+
+        builder->SetInsertPoint(evalRightBB);
+        right->accept(*this);
+        auto* rightVal = lastValue;
+        auto* rightEndBB = builder->GetInsertBlock();
+        builder->CreateBr(mergeBB);
+        builder->SetInsertPoint(mergeBB);
+
+        auto* phi = builder->CreatePHI(builder->getInt1Ty(), 2, "or.res");
+        phi->addIncoming(builder->getTrue(), originalBB);
+        phi->addIncoming(rightVal, rightEndBB);
+        lastValue = phi;
+        return;
+    }
+
     right->accept(*this);
     auto* rhs = lastValue;
     if (!lhs || !rhs) {
@@ -78,7 +120,7 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
             lhs = builder->CreateZExt(lhs, builder->getInt64Ty());
         }
     }
-    else if (node.left->resolvedType->kind == TypeKind::String) {
+    else if (node.left->resolvedType->kind == TypeKind::String) { // TODO: для строк ни логики, ни toLLMVType
         lhs = builder->CreateLoad(toLLVMType(right->resolvedType), lhs);
     }
     else if (right->resolvedType->kind == TypeKind::String) {
@@ -132,14 +174,6 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
         lastValue = finalMod;
         break;
     }
-
-    case Op::And:
-        lastValue = builder->CreateLogicalAnd(lhs, rhs, "and");
-        break;
-    case Op::Or:
-        lastValue = builder->CreateLogicalOr(lhs, rhs, "or");
-        break;
-
     case Op::Eq:
         if (isInt) {
             lastValue = builder->CreateICmpEQ(lhs, rhs, "eq");
@@ -207,7 +241,6 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
         }
         break;
 
-    case Op::Is:
     default:
         lastValue = nullptr;
         break;
@@ -252,6 +285,10 @@ void LLVMCodegenVisitor::visit(UnaryExpression& node)
 
 void LLVMCodegenVisitor::visit(IdentifierExpression& node)
 {
+    if (node.constantValue.has_value()) {
+        lastValue = getConstantValue(node);
+        return;
+    }
     llvm::Value* ptr = nullptr;
 
     auto it = locals.find(node.name);
@@ -306,7 +343,7 @@ void LLVMCodegenVisitor::visit(ArrayAccessExpression& node)
     }
 
     auto arrTypeInfo = node.array->resolvedType;
-    llvm::Type* elemTy = toLLVMType(arrTypeInfo->baseType);
+    auto* elemTy = toLLVMType(arrTypeInfo->baseType);
     if (!elemTy) {
         lastValue = nullptr;
         return;
@@ -317,8 +354,8 @@ void LLVMCodegenVisitor::visit(ArrayAccessExpression& node)
         elemPtr = builder->CreateGEP(elemTy, arr, {index}, "elem.ptr");
     }
     else {
-        llvm::Type* arrTy = toLLVMType(arrTypeInfo);
-        llvm::Value* zero = llvm::ConstantInt::get(builder->getInt64Ty(), 0);
+        auto* arrTy = toLLVMType(arrTypeInfo);
+        auto* zero = builder->getInt64(0);
         elemPtr = builder->CreateGEP(arrTy, arr, {zero, index}, "elem.ptr");
     }
 
@@ -372,7 +409,7 @@ void LLVMCodegenVisitor::visit(MemberAccessExpression& node)
     }
 
     node.object->accept(*this);
-    llvm::Value* basePtr = lastValue;
+    auto* basePtr = lastValue;
     lvalue = oldLvalue;
     if (!basePtr) {
         lastValue = nullptr;
@@ -385,9 +422,7 @@ void LLVMCodegenVisitor::visit(MemberAccessExpression& node)
         return;
     }
 
-    auto* structTy = llvm::cast<llvm::StructType>(toLLVMType(structInfo));
-
-    llvm::Value* fieldPtr = builder->CreateStructGEP(structTy, basePtr, fieldIndex, "field.ptr");
+    llvm::Value* fieldPtr = builder->CreateStructGEP(toLLVMType(structInfo), basePtr, fieldIndex, "field.ptr");
     if (!fieldPtr) {
         lastValue = nullptr;
         return;
@@ -407,7 +442,7 @@ void LLVMCodegenVisitor::visit(DereferenceExpression& node)
     bool oldLvalue = lvalue;
     lvalue = false;
     node.ptr->accept(*this);
-    llvm::Value* ptrVal = lastValue;
+    auto* ptrVal = lastValue;
     lvalue = oldLvalue;
     if (!ptrVal) {
         lastValue = nullptr;
@@ -415,11 +450,11 @@ void LLVMCodegenVisitor::visit(DereferenceExpression& node)
     }
 
     if (!lvalue) {
-        llvm::Type* pointeeTy = toLLVMType(node.resolvedType);
+        auto* pointeeTy = toLLVMType(node.resolvedType);
         lastValue = builder->CreateLoad(pointeeTy, ptrVal, "deref");
     }
     else {
-        lastValue = nullptr;
+        lastValue = ptrVal;
     }
 }
 }

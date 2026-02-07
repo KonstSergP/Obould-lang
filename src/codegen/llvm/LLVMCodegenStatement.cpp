@@ -43,22 +43,30 @@ void LLVMCodegenVisitor::visit(ProcedureCall& node)
         auto* funcType = createFunctionType(procTypeInfo);
 
         const auto& params = procTypeInfo->parameters;
-        std::vector<llvm::Value*> args(node.args.size()), hiddenParams;
+        std::vector<llvm::Value*> args, hiddenParams;
 
         for (size_t i = 0; i < node.args.size(); ++i) {
             auto& argExpr = node.args[i];
             lvalue = params[i].isReference;
             argExpr->accept(*this);
 
-            if (isIntegerType(argExpr->resolvedType->kind) && isIntegerType(params[i].type->kind)) {
+            if (!params[i].isReference
+                && isIntegerType(argExpr->resolvedType->kind)
+                && isIntegerType(params[i].type->kind)) {
                 lastValue = builder->CreateZExtOrTrunc(lastValue, toLLVMType(params[i].type));
             }
             args.push_back(lastValue);
+            // TODO: а ссылки на числа с меньшим количеством байт все поломают?
 
             auto factType = argExpr->resolvedType;
             auto formalType = params[i].type;
             while (formalType->isOpenArray) {
-                hiddenParams.push_back(lengths[factType.get()]);
+                auto* lenVal = lengths[factType.get()];
+                if (lenVal->getType()->isPointerTy()) {
+                    lenVal = builder->CreateLoad(builder->getInt64Ty(), lenVal);
+                }
+                hiddenParams.push_back(lenVal);
+
                 formalType = formalType->baseType;
                 factType = factType->baseType;
             }
@@ -92,7 +100,7 @@ void LLVMCodegenVisitor::visit(AssignmentStatement& node)
     }
 
     if (isIntegerType(node.target->resolvedType->kind) && isIntegerType(node.value->resolvedType->kind)) {
-        rhs = builder->CreateZExtOrTrunc(rhs, toLLVMType(node.target->resolvedType));
+        rhs = builder->CreateZExtOrTrunc(rhs, toLLVMType(node.target->resolvedType)); // TODO: пересмотреть какое расширение нужно
     }
     else if (node.value->resolvedType->kind == TypeKind::String) {
         if (node.target->resolvedType->kind == TypeKind::Char) {
@@ -112,7 +120,7 @@ void LLVMCodegenVisitor::visit(AssignmentStatement& node)
         auto sizeBytes = module->getDataLayout().getTypeAllocSize(objType);
         auto* sizeVal = llvm::ConstantInt::get(builder->getInt64Ty(), sizeBytes);
 
-        builder->CreateMemCpy(lhs, llvm::MaybeAlign(1), rhs, llvm::MaybeAlign(1), sizeVal);
+        builder->CreateMemCpy(lhs, llvm::MaybeAlign(1), rhs, llvm::MaybeAlign(1), sizeVal); // TODO: дескриптор не должен копироваться
         return;
     }
     builder->CreateStore(rhs, lhs);
@@ -229,7 +237,7 @@ void LLVMCodegenVisitor::visit(ForStatement& node)
     if (!startV || !endV) return;
 
     auto* counterPtr = locals[node.counterName];
-    auto* counterType = startV->getType();
+    auto* counterType = builder->getInt64Ty();
     llvm::Value* stepV = nullptr;
     bool isNegativeStep = false;
 
@@ -237,11 +245,13 @@ void LLVMCodegenVisitor::visit(ForStatement& node)
         node.step->accept(*this);
         auto* c = llvm::dyn_cast<llvm::ConstantInt>(lastValue);
         if (c->isNegative()) isNegativeStep = true;
-        stepV = builder->CreateZExtOrTrunc(stepV, counterType);
+        stepV = builder->CreateSExtOrTrunc(stepV, counterType);
     }
     else {
         stepV = llvm::ConstantInt::get(counterType, 1, true);
     }
+    startV = builder->CreateSExtOrTrunc(startV, counterType);
+    endV = builder->CreateSExtOrTrunc(endV, counterType);
     builder->CreateStore(startV, counterPtr);
 
     auto* condBB = llvm::BasicBlock::Create(context, "for.cond", currentFunction);

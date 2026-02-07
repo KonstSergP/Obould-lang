@@ -68,15 +68,17 @@ void SemanticAnalyzer::visit(TypeDeclaration& node)
         node.type->accept(*this);
 
         Symbol* sym = symbolTable.lookupSymbolLocal(node.name);
+        if (!sym) return;
         auto& realType = node.type->resolvedType;
         auto& symType = sym->type;
 
         *symType = *realType;
-        realType = symType;
+        realType = symType; // TODO: node.baseType->resolvedType это не переписывает
         symType->name = node.name;
     }
     else if (analyzeStage == AnalyzeStages::ValidateType) {
         Symbol* sym = symbolTable.lookupSymbolLocal(node.name);
+        if (!sym) return;
         auto type = sym->type;
 
         if (type->kind == TypeKind::Pointer) {
@@ -86,6 +88,9 @@ void SemanticAnalyzer::visit(TypeDeclaration& node)
             }
         }
         else if (type->kind == TypeKind::Struct) {
+            if (type->baseType && type->baseType->kind != TypeKind::Struct) {
+                addError("Struct base type must be a struct");
+            }
             if (type->baseType && type->name == type->baseType->name) {
                 addError("Struct cannot use itself as base type");
             }
