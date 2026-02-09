@@ -11,6 +11,7 @@ public:
     const std::vector<std::string>& getErrors() const;
     void addError(const std::string& error);
     std::shared_ptr<TypeInfo> getPolymorphicBase(Expression* expr);
+    void validateType(const std::shared_ptr<TypeInfo>& type);
 
     // Expressions
     void visit(IntegerLiteral& node) override;

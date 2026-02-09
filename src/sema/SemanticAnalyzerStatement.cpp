@@ -23,10 +23,17 @@ void SemanticAnalyzer::visit(ProcedureCall& node)
             auto argType = node.args[i]->resolvedType;
             const auto& paramInfo = params[i];
 
-            if (!paramInfo.type->isAssignableFrom(argType) && !paramInfo.type->isArrayConvertibleFrom(argType)) {
+            bool correctArgType;
+            if (paramInfo.isReference)
+                correctArgType = (paramInfo.type.get() == argType.get())
+                    || (paramInfo.type->kind == TypeKind::Struct && paramInfo.type->isBaseTypeOf(argType));
+            else
+                correctArgType = paramInfo.type->isAssignableFrom(argType)
+                    || paramInfo.type->isArrayConvertibleFrom(argType);
+
+            if (!correctArgType) {
                 addError("Argument " + std::to_string(i + 1) + " type mismatch");
             }
-
             if (paramInfo.isReference) {
                 if (!node.args[i]->isLvalue) {
                     addError(

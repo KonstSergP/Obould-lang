@@ -97,13 +97,6 @@ void SemanticAnalyzer::visit(StructType& node)
     if (node.baseType) {
         node.baseType->accept(*this);
         structInfo->baseType = node.baseType->resolvedType;
-
-        // TODO: если структура объявляется в объявлении переменной, то базовый тип никак не проверяется
-        // depth заполняется в конце определений типов. Условие выполнится только если этот узел в VariableDeclaration
-        // к этому моменту depth других структур уже заполнены
-        if (node.baseType->resolvedType->depth != -1) {
-            structInfo->depth = node.baseType->resolvedType->depth + 1;
-        }
     }
 
     for (const auto& varDecl : node.fields) {

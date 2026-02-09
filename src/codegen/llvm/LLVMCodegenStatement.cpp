@@ -56,7 +56,6 @@ void LLVMCodegenVisitor::visit(ProcedureCall& node)
                 lastValue = builder->CreateZExtOrTrunc(lastValue, toLLVMType(params[i].type));
             }
             args.push_back(lastValue);
-            // TODO: а ссылки на числа с меньшим количеством байт все поломают?
 
             auto factType = argExpr->resolvedType;
             auto formalType = params[i].type;
@@ -100,7 +99,8 @@ void LLVMCodegenVisitor::visit(AssignmentStatement& node)
     }
 
     if (isIntegerType(node.target->resolvedType->kind) && isIntegerType(node.value->resolvedType->kind)) {
-        rhs = builder->CreateZExtOrTrunc(rhs, toLLVMType(node.target->resolvedType)); // TODO: пересмотреть какое расширение нужно
+        bool srcSigned = node.value->resolvedType->kind == TypeKind::i64;
+        rhs = builder->CreateIntCast(rhs, toLLVMType(node.target->resolvedType), srcSigned);
     }
     else if (node.value->resolvedType->kind == TypeKind::String) {
         if (node.target->resolvedType->kind == TypeKind::Char) {
@@ -114,13 +114,29 @@ void LLVMCodegenVisitor::visit(AssignmentStatement& node)
             return;
         }
     }
-    else if (node.target->resolvedType->kind == TypeKind::Array || node.target->resolvedType->kind ==
-        TypeKind::Struct) {
+    else if (node.target->resolvedType->kind == TypeKind::Array) {
         auto* objType = toLLVMType(node.target->resolvedType);
         auto sizeBytes = module->getDataLayout().getTypeAllocSize(objType);
         auto* sizeVal = llvm::ConstantInt::get(builder->getInt64Ty(), sizeBytes);
 
-        builder->CreateMemCpy(lhs, llvm::MaybeAlign(1), rhs, llvm::MaybeAlign(1), sizeVal); // TODO: дескриптор не должен копироваться
+        builder->CreateMemCpy(lhs, llvm::MaybeAlign(1), rhs, llvm::MaybeAlign(1), sizeVal);
+        return;
+    }
+    else if (node.target->resolvedType->kind == TypeKind::Struct) {
+        auto* structTy = llvm::cast<llvm::StructType>(toLLVMType(node.target->resolvedType));
+        auto* layout = module->getDataLayout().getStructLayout(structTy);
+        uint64_t totalSize = module->getDataLayout().getTypeAllocSize(structTy);
+
+        if (structTy->getNumElements() > 1) {
+            uint64_t payloadOffset = layout->getElementOffset(1);
+            uint64_t payloadSize = totalSize - payloadOffset;
+
+            auto* dstPayload = builder->CreateConstGEP1_64(builder->getInt8Ty(), lhs, payloadOffset);
+            auto* srcPayload = builder->CreateConstGEP1_64(builder->getInt8Ty(), rhs, payloadOffset);
+
+            builder->CreateMemCpy(dstPayload, layout->getAlignment(), srcPayload, layout->getAlignment(),
+                                  llvm::ConstantInt::get(builder->getInt64Ty(), payloadSize));
+        }
         return;
     }
     builder->CreateStore(rhs, lhs);

@@ -1,3 +1,4 @@
+#include <set>
 #include "SemanticAnalyzer.h"
 #include "SymbolTable.h"
 #include "TypeInfo.h"
@@ -43,6 +44,70 @@ static void updateStructDepth(const std::shared_ptr<TypeInfo>& type)
     else type->depth = 0;
 }
 
+static bool containsRecursive(const std::shared_ptr<TypeInfo>& t,
+                              const TypeInfo* target,
+                              std::set<TypeInfo*>& visiting)
+{
+    if (!t) return false;
+    if (!visiting.insert(t.get()).second) return false;
+    if (t.get() == target) return true;
+
+    switch (t->kind) {
+    case TypeKind::Struct:
+        if (t->baseType && containsRecursive(t->baseType, target, visiting)) return true;
+        for (const auto& f : t->fields) {
+            if (containsRecursive(f.type, target, visiting)) return true;
+        }
+        return false;
+    case TypeKind::Array:
+        return containsRecursive(t->baseType, target, visiting);
+    default:
+        return false;
+    }
+}
+
+void SemanticAnalyzer::validateType(const std::shared_ptr<TypeInfo>& type)
+{
+    if (type->kind == TypeKind::Pointer) {
+        auto base = type->baseType;
+        if (base->kind != TypeKind::Struct) {
+            addError("Pointer base type must be a Struct in '" + type->name + "'");
+        }
+    }
+    else if (type->kind == TypeKind::Struct) {
+        if (type->baseType && type->baseType->kind != TypeKind::Struct) {
+            addError("Struct base type must be a struct");
+        }
+        if (type->baseType && type->name == type->baseType->name) {
+            addError("Struct cannot use itself as base type");
+        }
+        std::set<TypeInfo*> visits;
+        if (type->baseType && containsRecursive(type->baseType, type.get(), visits)) {
+            addError("Struct " + type->name + " cannot be extension of itself");
+        }
+        visits.clear();
+        for (const auto& f : type->fields) {
+            if (containsRecursive(f.type, type.get(), visits)) {
+                addError("Struct " + type->name + " cannot have itself as a field");
+            }
+        }
+        updateStructDepth(type);
+    }
+    else if (type->kind == TypeKind::Array) {
+        if (type->name == type->baseType->name) {
+            addError("Array cannot use itself as element type");
+        }
+    }
+    else if (type->kind == TypeKind::Procedure) {
+        if (type->returnType->kind == TypeKind::Array || type->returnType->kind == TypeKind::Struct) {
+            addError(
+                "Procedure cannot return a structured type (Array or Record). Use a pointer or a reference parameter instead.");
+        }
+        // TODO: проверка параметров
+    }
+    // TODO: проверки типов элементов
+}
+
 void SemanticAnalyzer::visit(TypeDeclaration& node)
 {
     if (analyzeStage == AnalyzeStages::CreateType) {
@@ -73,42 +138,13 @@ void SemanticAnalyzer::visit(TypeDeclaration& node)
         auto& symType = sym->type;
 
         *symType = *realType;
-        realType = symType; // TODO: node.baseType->resolvedType это не переписывает
+        realType = symType;
         symType->name = node.name;
     }
     else if (analyzeStage == AnalyzeStages::ValidateType) {
         Symbol* sym = symbolTable.lookupSymbolLocal(node.name);
         if (!sym) return;
-        auto type = sym->type;
-
-        if (type->kind == TypeKind::Pointer) {
-            auto base = type->baseType;
-            if (base->kind != TypeKind::Struct) {
-                addError("Pointer base type must be a Struct in '" + node.name + "'");
-            }
-        }
-        else if (type->kind == TypeKind::Struct) {
-            if (type->baseType && type->baseType->kind != TypeKind::Struct) {
-                addError("Struct base type must be a struct");
-            }
-            if (type->baseType && type->name == type->baseType->name) {
-                addError("Struct cannot use itself as base type");
-            }
-            // TODO: проверка что структура не содержит себя + не содержат родители + не наследуется от себя или наследника
-            updateStructDepth(type);
-        }
-        else if (type->kind == TypeKind::Array) {
-            if (type->name == type->baseType->name) {
-                addError("Array cannot use itself as element type");
-            }
-        }
-        else if (type->kind == TypeKind::Procedure) {
-            if (type->returnType->kind == TypeKind::Array || type->returnType->kind == TypeKind::Struct) {
-                addError(
-                    "Procedure cannot return a structured type (Array or Record). Use a pointer or a reference parameter instead.");
-            }
-            // TODO: проверка параметров
-        }
+        validateType(sym->type);
     }
 }
 
@@ -116,6 +152,7 @@ void SemanticAnalyzer::visit(VariableDeclaration& node)
 {
     if (!node.type->resolvedType) {
         node.type->accept(*this);
+        validateType(node.type->resolvedType);
     }
 
     auto type = node.type->resolvedType;
@@ -193,14 +230,13 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
 
     for (const auto& param : node.parameters) {
         param->type->accept(*this);
-        // TODO: нет никаких проверок
         ParamInfo info;
         info.name = param->name;
         info.type = param->type->resolvedType;
         info.isReference = param->isReference;
-
         procType->parameters.push_back(info);
     }
+    validateType(procType);
 
     Symbol procSym;
     procSym.name = node.name;
