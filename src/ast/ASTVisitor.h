@@ -25,6 +25,7 @@ public:
     virtual void visit(ArrayAccessExpression& node) = 0;
     virtual void visit(MemberAccessExpression& node) = 0;
     virtual void visit(DereferenceExpression& node) = 0;
+    virtual void visit(QualifiedNameNode& node) = 0;
 
     // Statements
     virtual void visit(ProcedureCall& node) = 0;

@@ -457,4 +457,17 @@ void LLVMCodegenVisitor::visit(DereferenceExpression& node)
         lastValue = ptrVal;
     }
 }
+
+void LLVMCodegenVisitor::visit(QualifiedNameNode& node)
+{
+    if (auto id = std::get_if<std::unique_ptr<IdentifierExpression>>(&node.realisation)) {
+        (*id)->accept(*this);
+    }
+    else if (auto member = std::get_if<std::unique_ptr<MemberAccessExpression>>(&node.realisation)) {
+        (*member)->accept(*this);
+    }
+    else {
+        lastValue = nullptr;
+    }
+}
 }

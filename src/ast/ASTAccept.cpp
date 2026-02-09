@@ -18,6 +18,7 @@ void IdentifierExpression::accept(ASTVisitor& v) { v.visit(*this); }
 void ArrayAccessExpression::accept(ASTVisitor& v) { v.visit(*this); }
 void MemberAccessExpression::accept(ASTVisitor& v) { v.visit(*this); }
 void DereferenceExpression::accept(ASTVisitor& v) { v.visit(*this); }
+void QualifiedNameNode::accept(ASTVisitor& v) { v.visit(*this); }
 
 // Statements
 void ProcedureCall::accept(ASTVisitor& v) { v.visit(*this); }

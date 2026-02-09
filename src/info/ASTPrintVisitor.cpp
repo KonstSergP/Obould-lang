@@ -124,6 +124,22 @@ void ASTPrintVisitor::visit(MemberAccessExpression& node)
     printChild(node.object, true);
 }
 
+void ASTPrintVisitor::visit(QualifiedNameNode& node)
+{
+    std::string full = node.first + "." + node.second;
+    if (std::holds_alternative<std::monostate>(node.realisation)) {
+        os << YELLOW << full << RESET << std::endl;
+        return;
+    }
+    printNodeName("QualifiedName", full);
+
+    if (auto* id = std::get_if<std::unique_ptr<IdentifierExpression>>(&node.realisation)) {
+        printChild(*id, true);
+    } else if (auto* member = std::get_if<std::unique_ptr<MemberAccessExpression>>(&node.realisation)) {
+        printChild(*member, true);
+    }
+}
+
 void ASTPrintVisitor::visit(DereferenceExpression& node)
 {
     printNodeName("Dereference");

@@ -1,3 +1,5 @@
+#include <complex.h>
+
 #include "SemanticAnalyzer.h"
 #include "TypeInfo.h"
 
@@ -478,5 +480,30 @@ void SemanticAnalyzer::visit(DereferenceExpression& node)
 
     node.resolvedType = type->baseType;
     node.isLvalue = true;
+}
+
+void SemanticAnalyzer::visit(QualifiedNameNode& node)
+{
+    if (std::holds_alternative<std::monostate>(node.realisation)) {
+        if (auto sym = symbolTable.lookupSymbol(node.first); sym->kind == SymbolKind::Module) {
+            node.realisation = std::make_unique<IdentifierExpression>(node.first, node.second);
+        }
+        else {
+            auto id = std::make_unique<IdentifierExpression>("", node.first);
+            node.realisation = std::make_unique<MemberAccessExpression>(std::move(id), node.second);
+        }
+    }
+    if (auto id = std::get_if<std::unique_ptr<IdentifierExpression>>(&node.realisation)) {
+        (*id)->accept(*this);
+        node.constantValue = (*id)->constantValue;
+        node.isLvalue = (*id)->isLvalue;
+        node.resolvedType = (*id)->resolvedType;
+    }
+    else if (auto member = std::get_if<std::unique_ptr<MemberAccessExpression>>(&node.realisation)) {
+        (*member)->accept(*this);
+        node.constantValue = (*member)->constantValue;
+        node.isLvalue = (*member)->isLvalue;
+        node.resolvedType = (*member)->resolvedType;
+    }
 }
 }

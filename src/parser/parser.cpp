@@ -848,14 +848,16 @@ std::unique_ptr<Expression> Parser::parseFactor() {
 }
 
 std::unique_ptr<Expression> Parser::parseDesignator() {
-    // Check for dereference prefix
     bool isDereference = match(TokenType::OP_STAR);
 
-    auto [moduleName, name] = parseQualifiedIdentifier();
-    std::unique_ptr<Expression> expr = std::make_unique<IdentifierExpression>(moduleName, name);
+    Token first = expect(TokenType::IDENTIFIER, "Expected identifier");
+    std::unique_ptr<Expression> expr;
 
-    if (isDereference) {
-        expr = std::make_unique<DereferenceExpression>(std::move(expr));
+    if (match(TokenType::DOT)) {
+        Token second = expect(TokenType::IDENTIFIER, "Expected identifier after '.'");
+        expr = std::make_unique<QualifiedNameNode>(first.lexeme, second.lexeme);
+    } else {
+        expr = std::make_unique<IdentifierExpression>("", first.lexeme);
     }
 
     // Parse selectors
@@ -935,6 +937,9 @@ std::unique_ptr<Expression> Parser::parseDesignator() {
         }
     }
 
+    if (isDereference) {
+        expr = std::make_unique<DereferenceExpression>(std::move(expr));
+    }
     return expr;
 }
 

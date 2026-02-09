@@ -151,8 +151,8 @@ void LLVMCodegenVisitor::visit(IfStatement& node)
     condVal = builder->CreateTruncOrBitCast(condVal, builder->getInt1Ty(), "ifcond");
 
     auto* thenBB = llvm::BasicBlock::Create(context, "then", currentFunction);
-    auto* elseBB = llvm::BasicBlock::Create(context, "else");
-    auto* mergeBB = llvm::BasicBlock::Create(context, "merge");
+    auto* elseBB = llvm::BasicBlock::Create(context, "else", currentFunction);
+    auto* mergeBB = llvm::BasicBlock::Create(context, "merge", currentFunction);
 
     builder->CreateCondBr(condVal, thenBB, node.elseBranch ? elseBB : mergeBB);
 
@@ -161,18 +161,16 @@ void LLVMCodegenVisitor::visit(IfStatement& node)
     builder->CreateBr(mergeBB);
 
     if (node.elseBranch) {
-        elseBB->insertInto(currentFunction);
         builder->SetInsertPoint(elseBB);
         node.elseBranch->accept(*this);
         builder->CreateBr(mergeBB);
     }
-    mergeBB->insertInto(currentFunction);
     builder->SetInsertPoint(mergeBB);
 }
 
 void LLVMCodegenVisitor::visit(WhileStatement& node)
 {
-    auto* afterBB = llvm::BasicBlock::Create(context, "while.end");
+    auto* afterBB = llvm::BasicBlock::Create(context, "while.end", currentFunction);
     auto* headBB = llvm::BasicBlock::Create(context, "while.cond", currentFunction);
     auto* currentCondBB = headBB;
     builder->CreateBr(headBB);
@@ -181,7 +179,6 @@ void LLVMCodegenVisitor::visit(WhileStatement& node)
         bool isLastBranch = (i == node.branches.size() - 1);
         auto& branch = node.branches[i];
 
-        currentCondBB->insertInto(currentFunction);
         builder->SetInsertPoint(currentCondBB);
 
         lvalue = false;
@@ -200,7 +197,7 @@ void LLVMCodegenVisitor::visit(WhileStatement& node)
             nextCondBB = afterBB;
         }
         else {
-            nextCondBB = llvm::BasicBlock::Create(context, "while.cond");
+            nextCondBB = llvm::BasicBlock::Create(context, "while.cond", currentFunction);
         }
         builder->CreateCondBr(condVal, bodyBB, nextCondBB);
 
@@ -210,7 +207,6 @@ void LLVMCodegenVisitor::visit(WhileStatement& node)
 
         currentCondBB = nextCondBB;
     }
-    afterBB->insertInto(currentFunction);
     builder->SetInsertPoint(afterBB);
 }
 
@@ -219,15 +215,14 @@ void LLVMCodegenVisitor::visit(WhileBranch& node) {}
 void LLVMCodegenVisitor::visit(DoWhileStatement& node)
 {
     auto* bodyBB = llvm::BasicBlock::Create(context, "dowhile.body", currentFunction);
-    auto* condBB = llvm::BasicBlock::Create(context, "dowhile.cond");
-    auto* afterBB = llvm::BasicBlock::Create(context, "dowhile.end");
+    auto* condBB = llvm::BasicBlock::Create(context, "dowhile.cond", currentFunction);
+    auto* afterBB = llvm::BasicBlock::Create(context, "dowhile.end", currentFunction);
 
     builder->CreateBr(bodyBB);
     builder->SetInsertPoint(bodyBB);
     node.body->accept(*this);
 
     builder->CreateBr(condBB);
-    condBB->insertInto(currentFunction);
     builder->SetInsertPoint(condBB);
     lvalue = false;
     node.condition->accept(*this);
@@ -239,7 +234,6 @@ void LLVMCodegenVisitor::visit(DoWhileStatement& node)
     condVal = builder->CreateTruncOrBitCast(condVal, builder->getInt1Ty(), "cond");
 
     builder->CreateCondBr(condVal, bodyBB, afterBB);
-    afterBB->insertInto(currentFunction);
     builder->SetInsertPoint(afterBB);
 }
 
@@ -260,8 +254,8 @@ void LLVMCodegenVisitor::visit(ForStatement& node)
     if (node.step) {
         node.step->accept(*this);
         auto* c = llvm::dyn_cast<llvm::ConstantInt>(lastValue);
-        if (c->isNegative()) isNegativeStep = true;
-        stepV = builder->CreateSExtOrTrunc(stepV, counterType);
+        if (c && c->isNegative()) isNegativeStep = true;
+        stepV = builder->CreateSExtOrTrunc(lastValue, counterType);
     }
     else {
         stepV = llvm::ConstantInt::get(counterType, 1, true);
@@ -283,19 +277,16 @@ void LLVMCodegenVisitor::visit(ForStatement& node)
     auto* cond = builder->CreateICmp(pred, cur, endV);
     builder->CreateCondBr(cond, bodyBB, afterBB);
 
-    bodyBB->insertInto(currentFunction);
     builder->SetInsertPoint(bodyBB);
     node.body->accept(*this);
 
     builder->CreateBr(stepBB);
-    stepBB->insertInto(currentFunction);
     builder->SetInsertPoint(stepBB);
 
-    llvm::Value* next = builder->CreateAdd(cur, stepV, "nextVal");
+    auto* next = builder->CreateAdd(cur, stepV, "nextVal");
     builder->CreateStore(next, counterPtr);
     builder->CreateBr(condBB);
 
-    afterBB->insertInto(currentFunction);
     builder->SetInsertPoint(afterBB);
 }
 

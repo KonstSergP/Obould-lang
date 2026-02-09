@@ -51,6 +51,11 @@ type {
         x, y: f64;
     };
 
+    // Struct for pointer tests
+    IntBox: struct {
+        value: i64;
+    };
+
     // Struct with inheritance - расширение записи
     Point3D: struct (Point2D) {
         z: f64;
@@ -65,6 +70,7 @@ type {
 
     // Pointer types
     PointPtr: *Point2D;
+    IntBoxPtr: *IntBox;
 
     // Procedure types
     UnaryOp: (x: i64) -> i64;
@@ -101,6 +107,7 @@ var {
     numbers: i64[100];
     matrix: f64[10][10];
     flags: bool[8];
+    message: CharBuffer;
 
     // Struct instances
     origin: Point2D;
@@ -108,7 +115,7 @@ var {
     bounds: Rectangle;
 
     // Pointers
-    ptr: *i64;
+    ptr: IntBoxPtr;
     nodePtr: *TreeNode;
 }
 
@@ -122,6 +129,10 @@ fn export Init() -> void
     globalInt = 0;
     globalFloat = 0.0;
     globalBool = false;
+    globalChar = "A";
+    message = "Hello";
+    ptr = nil;
+    nodePtr = nil;
 }
 
 // Procedure with value parameters
@@ -331,6 +342,7 @@ var {
     // ========================================
     p = true && false;  // Logical AND
     p = true || false;  // Logical OR
+    p = nodePtr == nil;
     // Note: In Obould, && and || have unusual precedence
     // && is multiplicative, || is additive, both HIGHER than comparisons
     // So we need parentheses for compound conditions
@@ -396,14 +408,30 @@ var result: i64;
 }
 
 // Procedure with pointer operations
-fn export TestPointers(p: *i64) -> void
+fn export TestPointers(p: IntBoxPtr) -> void
 var {
     local: i64;
-    localPtr: *i64;
+    localPtr: IntBoxPtr;
+    box: IntBox;
 }
 {
-    local = *p;         // Dereference
-    *p = local + 1;     // Assign through pointer
+    box.value = 0;
+    *p = box;
+    local = p.value;
+    p.value = local + 1;
+    localPtr = nil;
+}
+
+// Type guard + IS operator
+fn export TestTypeGuards(p: *Point2D) -> f64
+var z: f64;
+{
+    if p is Point3D {
+        z = p(Point3D).z;
+    } else {
+        z = 0.0;
+    }
+    return z;
 }
 
 // Procedure returning struct field

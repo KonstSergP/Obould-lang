@@ -22,6 +22,7 @@ public:
     void visit(ArrayAccessExpression& node) override;
     void visit(MemberAccessExpression& node) override;
     void visit(DereferenceExpression& node) override;
+    void visit(QualifiedNameNode& node) override;
 
     // Statements
     void visit(ProcedureCall& node) override;

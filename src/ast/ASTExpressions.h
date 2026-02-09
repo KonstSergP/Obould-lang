@@ -79,13 +79,26 @@ public:
 class IdentifierExpression : public Expression
 {
 public:
-    explicit IdentifierExpression(std::string moduleName, std::string name)
+    IdentifierExpression(std::string moduleName, std::string name)
         : name(std::move(name)), moduleName(std::move(moduleName)) {}
 
     void accept(ASTVisitor& v) override;
 
     std::string name;
     std::string moduleName;
+};
+
+
+class QualifiedNameNode : public Expression
+{
+public:
+    using Type = std::variant<std::monostate, std::unique_ptr<IdentifierExpression>, std::unique_ptr<MemberAccessExpression>>;
+    QualifiedNameNode(std::string first, std::string second)
+    : first(std::move(first)), second(std::move(second)) {}
+    void accept(ASTVisitor& v) override;
+
+    std::string first, second;
+    Type realisation;
 };
 
 
