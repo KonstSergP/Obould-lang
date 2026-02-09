@@ -68,6 +68,7 @@ static bool containsRecursive(const std::shared_ptr<TypeInfo>& t,
 
 void SemanticAnalyzer::validateType(const std::shared_ptr<TypeInfo>& type)
 {
+    std::set<TypeInfo*> visits;
     if (type->kind == TypeKind::Pointer) {
         auto base = type->baseType;
         if (base->kind != TypeKind::Struct) {
@@ -81,7 +82,6 @@ void SemanticAnalyzer::validateType(const std::shared_ptr<TypeInfo>& type)
         if (type->baseType && type->name == type->baseType->name) {
             addError("Struct cannot use itself as base type");
         }
-        std::set<TypeInfo*> visits;
         if (type->baseType && containsRecursive(type->baseType, type.get(), visits)) {
             addError("Struct " + type->name + " cannot be extension of itself");
         }
@@ -94,8 +94,8 @@ void SemanticAnalyzer::validateType(const std::shared_ptr<TypeInfo>& type)
         updateStructDepth(type);
     }
     else if (type->kind == TypeKind::Array) {
-        if (type->name == type->baseType->name) {
-            addError("Array cannot use itself as element type");
+        if (containsRecursive(type->baseType, type.get(), visits)) {
+            addError("Array " + type->name + " cannot use itself as element type");
         }
     }
     else if (type->kind == TypeKind::Procedure) {

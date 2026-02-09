@@ -64,7 +64,6 @@ type {
     };
 
     // Pointer types
-    IntPtr: *i64;
     PointPtr: *Point2D;
 
     // Procedure types

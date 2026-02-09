@@ -23,7 +23,7 @@ std::string readFile(const std::string& path)
 
 int main()
 {
-    std::string inputPath = "../tests/test.obl";
+    std::string inputPath = "../tests/comprehensive_test.obl";
 
     try {
         std::string source = readFile(inputPath);
