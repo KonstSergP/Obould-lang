@@ -1,5 +1,6 @@
 #include "LLVMCodegen.h"
 #include "sema/TypeInfo.h"
+#include <llvm/IR/Module.h>
 
 
 namespace obould
