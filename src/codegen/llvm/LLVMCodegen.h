@@ -2,6 +2,7 @@
 #include "ast/ASTVisitor.h"
 #include <memory>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Module.h>
 
 namespace obould
 {

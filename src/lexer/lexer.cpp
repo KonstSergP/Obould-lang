@@ -314,8 +314,7 @@ Token Lexer::string() {
 
     advance();
 
-    std::string lexeme = source_.substr(start_, current_ - start_);
-    return makeToken(TokenType::STRING, lexeme);
+    return makeToken(TokenType::STRING, value);
 }
 
 Token Lexer::makeToken(TokenType type) {
