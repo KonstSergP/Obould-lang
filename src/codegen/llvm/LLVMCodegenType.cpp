@@ -9,7 +9,7 @@ void LLVMCodegenVisitor::visit(IdentifierType& node) {}
 void LLVMCodegenVisitor::visit(ArrayType& node)
 {
     if (lengths.find(node.resolvedType.get()) == lengths.end()) {
-        lengths[node.resolvedType.get()] = builder->getInt64(std::get<int64_t>(*node.length->constantValue));
+        lengths[node.resolvedType.get()] = builder->getInt64(node.resolvedType->length);
     }
     node.elementType->accept(*this);
 }

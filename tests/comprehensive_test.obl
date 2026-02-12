@@ -192,6 +192,8 @@ var {
     i, j, k: i64;
     condition: bool;
     arr: i64[10];
+    buf1, buf2: char[8];
+    buf3: char[4];
 }
 {
     // ========================================
@@ -202,6 +204,29 @@ var {
     k = i + j * 2;
     condition = true;
     arr[0] = 100;
+    buf1 = "abc";
+    buf2 = "abd";
+    buf3 = "abc";
+
+    // ========================================
+    // String/char array comparisons
+    // ========================================
+    condition = "abc" < "abd";
+    condition = "abc" < "abcd";
+    condition = buf1 < buf2;
+    condition = buf1 == buf3;
+    condition = buf1 == "abc";
+    condition = "abc" == buf1;
+    condition = buf1 != "abd";
+    condition = buf1 <= buf3;
+    condition = buf2 > buf1;
+    condition = buf2 >= "abd";
+
+    // Tests for 0X termination in char arrays
+    buf1 = "ab";
+    buf2 = "abX";
+    condition = buf1 < buf2;
+    condition = buf2 > buf1;
 
     // ========================================
     // If statement - simple

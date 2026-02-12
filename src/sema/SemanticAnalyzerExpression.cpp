@@ -128,19 +128,27 @@ void SemanticAnalyzer::visit(UnaryExpression& node)
 
 void SemanticAnalyzer::visit(BinaryExpression& node)
 {
+    using Op = BinaryExpression::Op;
     const bool isComparison =
-        node.op == BinaryExpression::Op::Eq || node.op == BinaryExpression::Op::Neq ||
-        node.op == BinaryExpression::Op::Lt || node.op == BinaryExpression::Op::Gt ||
-        node.op == BinaryExpression::Op::Lte || node.op == BinaryExpression::Op::Gte;
+        node.op == Op::Eq || node.op == Op::Neq ||
+        node.op == Op::Lt || node.op == Op::Gt ||
+        node.op == Op::Lte || node.op == Op::Gte;
 
     const bool isLogical =
-        node.op == BinaryExpression::Op::And || node.op == BinaryExpression::Op::Or;
+        node.op == Op::And || node.op == Op::Or;
 
     const bool isArithmetic =
-        node.op == BinaryExpression::Op::Add || node.op == BinaryExpression::Op::Sub ||
-        node.op == BinaryExpression::Op::Mul || node.op == BinaryExpression::Op::IDiv ||
-        node.op == BinaryExpression::Op::Mod || node.op == BinaryExpression::Op::FDiv;
+        node.op == Op::Add || node.op == Op::Sub ||
+        node.op == Op::Mul || node.op == Op::IDiv ||
+        node.op == Op::Mod || node.op == Op::FDiv;
 
+    const auto isStringLike = [](const TypeInfo& type)
+    {
+        return type.kind == TypeKind::String ||
+            (type.kind == TypeKind::Array && type.baseType->kind == TypeKind::Char);
+    };
+
+    node.isLvalue = false;
     node.left->accept(*this);
     std::visit([this](auto&& nd) { nd->accept(*this); }, node.right);
 
@@ -150,7 +158,6 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
         node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
         return;
     }
-    node.isLvalue = false;
 
     auto lConst = node.left->constantValue;
     std::optional<ConstValue> rConst;
@@ -161,9 +168,9 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
 
 
     switch (node.op) {
-    case BinaryExpression::Op::Add:
-    case BinaryExpression::Op::Sub:
-    case BinaryExpression::Op::Mul:
+    case Op::Add:
+    case Op::Sub:
+    case Op::Mul:
         if (lType->kind == TypeKind::i64 || rType->kind == TypeKind::i64) {
             node.resolvedType = std::make_shared<TypeInfo>(TypeKind::i64);
         }
@@ -180,7 +187,7 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
         }
         break;
 
-    case BinaryExpression::Op::FDiv:
+    case Op::FDiv:
         if (isRealType(lType->kind) && isRealType(rType->kind)) {
             node.resolvedType = std::make_shared<TypeInfo>(TypeKind::f64);
         }
@@ -191,8 +198,8 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
         }
         break;
 
-    case BinaryExpression::Op::IDiv:
-    case BinaryExpression::Op::Mod:
+    case Op::IDiv:
+    case Op::Mod:
         if (isIntegerType(lType->kind) && isIntegerType(rType->kind)) {
             node.resolvedType = std::make_shared<TypeInfo>(TypeKind::i64);
         }
@@ -203,8 +210,8 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
         }
         break;
 
-    case BinaryExpression::Op::And:
-    case BinaryExpression::Op::Or:
+    case Op::And:
+    case Op::Or:
         if (lType->kind == TypeKind::Bool && rType->kind == TypeKind::Bool) {
             node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Bool);
         }
@@ -215,12 +222,12 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
         }
         break;
 
-    case BinaryExpression::Op::Eq:
-    case BinaryExpression::Op::Neq:
-    case BinaryExpression::Op::Lt:
-    case BinaryExpression::Op::Gt:
-    case BinaryExpression::Op::Lte:
-    case BinaryExpression::Op::Gte:
+    case Op::Eq:
+    case Op::Neq:
+    case Op::Lt:
+    case Op::Gt:
+    case Op::Lte:
+    case Op::Gte:
         node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Bool);
 
         if (isIntegerType(lType->kind) && isIntegerType(rType->kind)) {}
@@ -228,10 +235,11 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
         else if (lType->kind == TypeKind::Char && rType->kind == TypeKind::Char) {}
         else if (lType->kind == TypeKind::Char && rType->kind == TypeKind::String && rType->length == 1) {}
         else if (rType->kind == TypeKind::Char && lType->kind == TypeKind::String && lType->length == 1) {}
+        else if (isStringLike(*lType) && isStringLike(*rType)) {}
         else if (((lType->kind == TypeKind::Pointer && rType->kind == TypeKind::Nil)
             || (lType->kind == TypeKind::Nil && rType->kind == TypeKind::Pointer)
             || (lType->kind == TypeKind::Pointer && rType->kind == TypeKind::Pointer))) {
-            if (node.op == BinaryExpression::Op::Eq || node.op == BinaryExpression::Op::Neq) {}
+            if (node.op == Op::Eq || node.op == Op::Neq) {}
             else {
                 addError("Pointers allow only equality comparisons");
                 correct = false;
@@ -243,7 +251,7 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
         }
         break;
 
-    case BinaryExpression::Op::Is:
+    case Op::Is:
     {
         node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Bool);
 
@@ -285,13 +293,13 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
 
             if (isArithmetic || isComparison) {
                 switch (node.op) {
-                case BinaryExpression::Op::Add: node.constantValue = lv + rv;
+                case Op::Add: node.constantValue = lv + rv;
                     break;
-                case BinaryExpression::Op::Sub: node.constantValue = lv - rv;
+                case Op::Sub: node.constantValue = lv - rv;
                     break;
-                case BinaryExpression::Op::Mul: node.constantValue = lv * rv;
+                case Op::Mul: node.constantValue = lv * rv;
                     break;
-                case BinaryExpression::Op::IDiv:
+                case Op::IDiv:
                     if (rv <= 0) {
                         node.constantValue = 0;
                         addError("Divisor must be positive");
@@ -299,7 +307,7 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
                     }
                     node.constantValue = lv / rv - ((lv % rv != 0) && (lv < 0));
                     break;
-                case BinaryExpression::Op::Mod:
+                case Op::Mod:
                     if (rv == 0) {
                         node.constantValue = 0;
                         addError("Modulo by zero");
@@ -307,17 +315,17 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
                     }
                     node.constantValue = (lv % rv + rv) % rv;
                     break;
-                case BinaryExpression::Op::Eq: node.constantValue = lv == rv;
+                case Op::Eq: node.constantValue = lv == rv;
                     break;
-                case BinaryExpression::Op::Neq: node.constantValue = lv != rv;
+                case Op::Neq: node.constantValue = lv != rv;
                     break;
-                case BinaryExpression::Op::Lt: node.constantValue = lv < rv;
+                case Op::Lt: node.constantValue = lv < rv;
                     break;
-                case BinaryExpression::Op::Gt: node.constantValue = lv > rv;
+                case Op::Gt: node.constantValue = lv > rv;
                     break;
-                case BinaryExpression::Op::Lte: node.constantValue = lv <= rv;
+                case Op::Lte: node.constantValue = lv <= rv;
                     break;
-                case BinaryExpression::Op::Gte: node.constantValue = lv >= rv;
+                case Op::Gte: node.constantValue = lv >= rv;
                     break;
                 default: break;
                 }
@@ -329,13 +337,13 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
 
             if (isArithmetic || isComparison) {
                 switch (node.op) {
-                case BinaryExpression::Op::Add: node.constantValue = lv + rv;
+                case Op::Add: node.constantValue = lv + rv;
                     break;
-                case BinaryExpression::Op::Sub: node.constantValue = lv - rv;
+                case Op::Sub: node.constantValue = lv - rv;
                     break;
-                case BinaryExpression::Op::Mul: node.constantValue = lv * rv;
+                case Op::Mul: node.constantValue = lv * rv;
                     break;
-                case BinaryExpression::Op::FDiv:
+                case Op::FDiv:
                     if (rv == 0.0) {
                         node.constantValue = 0.0;
                         addError("Division by zero");
@@ -343,17 +351,17 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
                     }
                     node.constantValue = lv / rv;
                     break;
-                case BinaryExpression::Op::Eq: node.constantValue = lv == rv;
+                case Op::Eq: node.constantValue = lv == rv;
                     break;
-                case BinaryExpression::Op::Neq: node.constantValue = lv != rv;
+                case Op::Neq: node.constantValue = lv != rv;
                     break;
-                case BinaryExpression::Op::Lt: node.constantValue = lv < rv;
+                case Op::Lt: node.constantValue = lv < rv;
                     break;
-                case BinaryExpression::Op::Gt: node.constantValue = lv > rv;
+                case Op::Gt: node.constantValue = lv > rv;
                     break;
-                case BinaryExpression::Op::Lte: node.constantValue = lv <= rv;
+                case Op::Lte: node.constantValue = lv <= rv;
                     break;
-                case BinaryExpression::Op::Gte: node.constantValue = lv >= rv;
+                case Op::Gte: node.constantValue = lv >= rv;
                     break;
                 default:
                     break;
@@ -363,25 +371,25 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
         else if (isLogical) {
             bool lv = std::get<bool>(*lConst);
             bool rv = std::get<bool>(*rConst);
-            if (node.op == BinaryExpression::Op::And) node.constantValue = lv && rv;
-            if (node.op == BinaryExpression::Op::Or) node.constantValue = lv || rv;
+            if (node.op == Op::And) node.constantValue = lv && rv;
+            if (node.op == Op::Or) node.constantValue = lv || rv;
         }
         else if (lType->kind == TypeKind::String && rType->kind == TypeKind::String) {
             std::string lv = std::get<std::string>(*lConst);
             std::string rv = std::get<std::string>(*rConst);
 
             switch (node.op) {
-            case BinaryExpression::Op::Eq: node.constantValue = lv == rv;
+            case Op::Eq: node.constantValue = lv == rv;
                 break;
-            case BinaryExpression::Op::Neq: node.constantValue = lv != rv;
+            case Op::Neq: node.constantValue = lv != rv;
                 break;
-            case BinaryExpression::Op::Lt: node.constantValue = lv < rv;
+            case Op::Lt: node.constantValue = lv < rv;
                 break;
-            case BinaryExpression::Op::Gt: node.constantValue = lv > rv;
+            case Op::Gt: node.constantValue = lv > rv;
                 break;
-            case BinaryExpression::Op::Lte: node.constantValue = lv <= rv;
+            case Op::Lte: node.constantValue = lv <= rv;
                 break;
-            case BinaryExpression::Op::Gte: node.constantValue = lv >= rv;
+            case Op::Gte: node.constantValue = lv >= rv;
                 break;
             default: break;
             }

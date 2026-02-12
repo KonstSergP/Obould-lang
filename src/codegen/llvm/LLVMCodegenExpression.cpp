@@ -39,9 +39,9 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
     }
     node.left->accept(*this);
     auto* lhs = lastValue;
+    auto lType = node.left->resolvedType;
 
     if (node.op == Op::Is) {
-        auto lType = node.left->resolvedType;
         if (lType->kind == TypeKind::Pointer) lType = lType->baseType;
         auto* typeTagPtrAddr = builder->CreateStructGEP(toLLVMType(lType), lhs, 0);
         auto* lDesc = builder->CreateLoad(builder->getPtrTy(), typeTagPtrAddr, "obj.tag");
@@ -98,33 +98,140 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
 
     right->accept(*this);
     auto* rhs = lastValue;
+    auto rType = right->resolvedType;
     if (!lhs || !rhs) {
         lastValue = nullptr;
         return;
     }
 
-    auto resultType = node.resolvedType;
-    if (!resultType) {
-        lastValue = nullptr;
+    bool isCharString =
+        (lType->kind == TypeKind::Char && rType->kind == TypeKind::String && rType->length == 1)
+        || (rType->kind == TypeKind::Char && lType->kind == TypeKind::String && lType->length == 1);
+
+    const auto isStringLike = [](const std::shared_ptr<TypeInfo>& type)
+    {
+        return type && (type->kind == TypeKind::String ||
+            (type->kind == TypeKind::Array && type->baseType->kind == TypeKind::Char));
+    };
+
+    if (isCharString) {
+        auto* chVal = (lType->kind == TypeKind::Char) ? lhs : rhs;
+        auto* strVal = (lType->kind == TypeKind::Char) ? rhs : lhs;
+        auto* strCh = builder->CreateLoad(builder->getInt8Ty(), strVal, "str.ch");
+
+        switch (node.op) {
+        case Op::Eq: lastValue = builder->CreateICmpEQ(chVal, strCh, "ch.eq");
+            break;
+        case Op::Neq: lastValue = builder->CreateICmpNE(chVal, strCh, "ch.neq");
+            break;
+        case Op::Lt: lastValue = builder->CreateICmpSLT(chVal, strCh, "ch.lt");
+            break;
+        case Op::Gt: lastValue = builder->CreateICmpSGT(chVal, strCh, "ch.gt");
+            break;
+        case Op::Lte: lastValue = builder->CreateICmpSLE(chVal, strCh, "ch.lte");
+            break;
+        case Op::Gte: lastValue = builder->CreateICmpSGE(chVal, strCh, "ch.gte");
+            break;
+        default: lastValue = nullptr;
+            break;
+        }
+        return;
+    }
+
+    if (isStringLike(lType) && isStringLike(rType)) {
+        auto getArrayLength = [&](const std::shared_ptr<TypeInfo>& t)
+        {
+            auto* lenVal = lengths[t.get()];
+            if (lenVal->getType()->isPointerTy()) {
+                lenVal = builder->CreateLoad(builder->getInt64Ty(), lenVal, "arr.len");
+            }
+            return builder->CreateZExtOrTrunc(lenVal, builder->getInt64Ty());
+        };
+
+        auto getEffectiveLength = [&](llvm::Value* dataPtr, const std::shared_ptr<TypeInfo>& t) -> llvm::Value*
+        {
+            if (t->kind == TypeKind::String) {
+                return builder->getInt64(t->length);
+            }
+            auto* lenVal = getArrayLength(t);
+
+            auto* memchrTy = llvm::FunctionType::get(builder->getPtrTy(),
+                                                     {
+                                                         builder->getPtrTy(), builder->getInt32Ty(),
+                                                         builder->getInt64Ty()
+                                                     },
+                                                     false);
+            auto memchrFn = module->getOrInsertFunction("memchr", memchrTy);
+            auto* found = builder->CreateCall(memchrFn, {dataPtr, builder->getInt32(0), lenVal});
+
+            auto* nullPtr = llvm::ConstantPointerNull::get(builder->getPtrTy());
+            auto* isNull = builder->CreateICmpEQ(found, nullPtr);
+
+            auto* foundInt = builder->CreatePtrToInt(found, builder->getInt64Ty());
+            auto* baseInt = builder->CreatePtrToInt(dataPtr, builder->getInt64Ty());
+            auto* diff = builder->CreateSub(foundInt, baseInt, "str.len");
+            return builder->CreateSelect(isNull, lenVal, diff, "str.efflen");
+        };
+
+        auto* lenL = getEffectiveLength(lhs, lType);
+        auto* lenR = getEffectiveLength(rhs, rType);
+        auto* lenLt = builder->CreateICmpULT(lenL, lenR);
+        auto* minLen = builder->CreateSelect(lenLt, lenL, lenR, "str.minlen");
+
+        auto* memcmpTy = llvm::FunctionType::get(builder->getInt32Ty(),
+                                                 {
+                                                     builder->getPtrTy(), builder->getPtrTy(),
+                                                     builder->getInt64Ty()
+                                                 },
+                                                 false);
+        auto memcmpFn = module->getOrInsertFunction("memcmp", memcmpTy);
+        auto* cmpVal = builder->CreateCall(memcmpFn, {lhs, rhs, minLen}, "str.cmp");
+
+        auto* zero = builder->getInt32(0);
+        auto* cmpEq = builder->CreateICmpEQ(cmpVal, zero);
+        auto* cmpLt = builder->CreateICmpSLT(cmpVal, zero);
+        auto* cmpGt = builder->CreateICmpSGT(cmpVal, zero);
+        auto* lenEq = builder->CreateICmpEQ(lenL, lenR);
+        auto* lenGt = builder->CreateICmpUGT(lenL, lenR);
+
+        switch (node.op) {
+        case Op::Eq:
+            lastValue = builder->CreateAnd(cmpEq, lenEq, "str.eq");
+            break;
+        case Op::Neq:
+            lastValue = builder->CreateNot(builder->CreateAnd(cmpEq, lenEq), "str.neq");
+            break;
+        case Op::Lt:
+            lastValue = builder->CreateOr(cmpLt, builder->CreateAnd(cmpEq, lenLt), "str.lt");
+            break;
+        case Op::Gt:
+            lastValue = builder->CreateOr(cmpGt, builder->CreateAnd(cmpEq, lenGt), "str.gt");
+            break;
+        case Op::Lte:
+            lastValue = builder->CreateOr(cmpLt, builder->CreateAnd(cmpEq, builder->CreateICmpULE(lenL, lenR)),
+                                          "str.lte");
+            break;
+        case Op::Gte:
+            lastValue = builder->CreateOr(cmpGt, builder->CreateAnd(cmpEq, builder->CreateICmpUGE(lenL, lenR)),
+                                          "str.gte");
+            break;
+        default:
+            lastValue = nullptr;
+            break;
+        }
         return;
     }
 
     bool isInt = lhs->getType()->isIntegerTy();
     bool isReal = lhs->getType()->isFloatingPointTy();
 
-    if (isIntegerType(resultType->kind)) {
+    if (isIntegerType(node.resolvedType->kind)) {
         if (node.left->resolvedType->kind == TypeKind::i64 && right->resolvedType->kind == TypeKind::Byte) {
             rhs = builder->CreateZExt(rhs, builder->getInt64Ty());
         }
         else if (node.left->resolvedType->kind == TypeKind::Byte && right->resolvedType->kind == TypeKind::i64) {
             lhs = builder->CreateZExt(lhs, builder->getInt64Ty());
         }
-    }
-    else if (node.left->resolvedType->kind == TypeKind::String) { // TODO: для строк ни логики, ни toLLMVType
-        lhs = builder->CreateLoad(toLLVMType(right->resolvedType), lhs);
-    }
-    else if (right->resolvedType->kind == TypeKind::String) {
-        rhs = builder->CreateLoad(toLLVMType(node.left->resolvedType), rhs);
     }
 
     switch (node.op) {
@@ -148,28 +255,28 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
         break;
     case Op::IDiv:
     {
-        llvm::Value* q = builder->CreateSDiv(lhs, rhs, "q_trunc");
-        llvm::Value* r = builder->CreateSRem(lhs, rhs, "r_trunc");
+        auto* q = builder->CreateSDiv(lhs, rhs, "q_trunc");
+        auto* r = builder->CreateSRem(lhs, rhs, "r_trunc");
 
-        llvm::Value* zero = llvm::ConstantInt::get(lhs->getType(), 0);
-        llvm::Value* isNegRem = builder->CreateICmpSLT(r, zero, "rem_is_neg");
+        auto* zero = llvm::ConstantInt::get(lhs->getType(), 0);
+        auto* isNegRem = builder->CreateICmpSLT(r, zero, "rem_is_neg");
 
-        llvm::Value* minusOne = llvm::ConstantInt::get(lhs->getType(), -1);
-        llvm::Value* adjustment = builder->CreateSelect(isNegRem, minusOne, zero);
-        llvm::Value* finalDiv = builder->CreateAdd(q, adjustment, "div_oberon");
+        auto* minusOne = llvm::ConstantInt::get(lhs->getType(), -1);
+        auto* adjustment = builder->CreateSelect(isNegRem, minusOne, zero);
+        auto* finalDiv = builder->CreateAdd(q, adjustment, "div_oberon");
 
         lastValue = finalDiv;
         break;
     }
     case Op::Mod:
     {
-        llvm::Value* r = builder->CreateSRem(lhs, rhs, "r_trunc");
+        auto* r = builder->CreateSRem(lhs, rhs, "r_trunc");
 
-        llvm::Value* zero = llvm::ConstantInt::get(lhs->getType(), 0);
-        llvm::Value* isNegRem = builder->CreateICmpSLT(r, zero, "rem_is_neg");
+        auto* zero = llvm::ConstantInt::get(lhs->getType(), 0);
+        auto* isNegRem = builder->CreateICmpSLT(r, zero, "rem_is_neg");
 
-        llvm::Value* adjustment = builder->CreateSelect(isNegRem, rhs, zero);
-        llvm::Value* finalMod = builder->CreateAdd(r, adjustment, "mod_oberon");
+        auto* adjustment = builder->CreateSelect(isNegRem, rhs, zero);
+        auto* finalMod = builder->CreateAdd(r, adjustment, "mod_oberon");
 
         lastValue = finalMod;
         break;
@@ -254,7 +361,7 @@ void LLVMCodegenVisitor::visit(UnaryExpression& node)
         return;
     }
     node.operand->accept(*this);
-    llvm::Value* operand = lastValue;
+    auto* operand = lastValue;
 
     if (!operand) {
         lastValue = nullptr;
@@ -326,9 +433,9 @@ void LLVMCodegenVisitor::visit(ArrayAccessExpression& node)
     bool oldLvalue = lvalue;
     lvalue = false;
     node.array->accept(*this);
-    llvm::Value* arr = lastValue;
+    auto* arr = lastValue;
     node.index->accept(*this);
-    llvm::Value* index = lastValue;
+    auto* index = lastValue;
     lvalue = oldLvalue;
     if (!arr || !index) {
         lastValue = nullptr;

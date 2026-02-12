@@ -58,13 +58,15 @@ llvm::Type* LLVMCodegenVisitor::toLLVMType(const std::shared_ptr<TypeInfo>& type
     case TypeKind::Void:
         return builder->getVoidTy();
     case TypeKind::Pointer:
+    case TypeKind::Procedure:
+    case TypeKind::String:
         return builder->getPtrTy();
     case TypeKind::Array:
     {
-        llvm::Type* elemTy = toLLVMType(typeInfo->baseType);
         if (typeInfo->isOpenArray) {
             return builder->getPtrTy();
         }
+        auto* elemTy = toLLVMType(typeInfo->baseType);
         const uint64_t len = static_cast<uint64_t>(std::max<int64_t>(typeInfo->length, 0));
         return llvm::ArrayType::get(elemTy, len);
     }
@@ -97,8 +99,6 @@ llvm::Type* LLVMCodegenVisitor::toLLVMType(const std::shared_ptr<TypeInfo>& type
         structTypes[typeInfo.get()] = structTy;
         return structTy;
     }
-    case TypeKind::Procedure:
-        return builder->getPtrTy();
     default:
         return llvm::Type::getVoidTy(context);
     }
