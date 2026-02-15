@@ -12,9 +12,7 @@ if(LLVM_PACKAGE_VERSION VERSION_LESS "15.0")
     message(FATAL_ERROR "LLVM >= 15.0 is required. Found ${LLVM_PACKAGE_VERSION}.")
 endif()
 include_directories(${LLVM_INCLUDE_DIRS})
-link_directories(${LLVM_LIBRARY_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
-llvm_map_components_to_libnames(llvm_libs support core irreader native)
 
 # ==========================================
 
@@ -27,8 +25,7 @@ target_include_directories(obould_lib PUBLIC src)
 # ==========================================
 
 add_executable(obould src/driver/main.cpp)
-target_link_libraries(obould PRIVATE obould_lib)
-target_link_libraries(obould PRIVATE ${llvm_libs})
+target_link_libraries(obould PRIVATE obould_lib LLVM)
 
 # ==========================================
 
@@ -38,7 +35,7 @@ foreach(test_source ${MANUAL_TESTS})
     get_filename_component(test_name ${test_source} NAME_WE)
     add_executable(${test_name} ${test_source})
     target_include_directories(${test_name} PUBLIC src)
-    target_link_libraries(${test_name} PRIVATE obould_lib ${llvm_libs})
+    target_link_libraries(${test_name} PRIVATE obould_lib LLVM)
     message(STATUS "Added manual test: ${test_name}")
 endforeach()
 
@@ -60,7 +57,7 @@ if(O_TESTS AND UNIT_TEST_SOURCES)
 
     add_executable(unit_tests ${UNIT_TEST_SOURCES})
     include(Catch)
-    target_link_libraries(unit_tests PRIVATE obould_lib Catch2::Catch2WithMain ${llvm_libs})
+    target_link_libraries(unit_tests PRIVATE obould_lib Catch2::Catch2WithMain LLVM)
     catch_discover_tests(unit_tests)
 elseif (O_TESTS)
     message(STATUS "No unit tests found")
