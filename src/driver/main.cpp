@@ -3,15 +3,21 @@
 #include <sstream>
 #include <string>
 #include <cstring>
+#include <system_error>
 
 #include "lexer/Lexer.h"
 #include "parser/Parser.h"
 #include "info/ASTPrintVisitor.h"
+#include "sema/SemanticAnalyzer.h"
+#include "codegen/llvm/LLVMCodegen.h"
+#include <llvm/Support/FileSystem.h>
+#include <llvm/Support/raw_ostream.h>
 
 enum class OutputMode
 {
     TOKENS,
-    AST
+    AST,
+    LLVM_IR
 };
 
 void printUsage(const char* programName)
@@ -21,6 +27,7 @@ void printUsage(const char* programName)
     std::cerr << "Options:\n";
     std::cerr << "  --tokens, -t    Output lexemes/tokens (default)\n";
     std::cerr << "  --ast, -a       Parse and output AST\n";
+    std::cerr << "  --llvm-ir, -l   Generate and output LLVM IR\n";
     std::cerr << "  --help, -h      Show this help message\n\n";
     std::cerr << "Arguments:\n";
     std::cerr << "  input_file      Obould source file (.obl)\n";
@@ -57,6 +64,9 @@ int main(int argc, char* argv[])
         }
         else if (strcmp(argv[i], "--ast") == 0 || strcmp(argv[i], "-a") == 0) {
             mode = OutputMode::AST;
+        }
+        else if (strcmp(argv[i], "--llvm-ir") == 0 || strcmp(argv[i], "-l") == 0) {
+            mode = OutputMode::LLVM_IR;
         }
         else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
             printUsage(argv[0]);
@@ -113,7 +123,7 @@ int main(int argc, char* argv[])
                 std::cout << "Lexemes written to: " << outputPath << "\n";
             }
         }
-        else {
+        else if (mode == OutputMode::AST) {
             // Parse and output AST
             obould::Parser parser(tokens);
             auto module = parser.parse();
@@ -144,6 +154,56 @@ int main(int argc, char* argv[])
                 obould::ASTPrintVisitor printer(outFile);
                 module->accept(printer);
                 std::cout << "AST written to: " << outputPath << "\n";
+            }
+        }
+        else {
+            // Generate and output LLVM IR
+            obould::Parser parser(tokens);
+            auto module = parser.parse();
+
+            if (parser.hasErrors()) {
+                std::cerr << "Parser errors:\n";
+                for (const auto& error : parser.getErrors()) {
+                    std::cerr << "  " << error << "\n";
+                }
+                return 1;
+            }
+
+            if (!module) {
+                std::cerr << "Failed to parse module\n";
+                return 1;
+            }
+
+            obould::SemanticAnalyzer sema;
+            bool semaSuccess = sema.analyze(*module);
+            if (!semaSuccess) {
+                std::cerr << "Semantic analysis errors:\n";
+                for (const auto& error : sema.getErrors()) {
+                    std::cerr << "  " << error << "\n";
+                }
+                return 1;
+            }
+
+            obould::LLVMCodegenVisitor codegen;
+            auto llvmModule = codegen.codegen(*module);
+
+            if (!llvmModule) {
+                std::cerr << "Failed to generate LLVM IR\n";
+                return 1;
+            }
+
+            if (outputPath.empty()) {
+                llvmModule->print(llvm::outs(), nullptr);
+            }
+            else {
+                std::error_code ec;
+                llvm::raw_fd_ostream outFile(outputPath, ec);
+                if (ec) {
+                    std::cerr << "Cannot open output file: " << outputPath << "\n";
+                    return 1;
+                }
+                llvmModule->print(outFile, nullptr);
+                std::cout << "LLVM IR written to: " << outputPath << "\n";
             }
         }
 

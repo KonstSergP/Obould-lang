@@ -20,7 +20,7 @@ std::unique_ptr<llvm::Module> LLVMCodegenVisitor::codegen(Module& moduleAst)
 
 llvm::FunctionType* LLVMCodegenVisitor::createFunctionType(const std::shared_ptr<TypeInfo>& type)
 {
-    llvm::Type* retType = toLLVMType(type->returnType);
+    auto* retType = toLLVMType(type->returnType);
     std::vector<llvm::Type*> paramTypes, hiddenParams;
     for (const auto& param : type->parameters) {
         auto paramType = param.type;
@@ -94,7 +94,7 @@ llvm::Type* LLVMCodegenVisitor::toLLVMType(const std::shared_ptr<TypeInfo>& type
         }
 
         std::string structName = "struct." + typeInfo->name;
-        llvm::StructType* structTy = llvm::StructType::create(context, structName);
+        auto* structTy = llvm::StructType::create(context, structName);
         structTy->setBody(fieldTypes, false);
         structTypes[typeInfo.get()] = structTy;
         return structTy;
@@ -127,7 +127,7 @@ llvm::Value* LLVMCodegenVisitor::getConstantValue(const Expression& node)
 
 llvm::AllocaInst* LLVMCodegenVisitor::createEntryAlloca(llvm::Type* type, const std::string& name) const
 {
-    llvm::BasicBlock& entryBB = currentFunction->getEntryBlock();
+    auto& entryBB = currentFunction->getEntryBlock();
     llvm::IRBuilder entryBuilder(&entryBB, entryBB.begin());
     return entryBuilder.CreateAlloca(type, nullptr, name);
 }
@@ -140,7 +140,7 @@ llvm::GlobalVariable* LLVMCodegenVisitor::createStructDescriptor(const std::shar
     auto* ptrType = builder->getPtrTy();
     auto* intType = builder->getInt64Ty();
     auto* arrayType = llvm::ArrayType::get(ptrType, depth + 1);
-    llvm::StructType* structTy = llvm::StructType::create({intType, arrayType}, name);
+    auto* structTy = llvm::StructType::create({intType, arrayType}, name);
 
     auto* gVar = new llvm::GlobalVariable(
         *module,
@@ -177,21 +177,21 @@ void LLVMCodegenVisitor::makeStructCastCheck(llvm::Value* left, llvm::Value* rig
     auto* endBB = llvm::BasicBlock::Create(context, "is.end", currentFunction);
 
     builder->CreateBr(startBB);
-    llvm::Value* objDepth = builder->CreateLoad(builder->getInt64Ty(), left);
-    llvm::Value* depthCheck = builder->CreateICmpSGE(objDepth, builder->getInt64(rDepth));
+    auto* objDepth = builder->CreateLoad(builder->getInt64Ty(), left);
+    auto* depthCheck = builder->CreateICmpSGE(objDepth, builder->getInt64(rDepth));
     builder->CreateCondBr(depthCheck, contBB, endBB);
 
     auto* structTy = llvm::StructType::create({builder->getInt64Ty(), builder->getPtrTy()});
 
     builder->SetInsertPoint(contBB);
-    llvm::Value* arrayPtr = builder->CreateStructGEP(structTy, left, 1);
-    llvm::Value* ancestorPtrAddr = builder->CreateGEP(builder->getPtrTy(), arrayPtr, builder->getInt64(rDepth));
-    llvm::Value* ancestorPtr = builder->CreateLoad(builder->getPtrTy(), ancestorPtrAddr, "ancestor.tag");
-    llvm::Value* instCheck = builder->CreateICmpEQ(ancestorPtr, right, "is.inst");
+    auto* arrayPtr = builder->CreateStructGEP(structTy, left, 1);
+    auto* ancestorPtrAddr = builder->CreateGEP(builder->getPtrTy(), arrayPtr, builder->getInt64(rDepth));
+    auto* ancestorPtr = builder->CreateLoad(builder->getPtrTy(), ancestorPtrAddr, "ancestor.tag");
+    auto* instCheck = builder->CreateICmpEQ(ancestorPtr, right, "is.inst");
     builder->CreateBr(endBB);
 
     builder->SetInsertPoint(endBB);
-    llvm::PHINode* phi = builder->CreatePHI(builder->getInt1Ty(), 2, "is.res");
+    auto* phi = builder->CreatePHI(builder->getInt1Ty(), 2, "is.res");
     phi->addIncoming(builder->getFalse(), startBB);
     phi->addIncoming(instCheck, contBB);
     lastValue = phi;

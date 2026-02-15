@@ -5,6 +5,16 @@ project(ObouldCompiler)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+find_package(LLVM REQUIRED CONFIG)
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+if(LLVM_PACKAGE_VERSION VERSION_LESS "15.0")
+    message(FATAL_ERROR "LLVM >= 15.0 is required. Found ${LLVM_PACKAGE_VERSION}.")
+endif()
+include_directories(${LLVM_INCLUDE_DIRS})
+link_directories(${LLVM_LIBRARY_DIRS})
+add_definitions(${LLVM_DEFINITIONS})
+llvm_map_components_to_libnames(llvm_libs support core irreader native)
 
 # ==========================================
 
@@ -18,15 +28,6 @@ target_include_directories(obould_lib PUBLIC src)
 
 add_executable(obould src/driver/main.cpp)
 target_link_libraries(obould PRIVATE obould_lib)
-
-
-find_package(LLVM REQUIRED CONFIG)
-message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-include_directories(${LLVM_INCLUDE_DIRS})
-add_definitions(${LLVM_DEFINITIONS})
-
-llvm_map_components_to_libnames(llvm_libs support core irreader native)
 target_link_libraries(obould PRIVATE ${llvm_libs})
 
 # ==========================================
@@ -45,19 +46,22 @@ endforeach()
 
 include(CTest)
 
-include(FetchContent)
-FetchContent_Declare(
-        Catch2
-        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-        GIT_TAG        v3.4.0
-)
-FetchContent_MakeAvailable(Catch2)
-
 file(GLOB_RECURSE UNIT_TEST_SOURCES CONFIGURE_DEPENDS "tests/unit/*.cpp")
+option(O_TESTS "Build unit tests (requires Catch2)" OFF)
 
-if(UNIT_TEST_SOURCES)
+if(O_TESTS AND UNIT_TEST_SOURCES)
+    include(FetchContent)
+    FetchContent_Declare(
+            Catch2
+            GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+            GIT_TAG        v3.4.0
+    )
+    FetchContent_MakeAvailable(Catch2)
+
     add_executable(unit_tests ${UNIT_TEST_SOURCES})
     include(Catch)
     target_link_libraries(unit_tests PRIVATE obould_lib Catch2::Catch2WithMain ${llvm_libs})
     catch_discover_tests(unit_tests)
+elseif (O_TESTS)
+    message(STATUS "No unit tests found")
 endif()
