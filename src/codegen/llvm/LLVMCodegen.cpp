@@ -120,7 +120,7 @@ llvm::Value* LLVMCodegenVisitor::getConstantValue(const Expression& node)
         return builder->getInt1(std::get<bool>(val));
     }
     if (std::holds_alternative<std::string>(val)) {
-        return builder->CreateGlobalStringPtr(std::get<std::string>(val), "str", 0, module.get());
+        return builder->CreateGlobalString(std::get<std::string>(val), "str", 0, module.get());
     }
     return nullptr;
 }
