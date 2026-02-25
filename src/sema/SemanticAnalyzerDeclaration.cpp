@@ -219,6 +219,7 @@ void SemanticAnalyzer::visit(DeclarationsBlock& node)
 void SemanticAnalyzer::visit(ProcedureDeclaration& node)
 {
     auto procType = std::make_shared<TypeInfo>(TypeKind::Procedure);
+    node.resolvedType = procType;
 
     if (node.returnType) {
         node.returnType->accept(*this);

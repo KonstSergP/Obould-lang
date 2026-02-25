@@ -40,7 +40,7 @@ void SemanticAnalyzer::addBuiltinTypes(SymbolTable& symTable)
 bool SemanticAnalyzer::analyze(Module& module)
 {
     errors.clear();
-    currentTableName = "";
+    currentTableName = module.name;
     module.accept(*this);
     return errors.empty();
 }

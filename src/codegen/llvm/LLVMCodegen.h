@@ -4,6 +4,7 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
 
+
 namespace obould
 {
 class LLVMCodegenVisitor : public ASTVisitor
@@ -66,6 +67,8 @@ private:
 
     llvm::Value* lastValue = nullptr;
     llvm::Function* currentFunction = nullptr;
+    std::string currentModule;
+    bool importedModule = false;
     bool lvalue = false;
 
     std::unordered_map<std::string, llvm::Value*> locals;
@@ -74,6 +77,7 @@ private:
     std::unordered_map<TypeInfo*, llvm::GlobalVariable*> descriptors;
     std::unordered_map<TypeInfo*, llvm::Value*> lengths;
 
+    static std::string getMangledName(const std::string& moduleName, const std::string& name);
     llvm::Type* toLLVMType(const std::shared_ptr<TypeInfo>& typeInfo);
     llvm::Value* getConstantValue(const Expression& node);
     llvm::AllocaInst* createEntryAlloca(llvm::Type* type, const std::string& name = "") const;

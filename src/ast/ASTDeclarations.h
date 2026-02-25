@@ -159,6 +159,7 @@ public:
     std::unique_ptr<DeclarationsBlock> declarations;
     std::unique_ptr<StatementsBlock> body;
     std::unique_ptr<Expression> returnExpression;
+    std::shared_ptr<TypeInfo> resolvedType;
 };
 
 class Import : public ASTNode

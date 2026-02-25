@@ -61,7 +61,7 @@ void SemanticAnalyzer::visit(IdentifierExpression& node)
         return;
     }
 
-    if (sym->kind == SymbolKind::Type || sym->kind == SymbolKind::Module) {
+    if (sym->kind == SymbolKind::Type) {
         addError("Identifier '" + node.name + "' cannot be used as an expression");
         node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
         return;

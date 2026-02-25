@@ -1,6 +1,7 @@
 #include "LLVMCodegen.h"
 #include "sema/TypeInfo.h"
 
+
 namespace obould
 {
 std::unique_ptr<llvm::Module> LLVMCodegenVisitor::codegen(Module& moduleAst)
@@ -9,13 +10,20 @@ std::unique_ptr<llvm::Module> LLVMCodegenVisitor::codegen(Module& moduleAst)
     functions.clear();
     structTypes.clear();
     lvalue = false;
+    importedModule = false;
     lastValue = nullptr;
     currentFunction = nullptr;
     module = std::make_unique<llvm::Module>(moduleAst.name, context);
     builder = std::make_unique<llvm::IRBuilder<>>(context);
+    currentModule = moduleAst.name;
 
     moduleAst.accept(*this);
     return std::move(module);
+}
+
+std::string LLVMCodegenVisitor::getMangledName(const std::string& moduleName, const std::string& name)
+{
+    return moduleName + "." + name;
 }
 
 llvm::FunctionType* LLVMCodegenVisitor::createFunctionType(const std::shared_ptr<TypeInfo>& type)

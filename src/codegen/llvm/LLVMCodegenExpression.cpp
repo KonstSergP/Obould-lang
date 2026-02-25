@@ -399,17 +399,16 @@ void LLVMCodegenVisitor::visit(IdentifierExpression& node)
     }
     llvm::Value* ptr = nullptr;
 
-    auto it = locals.find(node.name);
-    if (it != locals.end()) {
+    if (auto it = locals.find(node.name); it != locals.end() && node.moduleName.empty()) {
         ptr = it->second;
     }
     else {
-        auto* gVar = module->getNamedGlobal(node.name);
+        auto* gVar = module->getNamedGlobal(getMangledName(node.moduleName, node.name));
         if (gVar) {
             ptr = gVar;
         }
         else {
-            auto* fn = module->getFunction(node.name);
+            auto* fn = module->getFunction(getMangledName(node.moduleName, node.name));
             if (fn) {
                 lastValue = fn;
                 return;
@@ -424,8 +423,8 @@ void LLVMCodegenVisitor::visit(IdentifierExpression& node)
         lastValue = ptr;
     }
     else {
-        llvm::Type* ty = toLLVMType(tyInfo);
-        lastValue = builder->CreateLoad(ty, ptr, node.name);
+        auto* ty = toLLVMType(tyInfo);
+        lastValue = builder->CreateLoad(ty, ptr);
     }
 }
 
@@ -530,7 +529,7 @@ void LLVMCodegenVisitor::visit(MemberAccessExpression& node)
         return;
     }
 
-    llvm::Value* fieldPtr = builder->CreateStructGEP(toLLVMType(structInfo), basePtr, fieldIndex, "field.ptr");
+    auto* fieldPtr = builder->CreateStructGEP(toLLVMType(structInfo), basePtr, fieldIndex, "field.ptr");
     if (!fieldPtr) {
         lastValue = nullptr;
         return;
@@ -540,7 +539,7 @@ void LLVMCodegenVisitor::visit(MemberAccessExpression& node)
         lastValue = fieldPtr;
     }
     else {
-        llvm::Type* fieldTy = toLLVMType(node.resolvedType);
+        auto* fieldTy = toLLVMType(node.resolvedType);
         lastValue = builder->CreateLoad(fieldTy, fieldPtr, node.memberName);
     }
 }
