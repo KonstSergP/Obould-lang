@@ -1,7 +1,7 @@
 #pragma once
-#include <set>
 #include "SymbolTable.h"
 #include "ast/ASTVisitor.h"
+#include "parser/SymbolFileParser.h"
 
 
 namespace obould
@@ -9,6 +9,8 @@ namespace obould
 class SemanticAnalyzer : public ASTVisitor
 {
 public:
+    SemanticAnalyzer();
+
     bool analyze(Module& module);
     const std::vector<std::string>& getErrors() const;
     void addError(const std::string& error);
@@ -64,6 +66,9 @@ public:
     void visit(Module& node) override;
 
 private:
+    void createBuiltinTypes();
+    void addBuiltinTypes(SymbolTable& symTable);
+
     enum class AnalyzeStages { Default, CreateType, FillType, ValidateType };
 
     AnalyzeStages analyzeStage = AnalyzeStages::Default;
@@ -71,6 +76,9 @@ private:
     std::shared_ptr<TypeInfo> switchSelectorType;
 
     std::vector<std::string> errors;
-    SymbolTable symbolTable;
+    std::unordered_map<std::string, std::shared_ptr<TypeInfo>> builtinTypes;
+    std::unordered_map<std::string, SymbolTable> symbolTables;
+    std::string currentTableName;
+    SymbolFileParser symbolFileParser;
 };
 }

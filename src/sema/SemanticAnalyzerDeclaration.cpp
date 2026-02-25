@@ -30,7 +30,7 @@ void SemanticAnalyzer::visit(ConstantDeclaration& node)
     sym.isReadOnly = true;
     sym.value = node.value->constantValue;
 
-    if (!symbolTable.addSymbol(sym)) {
+    if (!symbolTables[currentTableName].addSymbol(sym)) {
         addError("Redeclaration of constant '" + node.name + "'");
     }
 }
@@ -111,7 +111,7 @@ void SemanticAnalyzer::validateType(const std::shared_ptr<TypeInfo>& type)
 void SemanticAnalyzer::visit(TypeDeclaration& node)
 {
     if (analyzeStage == AnalyzeStages::CreateType) {
-        if (symbolTable.lookupSymbolLocal(node.name)) {
+        if (symbolTables[currentTableName].lookupSymbolLocal(node.name)) {
             addError("Redeclaration of type '" + node.name + "'");
             return;
         }
@@ -127,12 +127,12 @@ void SemanticAnalyzer::visit(TypeDeclaration& node)
         sym.isReference = false;
         sym.isReadOnly = true;
 
-        symbolTable.addSymbol(sym);
+        symbolTables[currentTableName].addSymbol(sym);
     }
     else if (analyzeStage == AnalyzeStages::FillType) {
         node.type->accept(*this);
 
-        Symbol* sym = symbolTable.lookupSymbolLocal(node.name);
+        auto* sym = symbolTables[currentTableName].lookupSymbolLocal(node.name);
         if (!sym) return;
         auto& realType = node.type->resolvedType;
         auto& symType = sym->type;
@@ -142,7 +142,7 @@ void SemanticAnalyzer::visit(TypeDeclaration& node)
         symType->name = node.name;
     }
     else if (analyzeStage == AnalyzeStages::ValidateType) {
-        Symbol* sym = symbolTable.lookupSymbolLocal(node.name);
+        auto* sym = symbolTables[currentTableName].lookupSymbolLocal(node.name);
         if (!sym) return;
         validateType(sym->type);
     }
@@ -173,7 +173,7 @@ void SemanticAnalyzer::visit(VariableDeclaration& node)
     sym.isReference = false;
     sym.isReadOnly = false;
 
-    if (!symbolTable.addSymbol(sym)) {
+    if (!symbolTables[currentTableName].addSymbol(sym)) {
         addError("Redeclaration of variable '" + node.name + "'");
     }
 }
@@ -246,11 +246,14 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
     procSym.isReference = false;
     procSym.isReadOnly = true;
 
-    if (!symbolTable.addSymbol(procSym)) {
+    if (!symbolTables[currentTableName].addSymbol(procSym)) {
         addError("Redeclaration of symbol '" + node.name + "'");
     }
 
-    symbolTable.enterScope();
+    if (currentTableName.empty())
+        return;
+
+    symbolTables[currentTableName].enterScope();
 
     for (const auto& param : node.parameters) {
         auto& paramType = param->type->resolvedType;
@@ -268,7 +271,7 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
         paramSym.isReference = param->isReference;
         paramSym.isReadOnly = isReadOnly;
 
-        if (!symbolTable.addSymbol(paramSym)) {
+        if (!symbolTables[currentTableName].addSymbol(paramSym)) {
             addError("Duplicate parameter name '" + param->name + "'");
         }
     }
@@ -299,56 +302,29 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
             addError("Return expression in procedure '" + node.name + "' does not match with return type");
         }
     }
-
-    symbolTable.exitScope();
+    symbolTables[currentTableName].exitScope();
 }
 
 void SemanticAnalyzer::visit(ProcedureParameter& node) {}
 
 void SemanticAnalyzer::visit(Import& node)
 {
-    Symbol modSym;
-    modSym.name = node.localName;
-    modSym.kind = SymbolKind::Module;
-    modSym.type = std::make_shared<TypeInfo>(TypeKind::Void);
-    modSym.isExported = false;
-    modSym.isReference = false;
-    modSym.isReadOnly = true;
-
-    if (!symbolTable.addSymbol(modSym)) {
-        addError("Module '" + node.localName + "' already imported");
+    if (symbolTables.find(node.localName) != symbolTables.end()) {
+        return;
     }
-    // TODO: реализовать логику импорта модулей
-}
-
-static void addBuiltinTypes(SymbolTable& symTable)
-{
-    auto add = [&](const std::string& name, TypeKind kind)
-    {
-        Symbol s;
-        s.name = name;
-        s.kind = SymbolKind::Type;
-        s.type = std::make_shared<TypeInfo>(kind);
-        s.isExported = false;
-        s.isReference = false;
-        s.isReadOnly = true;
-        symTable.addSymbol(s);
-    };
-
-    add("i64", TypeKind::i64);
-    add("f64", TypeKind::f64);
-    add("bool", TypeKind::Bool);
-    add("byte", TypeKind::Byte);
-    add("char", TypeKind::Char);
-    add("void", TypeKind::Void);
-    // TODO: при нескольких модулях надо чтобы они были одинаковые
+    auto mod = symbolFileParser.parse(node.realName);
+    auto curName = currentTableName;
+    currentTableName = node.localName;
+    mod->accept(*this);
+    currentTableName = curName;
+    node.module = std::move(mod);
 }
 
 void SemanticAnalyzer::visit(Module& node)
 {
-    symbolTable.enterScope();
-
-    addBuiltinTypes(symbolTable);
+    symbolTables.try_emplace(currentTableName);
+    symbolTables[currentTableName].enterScope();
+    addBuiltinTypes(symbolTables[currentTableName]);
 
     for (const auto& imp : node.imports) {
         imp->accept(*this);
@@ -361,7 +337,6 @@ void SemanticAnalyzer::visit(Module& node)
     for (const auto& proc : node.procedures) {
         proc->accept(*this);
     }
-
-    symbolTable.exitScope();
+    symbolTables[currentTableName].exitScope();
 }
 }

@@ -8,20 +8,7 @@
 
 namespace obould
 {
-class Import : public ASTNode
-{
-public:
-    Import(std::string localName, std::string realName)
-        : localName(std::move(localName)),
-          realName(std::move(realName)) {}
-
-    void accept(ASTVisitor& v) override;
-
-
-    std::string localName;
-    std::string realName;
-};
-
+class Module;
 
 class ConstantDeclaration : public ASTNode
 {
@@ -174,6 +161,20 @@ public:
     std::unique_ptr<Expression> returnExpression;
 };
 
+class Import : public ASTNode
+{
+public:
+    Import(std::string localName, std::string realName)
+        : localName(std::move(localName)),
+          realName(std::move(realName)) {}
+
+    void accept(ASTVisitor& v) override;
+
+
+    std::string localName;
+    std::string realName;
+    std::unique_ptr<Module> module;
+};
 
 class Module : public ASTNode
 {

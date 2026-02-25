@@ -159,7 +159,7 @@ void SemanticAnalyzer::visit(DoWhileStatement& node)
 
 void SemanticAnalyzer::visit(ForStatement& node)
 {
-    auto* sym = symbolTable.lookupSymbol(node.counterName);
+    auto* sym = symbolTables[currentTableName].lookupSymbol(node.counterName);
     if (!sym) {
         addError("For counter " + node.counterName + " is not declared.");
         return;

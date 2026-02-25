@@ -1,5 +1,3 @@
-#include <complex.h>
-
 #include "SemanticAnalyzer.h"
 #include "TypeInfo.h"
 
@@ -46,11 +44,15 @@ void SemanticAnalyzer::visit(IdentifierExpression& node)
 {
     Symbol* sym = nullptr;
     if (node.moduleName.empty()) {
-        sym = symbolTable.lookupSymbol(node.name);
+        sym = symbolTables[currentTableName].lookupSymbol(node.name);
     }
     else {
-        // TODO: реализовать поиск в других модулях
-        sym = symbolTable.lookupSymbol(node.name);
+        if (symbolTables.find(node.moduleName) == symbolTables.end()) {
+            addError("Can't find module '" + node.moduleName + "'");
+            node.resolvedType = std::make_shared<TypeInfo>();
+            return;
+        }
+        sym = symbolTables[node.moduleName].lookupSymbol(node.name);
     }
 
     if (!sym) {
@@ -493,7 +495,7 @@ void SemanticAnalyzer::visit(DereferenceExpression& node)
 void SemanticAnalyzer::visit(QualifiedNameNode& node)
 {
     if (std::holds_alternative<std::monostate>(node.realisation)) {
-        if (auto sym = symbolTable.lookupSymbol(node.first); sym->kind == SymbolKind::Module) {
+        if (symbolTables.find(node.first) != symbolTables.end()) {
             node.realisation = std::make_unique<IdentifierExpression>(node.first, node.second);
         }
         else {

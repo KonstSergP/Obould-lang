@@ -14,7 +14,6 @@ enum class SymbolKind
     Constant,
     Type,
     Procedure,
-    Module
 };
 
 

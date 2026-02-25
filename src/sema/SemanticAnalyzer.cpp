@@ -3,9 +3,44 @@
 
 namespace obould
 {
+SemanticAnalyzer::SemanticAnalyzer()
+{
+    createBuiltinTypes();
+}
+
+void SemanticAnalyzer::createBuiltinTypes()
+{
+    builtinTypes["i64"] = std::make_shared<TypeInfo>(TypeKind::i64);
+    builtinTypes["f64"] = std::make_shared<TypeInfo>(TypeKind::f64);
+    builtinTypes["bool"] = std::make_shared<TypeInfo>(TypeKind::Bool);
+    builtinTypes["byte"] = std::make_shared<TypeInfo>(TypeKind::Byte);
+    builtinTypes["char"] = std::make_shared<TypeInfo>(TypeKind::Char);
+    builtinTypes["void"] = std::make_shared<TypeInfo>(TypeKind::Void);
+}
+
+void SemanticAnalyzer::addBuiltinTypes(SymbolTable& symTable)
+{
+    auto add = [&](const std::string& name)
+    {
+        Symbol s;
+        s.name = name;
+        s.kind = SymbolKind::Type;
+        s.type = builtinTypes[name];
+        s.isExported = false;
+        s.isReference = false;
+        s.isReadOnly = true;
+        symTable.addSymbol(s);
+    };
+
+    for (auto& [k, v] : builtinTypes) {
+        add(k);
+    }
+}
+
 bool SemanticAnalyzer::analyze(Module& module)
 {
     errors.clear();
+    currentTableName = "";
     module.accept(*this);
     return errors.empty();
 }
@@ -31,7 +66,7 @@ std::shared_ptr<TypeInfo> SemanticAnalyzer::getPolymorphicBase(Expression* expr)
 
     if (type->kind == TypeKind::Struct) {
         if (auto* idExpr = dynamic_cast<IdentifierExpression*>(expr)) {
-            auto* sym = symbolTable.lookupSymbol(idExpr->name);
+            auto* sym = symbolTables[currentTableName].lookupSymbol(idExpr->name);
             if (sym && sym->isReference) {
                 return type;
             }
