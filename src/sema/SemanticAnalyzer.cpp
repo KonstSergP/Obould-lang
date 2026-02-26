@@ -40,7 +40,8 @@ void SemanticAnalyzer::addBuiltinTypes(SymbolTable& symTable)
 bool SemanticAnalyzer::analyze(Module& module)
 {
     errors.clear();
-    currentTableName = module.name;
+    currentModuleName = module.name;
+    moduleRealNames[module.name] = module.name;
     module.accept(*this);
     return errors.empty();
 }
@@ -66,7 +67,7 @@ std::shared_ptr<TypeInfo> SemanticAnalyzer::getPolymorphicBase(Expression* expr)
 
     if (type->kind == TypeKind::Struct) {
         if (auto* idExpr = dynamic_cast<IdentifierExpression*>(expr)) {
-            auto* sym = symbolTables[currentTableName].lookupSymbol(idExpr->name);
+            auto* sym = symbolTables[currentModuleName].lookupSymbol(idExpr->name);
             if (sym && sym->isReference) {
                 return type;
             }

@@ -78,7 +78,8 @@ private:
     std::vector<std::string> errors;
     std::unordered_map<std::string, std::shared_ptr<TypeInfo>> builtinTypes;
     std::unordered_map<std::string, SymbolTable> symbolTables;
-    std::string currentTableName;
+    std::unordered_map<std::string, std::string> moduleRealNames;
+    std::string currentModuleName;
     SymbolFileParser symbolFileParser;
 };
 }

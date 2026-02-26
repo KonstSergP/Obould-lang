@@ -30,7 +30,7 @@ void SemanticAnalyzer::visit(ConstantDeclaration& node)
     sym.isReadOnly = true;
     sym.value = node.value->constantValue;
 
-    if (!symbolTables[currentTableName].addSymbol(sym)) {
+    if (!symbolTables[currentModuleName].addSymbol(sym)) {
         addError("Redeclaration of constant '" + node.name + "'");
     }
 }
@@ -111,7 +111,7 @@ void SemanticAnalyzer::validateType(const std::shared_ptr<TypeInfo>& type)
 void SemanticAnalyzer::visit(TypeDeclaration& node)
 {
     if (analyzeStage == AnalyzeStages::CreateType) {
-        if (symbolTables[currentTableName].lookupSymbolLocal(node.name)) {
+        if (symbolTables[currentModuleName].lookupSymbolLocal(node.name)) {
             addError("Redeclaration of type '" + node.name + "'");
             return;
         }
@@ -127,12 +127,12 @@ void SemanticAnalyzer::visit(TypeDeclaration& node)
         sym.isReference = false;
         sym.isReadOnly = true;
 
-        symbolTables[currentTableName].addSymbol(sym);
+        symbolTables[currentModuleName].addSymbol(sym);
     }
     else if (analyzeStage == AnalyzeStages::FillType) {
         node.type->accept(*this);
 
-        auto* sym = symbolTables[currentTableName].lookupSymbolLocal(node.name);
+        auto* sym = symbolTables[currentModuleName].lookupSymbolLocal(node.name);
         if (!sym) return;
         auto& realType = node.type->resolvedType;
         auto& symType = sym->type;
@@ -142,7 +142,7 @@ void SemanticAnalyzer::visit(TypeDeclaration& node)
         symType->name = node.name;
     }
     else if (analyzeStage == AnalyzeStages::ValidateType) {
-        auto* sym = symbolTables[currentTableName].lookupSymbolLocal(node.name);
+        auto* sym = symbolTables[currentModuleName].lookupSymbolLocal(node.name);
         if (!sym) return;
         validateType(sym->type);
     }
@@ -173,7 +173,7 @@ void SemanticAnalyzer::visit(VariableDeclaration& node)
     sym.isReference = false;
     sym.isReadOnly = false;
 
-    if (!symbolTables[currentTableName].addSymbol(sym)) {
+    if (!symbolTables[currentModuleName].addSymbol(sym)) {
         addError("Redeclaration of variable '" + node.name + "'");
     }
 }
@@ -247,14 +247,14 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
     procSym.isReference = false;
     procSym.isReadOnly = true;
 
-    if (!symbolTables[currentTableName].addSymbol(procSym)) {
+    if (!symbolTables[currentModuleName].addSymbol(procSym)) {
         addError("Redeclaration of symbol '" + node.name + "'");
     }
 
-    if (currentTableName.empty())
+    if (currentModuleName.empty())
         return;
 
-    symbolTables[currentTableName].enterScope();
+    symbolTables[currentModuleName].enterScope();
 
     for (const auto& param : node.parameters) {
         auto& paramType = param->type->resolvedType;
@@ -272,7 +272,7 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
         paramSym.isReference = param->isReference;
         paramSym.isReadOnly = isReadOnly;
 
-        if (!symbolTables[currentTableName].addSymbol(paramSym)) {
+        if (!symbolTables[currentModuleName].addSymbol(paramSym)) {
             addError("Duplicate parameter name '" + param->name + "'");
         }
     }
@@ -303,29 +303,37 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
             addError("Return expression in procedure '" + node.name + "' does not match with return type");
         }
     }
-    symbolTables[currentTableName].exitScope();
+    symbolTables[currentModuleName].exitScope();
 }
 
 void SemanticAnalyzer::visit(ProcedureParameter& node) {}
 
 void SemanticAnalyzer::visit(Import& node)
 {
-    if (symbolTables.find(node.localName) != symbolTables.end()) {
+    if (node.localName.empty())
+        node.localName = node.realName;
+    moduleRealNames[node.localName] = node.realName;
+    if (symbolTables.find(node.realName) != symbolTables.end())
         return;
-    }
     auto mod = symbolFileParser.parse(node.realName);
-    auto curName = currentTableName;
-    currentTableName = node.localName;
+    auto curName = currentModuleName;
+    auto curModuleNames = std::move(moduleRealNames);
+
+    currentModuleName = node.realName;
+    moduleRealNames[node.realName] = node.realName;
+
     mod->accept(*this);
-    currentTableName = curName;
+
+    currentModuleName = curName;
+    moduleRealNames = curModuleNames;
     node.module = std::move(mod);
 }
 
 void SemanticAnalyzer::visit(Module& node)
 {
-    symbolTables.try_emplace(currentTableName);
-    symbolTables[currentTableName].enterScope();
-    addBuiltinTypes(symbolTables[currentTableName]);
+    symbolTables.try_emplace(currentModuleName);
+    symbolTables[currentModuleName].enterScope();
+    addBuiltinTypes(symbolTables[currentModuleName]);
 
     for (const auto& imp : node.imports) {
         imp->accept(*this);
@@ -338,6 +346,6 @@ void SemanticAnalyzer::visit(Module& node)
     for (const auto& proc : node.procedures) {
         proc->accept(*this);
     }
-    symbolTables[currentTableName].exitScope();
+    symbolTables[currentModuleName].exitScope();
 }
 }

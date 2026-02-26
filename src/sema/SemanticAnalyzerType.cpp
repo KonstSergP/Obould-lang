@@ -10,14 +10,15 @@ void SemanticAnalyzer::visit(IdentifierType& node)
     Symbol* sym = nullptr;
 
     if (node.moduleName.empty()) {
-        sym = symbolTables[currentTableName].lookupSymbol(node.name);
+        sym = symbolTables[currentModuleName].lookupSymbol(node.name);
     }
     else {
-        if (symbolTables.find(node.moduleName) == symbolTables.end()) {
+        if (moduleRealNames.find(node.moduleName) == moduleRealNames.end()) {
             addError("Can't find module '" + node.moduleName + "'");
             node.resolvedType = std::make_shared<TypeInfo>();
             return;
         }
+        node.moduleName = moduleRealNames[node.moduleName];
         sym = symbolTables[node.moduleName].lookupSymbol(node.name);
     }
 
