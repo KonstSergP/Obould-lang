@@ -4,6 +4,8 @@ project(ObouldCompiler)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+include(FetchContent)
+
 
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -24,16 +26,22 @@ llvm_map_components_to_libnames(llvm_libs
 
 # ==========================================
 
+FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz)
+FetchContent_MakeAvailable(json)
+
+# ==========================================
+
 file(GLOB_RECURSE LIB_SOURCES "src/*.cpp")
 list(FILTER LIB_SOURCES EXCLUDE REGEX ".*main\\.cpp$")
 
 add_library(obould_lib STATIC ${LIB_SOURCES})
 target_include_directories(obould_lib PUBLIC src)
+target_link_libraries(obould_lib PRIVATE nlohmann_json::nlohmann_json)
 
 # ==========================================
 
 add_executable(obould src/driver/main.cpp)
-target_link_libraries(obould PRIVATE obould_lib ${llvm_libs})
+target_link_libraries(obould PRIVATE obould_lib ${llvm_libs} nlohmann_json::nlohmann_json)
 
 # ==========================================
 
@@ -43,7 +51,7 @@ foreach(test_source ${MANUAL_TESTS})
     get_filename_component(test_name ${test_source} NAME_WE)
     add_executable(${test_name} ${test_source})
     target_include_directories(${test_name} PUBLIC src)
-    target_link_libraries(${test_name} PRIVATE obould_lib ${llvm_libs})
+    target_link_libraries(${test_name} PRIVATE obould_lib ${llvm_libs} nlohmann_json::nlohmann_json)
     message(STATUS "Added manual test: ${test_name}")
 endforeach()
 
@@ -55,7 +63,6 @@ file(GLOB_RECURSE UNIT_TEST_SOURCES CONFIGURE_DEPENDS "tests/unit/*.cpp")
 option(O_TESTS "Build unit tests (requires Catch2)" OFF)
 
 if(O_TESTS AND UNIT_TEST_SOURCES)
-    include(FetchContent)
     FetchContent_Declare(
             Catch2
             GIT_REPOSITORY https://github.com/catchorg/Catch2.git
@@ -65,7 +72,7 @@ if(O_TESTS AND UNIT_TEST_SOURCES)
 
     add_executable(unit_tests ${UNIT_TEST_SOURCES})
     include(Catch)
-    target_link_libraries(unit_tests PRIVATE obould_lib Catch2::Catch2WithMain ${llvm_libs})
+    target_link_libraries(unit_tests PRIVATE obould_lib Catch2::Catch2WithMain ${llvm_libs} nlohmann_json::nlohmann_json)
     catch_discover_tests(unit_tests)
 elseif (O_TESTS)
     message(STATUS "No unit tests found")
