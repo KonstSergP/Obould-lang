@@ -69,6 +69,7 @@ private:
     llvm::Function* currentFunction = nullptr;
     std::string currentModule;
     bool importedModule = false;
+    bool exportedType = false;
     bool lvalue = false;
 
     std::unordered_map<std::string, llvm::Value*> locals;

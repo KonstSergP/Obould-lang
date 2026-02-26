@@ -8,7 +8,9 @@ void LLVMCodegenVisitor::visit(ConstantDeclaration& node) {} // констант
 
 void LLVMCodegenVisitor::visit(TypeDeclaration& node)
 {
+    exportedType = node.isExported;
     node.type->accept(*this);
+    exportedType = false;
 }
 
 void LLVMCodegenVisitor::visit(VariableDeclaration& node)

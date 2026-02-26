@@ -148,16 +148,19 @@ llvm::GlobalVariable* LLVMCodegenVisitor::createStructDescriptor(const std::shar
     auto* ptrType = builder->getPtrTy();
     auto* intType = builder->getInt64Ty();
     auto* arrayType = llvm::ArrayType::get(ptrType, depth + 1);
-    auto* structTy = llvm::StructType::create({intType, arrayType}, name);
+    auto* structTy = llvm::StructType::create({intType, arrayType}, getMangledName(currentModule, name));
+    auto linkage = (importedModule || exportedType) ? llvm::GlobalValue::ExternalLinkage : llvm::GlobalValue::InternalLinkage;
 
     auto* gVar = new llvm::GlobalVariable(
         *module,
         structTy,
         true,
-        llvm::GlobalValue::ExternalLinkage, // TODO: придумать как ставить правильную линковку
+        linkage,
         nullptr,
-        name
+        getMangledName(currentModule, name)
     );
+    if (importedModule)
+        return gVar;
 
     auto* depthVal = llvm::ConstantInt::get(intType, depth);
     std::vector<llvm::Constant*> basePtrs(depth + 1);
@@ -168,7 +171,7 @@ llvm::GlobalVariable* LLVMCodegenVisitor::createStructDescriptor(const std::shar
     auto curType = type;
     while (curType != nullptr) {
         auto* descPtr = (curType != type) ? descriptors[curType.get()] : gVar;
-        basePtrs[curType->depth] = llvm::ConstantExpr::getBitCast(descPtr, ptrType);
+        basePtrs[curType->depth] = descPtr;
         curType = curType->baseType;
     }
 
