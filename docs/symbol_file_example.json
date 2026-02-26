@@ -1,0 +1,168 @@
+{
+    "moduleName": "ComprehensiveTest",
+    "imports": [
+        "Math",
+        "IO"
+    ],
+    "declarations": {
+        "constants": [
+            {
+                "name": "MAX_SIZE",
+                "type": "i64",
+                "value": 100
+            },
+            {
+                "name": "PI",
+                "type": "f64",
+                "value": 3.14159
+            },
+            {
+                "name": "DEBUG_MODE",
+                "type": "bool",
+                "value": true
+            },
+            {
+                "name": "GREETING",
+                "type": "string",
+                "value": "Hello, Obould!"
+            }
+        ],
+        "types": [
+            {
+                "name": "Integer",
+                "type": "i64"
+            },
+            {
+                "name": "Matrix",
+                "type": {
+                    "kind": "array",
+                    "length": 10,
+                    "elementType": "i64"
+                }
+            },
+            {
+                "name": "Point2D",
+                "type": {
+                    "kind": "struct",
+                    "baseType": null,
+                    "fields": [
+                        {
+                            "name": "x",
+                            "type": "f64"
+                        },
+                        {
+                            "name": "y",
+                            "type": "f64"
+                        }
+                    ]
+                }
+            },
+            {
+                "name": "Point3D",
+                "type": {
+                    "kind": "struct",
+                    "baseType": "Point2D",
+                    "fields": [
+                        {
+                            "name": "z",
+                            "type": "f64"
+                        }
+                    ]
+                }
+            },
+            {
+                "name": "TreeNode",
+                "type": {
+                    "kind": "struct",
+                    "baseType": null,
+                    "fields": [
+                        {
+                            "name": "value",
+                            "type": "i64"
+                        },
+                        {
+                            "name": "left",
+                            "type": {
+                                "kind": "pointer",
+                                "targetType": "TreeNode"
+                            }
+                        },
+                        {
+                            "name": "right",
+                            "type": {
+                                "kind": "pointer",
+                                "targetType": "TreeNode"
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                "name": "UnaryOp",
+                "type": {
+                    "kind": "procedure_type",
+                    "parameters": [
+                        {
+                            "name": "x",
+                            "reference": false,
+                            "type": "i64"
+                        }
+                    ],
+                    "returnType": "i64"
+                }
+            }
+        ],
+        "variables": [
+            {
+                "name": "globalInt",
+                "type": "i64"
+            },
+            {
+                "name": "origin",
+                "type": "Point2D"
+            }
+        ]
+    },
+    "procedures": [
+        {
+            "name": "Init",
+            "parameters": [],
+            "returnType": "void"
+        },
+        {
+            "name": "Swap",
+            "parameters": [
+                {
+                    "name": "a",
+                    "reference": true,
+                    "type": "i64"
+                },
+                {
+                    "name": "b",
+                    "reference": true,
+                    "type": "i64"
+                }
+            ],
+            "returnType": "void"
+        },
+        {
+            "name": "SumArray",
+            "parameters": [
+                {
+                    "name": "arr",
+                    "reference": false,
+                    "type": {
+                        "kind": "open array",
+                        "elementType": "i64"
+                    }
+                },
+                {
+                    "name": "size",
+                    "reference": false,
+                    "type": "i64"
+                }
+            ],
+            "returnType": "i64"
+        }
+    ]
+}
