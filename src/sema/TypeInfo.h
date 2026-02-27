@@ -98,6 +98,9 @@ struct TypeInfo
     std::shared_ptr<TypeInfo> baseType;
 
     // Struct
+    std::string ownerModule;
+
+    // Struct
     int64_t depth = -1;
     std::vector<FieldInfo> fields;
 

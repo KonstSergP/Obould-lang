@@ -458,6 +458,11 @@ void SemanticAnalyzer::visit(MemberAccessExpression& node)
     while (current) {
         for (const auto& field : current->fields) {
             if (field.name == node.memberName) {
+                if (!field.isExported && current->ownerModule != currentModuleName) {
+                    addError("Cannot access private field '" + field.name + "'");
+                    node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
+                    return;
+                }
                 fieldType = field.type;
                 break;
             }

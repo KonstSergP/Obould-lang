@@ -40,15 +40,16 @@
                 "name": "Point2D",
                 "type": {
                     "kind": "struct",
-                    "baseType": null,
                     "fields": [
                         {
                             "name": "x",
-                            "type": "f64"
+                            "type": "f64",
+                            "isExported": true
                         },
                         {
                             "name": "y",
-                            "type": "f64"
+                            "type": "f64",
+                            "isExported": true
                         }
                     ]
                 }
@@ -61,7 +62,8 @@
                     "fields": [
                         {
                             "name": "z",
-                            "type": "f64"
+                            "type": "f64",
+                            "isExported": false
                         }
                     ]
                 }
@@ -73,21 +75,24 @@
                     "fields": [
                         {
                             "name": "value",
-                            "type": "i64"
+                            "type": "i64",
+                            "isExported": true
                         },
                         {
                             "name": "left",
                             "type": {
                                 "kind": "pointer",
                                 "targetType": "TreeNode"
-                            }
+                            },
+                            "isExported": false
                         },
                         {
                             "name": "right",
                             "type": {
                                 "kind": "pointer",
                                 "targetType": "TreeNode"
-                            }
+                            },
+                            "isExported": false
                         }
                     ]
                 }

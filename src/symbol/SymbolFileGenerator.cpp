@@ -95,8 +95,12 @@ void SymbolFileGenerator::visit(StructType& node)
     }
     structJson["fields"] = json::array();
     for (auto& f : node.fields) {
-        f->accept(*this);
-        structJson["fields"].push_back(json_);
+        json fieldJson = json::object();
+        fieldJson["name"] = f->name;
+        f->type->accept(*this);
+        fieldJson["type"] = json_;
+        fieldJson["isExported"] = f->isExported;
+        structJson["fields"].push_back(fieldJson);
     }
     json_ = structJson;
 }
@@ -182,6 +186,7 @@ void SymbolFileGenerator::visit(ConstantDeclarations& node)
 {
     json cDecls = json::array();
     for (auto& c : node.constants) {
+        if (!c->isExported) continue;
         c->accept(*this);
         cDecls.push_back(json_);
     }
@@ -192,6 +197,7 @@ void SymbolFileGenerator::visit(TypeDeclarations& node)
 {
     json typeDecls = json::array();
     for (auto& type : node.types) {
+        if (!type->isExported) continue;
         type->accept(*this);
         typeDecls.push_back(json_);
     }
@@ -202,6 +208,7 @@ void SymbolFileGenerator::visit(VariableDeclarations& node)
 {
     json varDecls = json::array();
     for (auto& var : node.variables) {
+        if (!var->isExported) continue;
         var->accept(*this);
         varDecls.push_back(json_);
     }
@@ -237,10 +244,11 @@ void SymbolFileGenerator::visit(Module& node)
     }
 
     node.declarations->accept(*this);
-    moduleJson["declarations"] = moduleJson;
+    moduleJson["declarations"] = json_;
 
     moduleJson["procedures"] = json::array();
     for (auto& proc : node.procedures) {
+        if (!proc->isExported) continue;
         proc->accept(*this);
         moduleJson["procedures"].push_back(json_);
     }
