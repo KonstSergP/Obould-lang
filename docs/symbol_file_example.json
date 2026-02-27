@@ -8,22 +8,18 @@
         "constants": [
             {
                 "name": "MAX_SIZE",
-                "type": "i64",
                 "value": 100
             },
             {
                 "name": "PI",
-                "type": "f64",
                 "value": 3.14159
             },
             {
                 "name": "DEBUG_MODE",
-                "type": "bool",
                 "value": true
             },
             {
                 "name": "GREETING",
-                "type": "string",
                 "value": "Hello, Obould!"
             }
         ],
