@@ -70,7 +70,6 @@
                 "name": "TreeNode",
                 "type": {
                     "kind": "struct",
-                    "baseType": null,
                     "fields": [
                         {
                             "name": "value",
@@ -96,7 +95,7 @@
             {
                 "name": "UnaryOp",
                 "type": {
-                    "kind": "procedure_type",
+                    "kind": "procedure type",
                     "parameters": [
                         {
                             "name": "x",
