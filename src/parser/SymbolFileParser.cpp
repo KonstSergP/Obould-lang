@@ -19,7 +19,7 @@ std::unique_ptr<Module> parseModule(const json& j);
 
 std::string findSymbolFile(const std::string& moduleName)
 {
-    std::string path = moduleName + ".json";
+    std::string path = "./.obould/" + moduleName + ".json";
     std::ifstream f(path);
     if (f.good())
         return path;
