@@ -2,7 +2,10 @@ module MultiMain
 
 import MultiMath;
 
-var result: i64;
+var {
+    result: i64;
+    lastBase: i64;
+}
 
 fn export Run() -> i64
 var base: i64;
@@ -11,4 +14,10 @@ var base: i64;
     result = MultiMath.Add(base, 5);
     result = MultiMath.Square(result);
     return result;
+}
+
+
+fn init() -> void
+{
+    result = 2 * Run();
 }

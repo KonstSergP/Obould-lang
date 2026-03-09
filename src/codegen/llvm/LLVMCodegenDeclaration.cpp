@@ -96,7 +96,7 @@ void LLVMCodegenVisitor::visit(DeclarationsBlock& node)
 
 llvm::Function* LLVMCodegenVisitor::declareFunction(ProcedureDeclaration& node)
 {
-    if (auto it = functions.find(node.name); it != functions.end()) {
+    if (auto it = functions.find(getMangledName(currentModule, node.name)); it != functions.end()) {
         return it->second;
     }
 
@@ -112,7 +112,7 @@ llvm::Function* LLVMCodegenVisitor::declareFunction(ProcedureDeclaration& node)
         ++idx;
         if (idx == node.parameters.size()) break;
     }
-    functions[node.name] = fn;
+    functions[getMangledName(currentModule, node.name)] = fn;
     return fn;
 }
 

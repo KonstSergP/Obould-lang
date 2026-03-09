@@ -408,9 +408,8 @@ void LLVMCodegenVisitor::visit(IdentifierExpression& node)
             ptr = gVar;
         }
         else {
-            auto* fn = module->getFunction(getMangledName(node.moduleName, node.name));
-            if (fn) {
-                lastValue = fn;
+            if (auto fn = functions.find(getMangledName(node.moduleName, node.name)); fn != functions.end()) {
+                lastValue = fn->second;
                 return;
             }
             lastValue = nullptr;
