@@ -10,9 +10,9 @@ include(FetchContent)
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-if(LLVM_PACKAGE_VERSION VERSION_LESS "15.0")
+if (LLVM_PACKAGE_VERSION VERSION_LESS "15.0")
     message(FATAL_ERROR "LLVM >= 15.0 is required. Found ${LLVM_PACKAGE_VERSION}.")
-endif()
+endif ()
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
@@ -31,29 +31,34 @@ FetchContent_MakeAvailable(json)
 
 # ==========================================
 
+FetchContent_Declare(argparse GIT_REPOSITORY https://github.com/p-ranav/argparse.git)
+FetchContent_MakeAvailable(argparse)
+
+# ==========================================
+
 file(GLOB_RECURSE LIB_SOURCES "src/*.cpp")
 list(FILTER LIB_SOURCES EXCLUDE REGEX ".*main\\.cpp$")
 
 add_library(obould_lib STATIC ${LIB_SOURCES})
 target_include_directories(obould_lib PUBLIC src)
-target_link_libraries(obould_lib PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(obould_lib PRIVATE nlohmann_json::nlohmann_json argparse)
 
 # ==========================================
 
 add_executable(obould src/driver/main.cpp)
-target_link_libraries(obould PRIVATE obould_lib ${llvm_libs} nlohmann_json::nlohmann_json)
+target_link_libraries(obould PRIVATE obould_lib ${llvm_libs} nlohmann_json::nlohmann_json argparse)
 
 # ==========================================
 
 file(GLOB MANUAL_TESTS "tests/manual/*.cpp")
 
-foreach(test_source ${MANUAL_TESTS})
+foreach (test_source ${MANUAL_TESTS})
     get_filename_component(test_name ${test_source} NAME_WE)
     add_executable(${test_name} ${test_source})
     target_include_directories(${test_name} PUBLIC src)
-    target_link_libraries(${test_name} PRIVATE obould_lib ${llvm_libs} nlohmann_json::nlohmann_json)
+    target_link_libraries(${test_name} PRIVATE obould_lib ${llvm_libs} nlohmann_json::nlohmann_json argparse)
     message(STATUS "Added manual test: ${test_name}")
-endforeach()
+endforeach ()
 
 # ==========================================
 
@@ -62,11 +67,11 @@ include(CTest)
 file(GLOB_RECURSE UNIT_TEST_SOURCES CONFIGURE_DEPENDS "tests/unit/*.cpp")
 option(O_TESTS "Build unit tests (requires Catch2)" OFF)
 
-if(O_TESTS AND UNIT_TEST_SOURCES)
+if (O_TESTS AND UNIT_TEST_SOURCES)
     FetchContent_Declare(
             Catch2
             GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-            GIT_TAG        v3.4.0
+            GIT_TAG v3.4.0
     )
     FetchContent_MakeAvailable(Catch2)
 
@@ -76,4 +81,4 @@ if(O_TESTS AND UNIT_TEST_SOURCES)
     catch_discover_tests(unit_tests)
 elseif (O_TESTS)
     message(STATUS "No unit tests found")
-endif()
+endif ()

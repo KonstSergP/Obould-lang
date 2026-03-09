@@ -68,9 +68,10 @@ void SymbolFileGenerator::visit(ArrayType& node)
 {
     json arrJson = json::object();
     arrJson["kind"] = "array";
-    std::visit([&arrJson](const auto& v) {
-            arrJson["length"] = v;
-        }, *node.length->constantValue);
+    std::visit([&arrJson](const auto& v)
+    {
+        arrJson["length"] = v;
+    }, *node.length->constantValue);
     node.elementType->accept(*this);
     arrJson["elementType"] = json_;
     json_ = arrJson;
@@ -134,9 +135,10 @@ void SymbolFileGenerator::visit(ConstantDeclaration& node)
 {
     json constJson = json::object();
     constJson["name"] = node.name;
-    std::visit([&constJson](const auto& v) {
-            constJson["value"] = v;
-        }, *node.value->constantValue);
+    std::visit([&constJson](const auto& v)
+    {
+        constJson["value"] = v;
+    }, *node.value->constantValue);
     json_ = constJson;
 }
 
@@ -218,12 +220,18 @@ void SymbolFileGenerator::visit(VariableDeclarations& node)
 void SymbolFileGenerator::visit(DeclarationsBlock& node)
 {
     json declBlockJson = json::object();
-    node.constants->accept(*this);
-    declBlockJson["constants"] = json_;
-    node.types->accept(*this);
-    declBlockJson["types"] = json_;
-    node.variables->accept(*this);
-    declBlockJson["variables"] = json_;
+    if (node.constants) {
+        node.constants->accept(*this);
+        declBlockJson["constants"] = json_;
+    }
+    if (node.types) {
+        node.types->accept(*this);
+        declBlockJson["types"] = json_;
+    }
+    if (node.variables) {
+        node.variables->accept(*this);
+        declBlockJson["variables"] = json_;
+    }
     json_ = declBlockJson;
 }
 

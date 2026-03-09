@@ -1,0 +1,14 @@
+module MultiMain
+
+import MultiMath;
+
+var result: i64;
+
+fn export Run() -> i64
+var base: i64;
+{
+    base = MultiMath.GetDefaultBase();
+    result = MultiMath.Add(base, 5);
+    result = MultiMath.Square(result);
+    return result;
+}

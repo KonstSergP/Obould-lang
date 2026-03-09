@@ -95,6 +95,7 @@ void LLVMCodegenVisitor::visit(AssignmentStatement& node)
     lvalue = true;
     node.target->accept(*this);
     auto* lhs = lastValue;
+    lvalue = false;
     if (!rhs || !lhs) {
         return;
     }

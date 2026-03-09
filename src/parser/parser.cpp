@@ -870,10 +870,6 @@ std::unique_ptr<Expression> Parser::parseDesignator() {
             expect(TokenType::RBRACKET, "Expected ']' after array index");
             expr = std::make_unique<ArrayAccessExpression>(std::move(expr), std::move(index));
         } else if (check(TokenType::LPAREN)) {
-            // Could be a type guard: expr(Type) or expr(Module.Type)
-            // Look ahead to determine if this is a type guard
-            // Type guard pattern: ( Identifier ) or ( Identifier . Identifier )
-
             size_t saved = current_;
             advance(); // consume '('
 
@@ -889,13 +885,7 @@ std::unique_ptr<Expression> Parser::parseDesignator() {
                 }
 
                 if (check(TokenType::RPAREN)) {
-                    // This is a type guard: expr(Type) or expr(Module.Type)
                     advance(); // consume ')'
-
-                    // Get the type name from what we parsed
-                    // Reconstruct the qualified identifier
-                    size_t typeStart = saved + 1; // after '('
-                    size_t typeEnd = current_ - 1; // before ')'
 
                     std::string moduleName;
                     std::string typeName;
@@ -916,15 +906,10 @@ std::unique_ptr<Expression> Parser::parseDesignator() {
 
                     advance(); // consume ')'
 
-                    // Create a type guard using ProcedureCall with isTypeGuard flag
                     auto typeExpr = std::make_unique<IdentifierExpression>(moduleName, typeName);
                     std::vector<std::unique_ptr<Expression>> args;
                     args.push_back(std::move(typeExpr));
-
-                    auto typeGuard = std::make_unique<ProcedureCall>(std::move(expr), std::move(args));
-                    typeGuard->isTypeGuard = true;
-                    expr = std::move(typeGuard);
-
+                    expr = std::make_unique<ProcedureCall>(std::move(expr), std::move(args));
                     continue; // Continue parsing more selectors
                 }
             }

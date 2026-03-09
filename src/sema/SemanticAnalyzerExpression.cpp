@@ -48,6 +48,9 @@ void SemanticAnalyzer::visit(IdentifierExpression& node)
 
     if (node.moduleName.empty()) {
         sym = symbolTables[currentModuleName].lookupSymbol(node.name);
+        if (sym && !symbolTables[currentModuleName].lookupSymbolLocal(node.name)) {
+            node.moduleName = currentModuleName;
+        }
     }
     else {
         if (moduleRealNames.find(node.moduleName) == moduleRealNames.end()) {

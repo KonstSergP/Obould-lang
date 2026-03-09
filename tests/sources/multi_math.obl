@@ -1,0 +1,20 @@
+module MultiMath
+
+const {
+    DEFAULT_BASE = 10;
+}
+
+fn export Add(a, b: i64) -> i64
+{
+    return a + b;
+}
+
+fn export Square(x: i64) -> i64
+{
+    return x * x;
+}
+
+fn export GetDefaultBase() -> i64
+{
+    return DEFAULT_BASE;
+}

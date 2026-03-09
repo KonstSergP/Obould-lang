@@ -251,7 +251,7 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
         addError("Redeclaration of symbol '" + node.name + "'");
     }
 
-    if (currentModuleName.empty())
+    if (importedModule)
         return;
 
     symbolTables[currentModuleName].enterScope();
@@ -319,11 +319,13 @@ void SemanticAnalyzer::visit(Import& node)
     auto curName = currentModuleName;
     auto curModuleNames = std::move(moduleRealNames);
 
+    importedModule = true;
     currentModuleName = node.realName;
     moduleRealNames[node.realName] = node.realName;
 
     mod->accept(*this);
 
+    importedModule = false;
     currentModuleName = curName;
     moduleRealNames = curModuleNames;
     node.module = std::move(mod);
@@ -346,6 +348,5 @@ void SemanticAnalyzer::visit(Module& node)
     for (const auto& proc : node.procedures) {
         proc->accept(*this);
     }
-    symbolTables[currentModuleName].exitScope();
 }
 }

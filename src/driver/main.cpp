@@ -2,37 +2,29 @@
 #include <fstream>
 #include <sstream>
 #include <string>
-#include <cstring>
+#include <vector>
 #include <system_error>
+#include <filesystem>
+
+#include <argparse/argparse.hpp>
+#include <llvm/Support/FileSystem.h>
+#include <llvm/Support/raw_ostream.h>
 
 #include "lexer/Lexer.h"
 #include "parser/Parser.h"
 #include "info/ASTPrintVisitor.h"
 #include "sema/SemanticAnalyzer.h"
 #include "codegen/llvm/LLVMCodegen.h"
-#include <llvm/Support/FileSystem.h>
-#include <llvm/Support/raw_ostream.h>
+#include "symbol/SymbolFileGenerator.h"
+
 
 enum class OutputMode
 {
     TOKENS,
     AST,
-    LLVM_IR
+    LLVM_IR,
+    SYMBOLS
 };
-
-void printUsage(const char* programName)
-{
-    std::cerr << "Obould Compiler\n\n";
-    std::cerr << "Usage: " << programName << " [options] <input_file> [output_file]\n\n";
-    std::cerr << "Options:\n";
-    std::cerr << "  --tokens, -t    Output lexemes/tokens (default)\n";
-    std::cerr << "  --ast, -a       Parse and output AST\n";
-    std::cerr << "  --llvm-ir, -l   Generate and output LLVM IR\n";
-    std::cerr << "  --help, -h      Show this help message\n\n";
-    std::cerr << "Arguments:\n";
-    std::cerr << "  input_file      Obould source file (.obl)\n";
-    std::cerr << "  output_file     Output file (optional, defaults to stdout)\n";
-}
 
 std::string readFile(const std::string& path)
 {
@@ -52,60 +44,78 @@ void writeTokens(const std::vector<obould::Token>& tokens, std::ostream& out)
     }
 }
 
-int main(int argc, char* argv[])
+void emitSymbolFile(obould::Module& module, const std::filesystem::path& symDir)
 {
-    OutputMode mode = OutputMode::TOKENS;
-    std::string inputPath;
-    std::string outputPath;
-
-    for (int i = 1; i < argc; ++i) {
-        if (strcmp(argv[i], "--tokens") == 0 || strcmp(argv[i], "-t") == 0) {
-            mode = OutputMode::TOKENS;
-        }
-        else if (strcmp(argv[i], "--ast") == 0 || strcmp(argv[i], "-a") == 0) {
-            mode = OutputMode::AST;
-        }
-        else if (strcmp(argv[i], "--llvm-ir") == 0 || strcmp(argv[i], "-l") == 0) {
-            mode = OutputMode::LLVM_IR;
-        }
-        else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
-            printUsage(argv[0]);
-            return 0;
-        }
-        else if (argv[i][0] == '-') {
-            std::cerr << "Unknown option: " << argv[i] << "\n";
-            printUsage(argv[0]);
-            return 1;
-        }
-        else if (inputPath.empty()) {
-            inputPath = argv[i];
-        }
-        else if (outputPath.empty()) {
-            outputPath = argv[i];
-        }
-        else {
-            std::cerr << "Too many arguments\n";
-            printUsage(argv[0]);
-            return 1;
-        }
+    std::error_code ec;
+    std::filesystem::create_directories(symDir, ec);
+    if (ec) {
+        throw std::runtime_error("Cannot create symbol directory: " + ec.message());
     }
+    obould::SymbolFileGenerator generator;
+    module.accept(generator);
+    auto symPath = symDir / (module.name + ".json");
+    generator.saveToFile(symPath.string());
+}
 
-    if (inputPath.empty()) {
-        printUsage(argv[0]);
+int main(int argc, char** argv)
+{
+    argparse::ArgumentParser program("obould", "0.1");
+
+    program.add_argument("input_file")
+           .help("Obould source file");
+
+    program.add_argument("--output", "-o")
+           .help("Output file (defaults to stdout)")
+           .default_value("");
+
+    program.add_argument("--main", "-m")
+           .help("Specify current file as main file in project")
+           .flag();
+
+    program.add_argument("--emit-tokens", "-t")
+           .help("Emit lexemes/tokens")
+           .flag();
+
+    program.add_argument("--emit-ast", "-a")
+           .help("Emit AST")
+           .flag();
+
+    program.add_argument("--emit-llvm", "-l")
+           .help("Emit LLVM IR")
+           .flag();
+
+    program.add_argument("--emit-symbols", "-s")
+           .help("Emit symbol file to .obould/<module>.json")
+           .flag();
+
+    try {
+        program.parse_args(argc, argv);
+    }
+    catch (const std::runtime_error& err) {
+        std::cerr << err.what() << std::endl;
+        std::cerr << program;
         return 1;
     }
 
+    OutputMode mode = OutputMode::TOKENS;
+    if (program["--emit-llvm"] == true) mode = OutputMode::LLVM_IR;
+    else if (program["--emit-ast"] == true) mode = OutputMode::AST;
+    else if (program["--emit-symbols"] == true) mode = OutputMode::SYMBOLS;
+    else if (program["--emit-tokens"] == true) mode = OutputMode::TOKENS;
+
+    auto inputPath = program.get<std::string>("input_file");
+    auto outputPath = program.get<std::string>("output");
+
     try {
         std::string source = readFile(inputPath);
+        std::filesystem::path symDir = std::filesystem::current_path() / ".obould";
 
         obould::Lexer lexer(source);
         auto tokens = lexer.tokenize();
 
         if (lexer.hasErrors()) {
             std::cerr << "Lexer errors:\n";
-            for (const auto& error : lexer.getErrors()) {
-                std::cerr << "  " << error << "\n";
-            }
+            for (const auto& error : lexer.getErrors()) std::cerr << "  " << error << "\n";
             return 1;
         }
 
@@ -115,82 +125,54 @@ int main(int argc, char* argv[])
             }
             else {
                 std::ofstream outFile(outputPath);
-                if (!outFile) {
-                    std::cerr << "Cannot open output file: " << outputPath << "\n";
-                    return 1;
-                }
+                if (!outFile) throw std::runtime_error("Cannot open output file");
                 writeTokens(tokens, outFile);
-                std::cout << "Lexemes written to: " << outputPath << "\n";
             }
+            return 0;
         }
-        else if (mode == OutputMode::AST) {
-            // Parse and output AST
-            obould::Parser parser(tokens);
-            auto module = parser.parse();
 
-            if (parser.hasErrors()) {
-                std::cerr << "Parser errors:\n";
-                for (const auto& error : parser.getErrors()) {
-                    std::cerr << "  " << error << "\n";
-                }
-                return 1;
-            }
+        obould::Parser parser(tokens);
+        auto module = parser.parse();
 
-            if (!module) {
-                std::cerr << "Failed to parse module\n";
-                return 1;
-            }
+        if (parser.hasErrors()) {
+            std::cerr << "Parser errors:\n";
+            for (const auto& error : parser.getErrors()) std::cerr << "  " << error << "\n";
+            return 1;
+        }
 
+        if (mode == OutputMode::AST) {
             if (outputPath.empty()) {
                 obould::ASTPrintVisitor printer(std::cout);
                 module->accept(printer);
             }
             else {
                 std::ofstream outFile(outputPath);
-                if (!outFile) {
-                    std::cerr << "Cannot open output file: " << outputPath << "\n";
-                    return 1;
-                }
                 obould::ASTPrintVisitor printer(outFile);
                 module->accept(printer);
-                std::cout << "AST written to: " << outputPath << "\n";
             }
         }
-        else {
-            // Generate and output LLVM IR
-            obould::Parser parser(tokens);
-            auto module = parser.parse();
-
-            if (parser.hasErrors()) {
-                std::cerr << "Parser errors:\n";
-                for (const auto& error : parser.getErrors()) {
-                    std::cerr << "  " << error << "\n";
-                }
-                return 1;
-            }
-
-            if (!module) {
-                std::cerr << "Failed to parse module\n";
-                return 1;
-            }
-
+        else if (mode == OutputMode::SYMBOLS) {
             obould::SemanticAnalyzer sema;
-            bool semaSuccess = sema.analyze(*module);
-            if (!semaSuccess) {
-                std::cerr << "Semantic analysis errors:\n";
-                for (const auto& error : sema.getErrors()) {
-                    std::cerr << "  " << error << "\n";
-                }
+            sema.setSymbolFileDir(symDir);
+            if (!sema.analyze(*module)) {
+                for (const auto& error : sema.getErrors()) std::cerr << error << "\n";
                 return 1;
             }
+
+            emitSymbolFile(*module, symDir);
+        }
+        else if (mode == OutputMode::LLVM_IR) {
+            obould::SemanticAnalyzer sema;
+            sema.setSymbolFileDir(symDir);
+            if (!sema.analyze(*module)) {
+                for (const auto& error : sema.getErrors()) std::cerr << error << "\n";
+                return 1;
+            }
+
+            emitSymbolFile(*module, symDir);
 
             obould::LLVMCodegenVisitor codegen;
             auto llvmModule = codegen.codegen(*module);
-
-            if (!llvmModule) {
-                std::cerr << "Failed to generate LLVM IR\n";
-                return 1;
-            }
 
             if (outputPath.empty()) {
                 llvmModule->print(llvm::outs(), nullptr);
@@ -198,19 +180,14 @@ int main(int argc, char* argv[])
             else {
                 std::error_code ec;
                 llvm::raw_fd_ostream outFile(outputPath, ec);
-                if (ec) {
-                    std::cerr << "Cannot open output file: " << outputPath << "\n";
-                    return 1;
-                }
+                if (ec) throw std::runtime_error("Cannot open output file: " + ec.message());
                 llvmModule->print(outFile, nullptr);
-                std::cout << "LLVM IR written to: " << outputPath << "\n";
             }
         }
-
-        return 0;
     }
     catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << "\n";
+        std::cerr << "Critical Error: " << e.what() << "\n";
         return 1;
     }
+    return 0;
 }

@@ -183,9 +183,9 @@ void LLVMCodegenVisitor::visit(ProcedureParameter& node) {}
 
 void LLVMCodegenVisitor::visit(Import& node)
 {
-    importedModule = true;
     auto curModule = std::move(currentModule);
     currentModule = node.module->name;
+    importedModule = true;
 
     node.module->accept(*this);
 
@@ -195,6 +195,9 @@ void LLVMCodegenVisitor::visit(Import& node)
 
 void LLVMCodegenVisitor::visit(Module& node)
 {
+    for (auto& import : node.imports) {
+        import->accept(*this);
+    }
     if (node.declarations)
         node.declarations->accept(*this);
     for (const auto& proc : node.procedures)

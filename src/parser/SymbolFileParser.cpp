@@ -11,20 +11,27 @@ namespace obould
 {
 using json = nlohmann::json;
 
-SymbolFileParser::SymbolFileParser() = default;
+SymbolFileParser::SymbolFileParser() : symbolDir_(".obould") {}
+
+SymbolFileParser::SymbolFileParser(std::filesystem::path symbolDir) : symbolDir_(std::move(symbolDir)) {}
+
+void SymbolFileParser::setSymbolDir(std::filesystem::path symbolDir)
+{
+    symbolDir_ = std::move(symbolDir);
+}
+
+std::string SymbolFileParser::findSymbolFile(const std::string& moduleName) const
+{
+    auto path = symbolDir_ / (moduleName + ".json");
+    std::ifstream f(path);
+    if (f.good())
+        return path.string();
+    return "";
+}
 
 namespace
 {
 std::unique_ptr<Module> parseModule(const json& j);
-
-std::string findSymbolFile(const std::string& moduleName)
-{
-    std::string path = "./.obould/" + moduleName + ".json";
-    std::ifstream f(path);
-    if (f.good())
-        return path;
-    return "";
-}
 
 std::unique_ptr<Expression> parseConstantValue(const json& j)
 {

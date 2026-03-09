@@ -40,10 +40,16 @@ void SemanticAnalyzer::addBuiltinTypes(SymbolTable& symTable)
 bool SemanticAnalyzer::analyze(Module& module)
 {
     errors.clear();
+    importedModule = false;
     currentModuleName = module.name;
     moduleRealNames[module.name] = module.name;
     module.accept(*this);
     return errors.empty();
+}
+
+void SemanticAnalyzer::setSymbolFileDir(const std::filesystem::path& dir)
+{
+    symbolFileParser.setSymbolDir(dir);
 }
 
 const std::vector<std::string>& SemanticAnalyzer::getErrors() const

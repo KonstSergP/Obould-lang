@@ -1,4 +1,5 @@
 #pragma once
+#include <filesystem>
 #include "SymbolTable.h"
 #include "ast/ASTVisitor.h"
 #include "parser/SymbolFileParser.h"
@@ -12,6 +13,7 @@ public:
     SemanticAnalyzer();
 
     bool analyze(Module& module);
+    void setSymbolFileDir(const std::filesystem::path& dir);
     const std::vector<std::string>& getErrors() const;
     void addError(const std::string& error);
     std::shared_ptr<TypeInfo> getPolymorphicBase(Expression* expr);
@@ -74,6 +76,8 @@ private:
     AnalyzeStages analyzeStage = AnalyzeStages::Default;
 
     std::shared_ptr<TypeInfo> switchSelectorType;
+
+    bool importedModule = false;
 
     std::vector<std::string> errors;
     std::unordered_map<std::string, std::shared_ptr<TypeInfo>> builtinTypes;
