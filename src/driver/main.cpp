@@ -5,10 +5,16 @@
 #include <vector>
 #include <system_error>
 #include <filesystem>
+#include <optional>
 
 #include <argparse/argparse.hpp>
+#include <llvm/TargetParser/Host.h>
+#include <llvm/IR/LegacyPassManager.h>
+#include <llvm/MC/TargetRegistry.h>
 #include <llvm/Support/FileSystem.h>
+#include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Target/TargetMachine.h>
 
 #include "lexer/Lexer.h"
 #include "parser/Parser.h"
@@ -23,7 +29,8 @@ enum class OutputMode
     TOKENS,
     AST,
     LLVM_IR,
-    SYMBOLS
+    SYMBOLS,
+    OBJ
 };
 
 std::string readFile(const std::string& path)
@@ -44,18 +51,60 @@ void writeTokens(const std::vector<obould::Token>& tokens, std::ostream& out)
     }
 }
 
-void emitSymbolFile(obould::Module& module, const std::filesystem::path& symDir)
+void ensureDirExists(const std::filesystem::path& dir)
 {
     std::error_code ec;
-    std::filesystem::create_directories(symDir, ec);
+    std::filesystem::create_directories(dir, ec);
     if (ec) {
-        throw std::runtime_error("Cannot create symbol directory: " + ec.message());
+        throw std::runtime_error("Cannot create output directory: " + ec.message());
     }
+}
+
+void emitSymbolFile(obould::Module& module, const std::filesystem::path& symDir)
+{
+    ensureDirExists(symDir);
     obould::SymbolFileGenerator generator;
     module.accept(generator);
     auto symPath = symDir / (module.name + ".json");
     generator.saveToFile(symPath.string());
 }
+
+void emitObjectFile(llvm::Module& module, const std::filesystem::path& outPath)
+{
+    llvm::InitializeNativeTarget();
+    llvm::InitializeNativeTargetAsmPrinter();
+
+    auto targetTriple = llvm::Triple(llvm::sys::getDefaultTargetTriple());
+    module.setTargetTriple(targetTriple);
+
+    std::string error;
+    const auto* target = llvm::TargetRegistry::lookupTarget(targetTriple, error);
+    if (!target) {
+        throw std::runtime_error("Target lookup failed: " + error);
+    }
+
+    llvm::TargetOptions opt;
+    auto rm = std::optional<llvm::Reloc::Model>();
+    auto targetMachine = std::unique_ptr<llvm::TargetMachine>(
+        target->createTargetMachine(targetTriple, "generic", "", opt, rm));
+
+    module.setDataLayout(targetMachine->createDataLayout());
+
+    std::error_code ec;
+    llvm::raw_fd_ostream dest(outPath.string(), ec);
+    if (ec) {
+        throw std::runtime_error("Cannot open output file: " + ec.message());
+    }
+
+    llvm::legacy::PassManager pass;
+    if (targetMachine->addPassesToEmitFile(pass, dest, nullptr, llvm::CodeGenFileType::ObjectFile)) {
+        throw std::runtime_error("TargetMachine can't emit object file");
+    }
+
+    pass.run(module);
+    dest.flush();
+}
+
 
 int main(int argc, char** argv)
 {
@@ -97,7 +146,7 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    OutputMode mode = OutputMode::TOKENS;
+    OutputMode mode = OutputMode::OBJ;
     if (program["--emit-llvm"] == true) mode = OutputMode::LLVM_IR;
     else if (program["--emit-ast"] == true) mode = OutputMode::AST;
     else if (program["--emit-symbols"] == true) mode = OutputMode::SYMBOLS;
@@ -160,6 +209,34 @@ int main(int argc, char** argv)
             }
 
             emitSymbolFile(*module, symDir);
+        }
+        else if (mode == OutputMode::OBJ) {
+            obould::SemanticAnalyzer sema;
+            sema.setSymbolFileDir(symDir);
+            if (!sema.analyze(*module)) {
+                for (const auto& error : sema.getErrors()) std::cerr << error << "\n";
+                return 1;
+            }
+
+            emitSymbolFile(*module, symDir);
+
+            obould::LLVMCodegenVisitor codegen;
+            auto llvmModule = codegen.codegen(*module);
+
+            std::filesystem::path outPath;
+            if (!outputPath.empty()) {
+                outPath = outputPath;
+            }
+            else {
+                auto stem = std::filesystem::path(inputPath).stem().string();
+                outPath = symDir / (stem + ".o");
+            }
+
+            auto outDir = outPath.parent_path();
+            if (!outDir.empty()) {
+                ensureDirExists(outDir);
+            }
+            emitObjectFile(*llvmModule, outPath);
         }
         else if (mode == OutputMode::LLVM_IR) {
             obould::SemanticAnalyzer sema;
