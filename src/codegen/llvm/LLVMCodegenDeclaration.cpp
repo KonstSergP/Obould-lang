@@ -198,11 +198,14 @@ void LLVMCodegenVisitor::visit(Module& node)
     for (auto& import : node.imports) {
         import->accept(*this);
     }
+
     if (node.declarations)
         node.declarations->accept(*this);
     for (const auto& proc : node.procedures)
         declareFunction(*proc);
     for (const auto& proc : node.procedures)
         proc->accept(*this);
+
+    createModuleInitializer(node);
 }
 }

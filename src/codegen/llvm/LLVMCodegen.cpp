@@ -149,7 +149,9 @@ llvm::GlobalVariable* LLVMCodegenVisitor::createStructDescriptor(const std::shar
     auto* intType = builder->getInt64Ty();
     auto* arrayType = llvm::ArrayType::get(ptrType, depth + 1);
     auto* structTy = llvm::StructType::create({intType, arrayType}, getMangledName(currentModule, name));
-    auto linkage = (importedModule || exportedType) ? llvm::GlobalValue::ExternalLinkage : llvm::GlobalValue::InternalLinkage;
+    auto linkage = (importedModule || exportedType)
+                       ? llvm::GlobalValue::ExternalLinkage
+                       : llvm::GlobalValue::InternalLinkage;
 
     auto* gVar = new llvm::GlobalVariable(
         *module,
@@ -206,5 +208,28 @@ void LLVMCodegenVisitor::makeStructCastCheck(llvm::Value* left, llvm::Value* rig
     phi->addIncoming(builder->getFalse(), startBB);
     phi->addIncoming(instCheck, contBB);
     lastValue = phi;
+}
+
+void LLVMCodegenVisitor::createModuleInitializer(Module& node)
+{
+    auto funcName = "_" + node.name;
+    auto fnType = llvm::FunctionType::get(builder->getVoidTy(), false);
+    auto func = llvm::Function::Create(fnType, llvm::GlobalValue::ExternalLinkage, funcName, *module);
+    functions[funcName] = func;
+
+    if (importedModule) return;
+
+    auto* entryBB = llvm::BasicBlock::Create(context, "entry", func);
+    builder->SetInsertPoint(entryBB);
+
+    for (auto& import : node.imports) {
+        auto callee = functions["_" + import->realName];
+        builder->CreateCall(fnType, callee);
+    }
+    if (auto it = functions.find(getMangledName(node.name, "init")); it != functions.end()) {
+        builder->CreateCall(fnType, it->second);
+    }
+
+    builder->CreateRetVoid();
 }
 }
