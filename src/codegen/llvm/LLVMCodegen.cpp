@@ -219,8 +219,28 @@ void LLVMCodegenVisitor::createModuleInitializer(Module& node)
 
     if (importedModule) return;
 
+    auto* gVar = new llvm::GlobalVariable(
+        *module,
+        builder->getInt1Ty(),
+        false,
+        llvm::GlobalValue::InternalLinkage,
+        builder->getFalse(),
+        "_" + node.name + "_visited"
+    );
+
     auto* entryBB = llvm::BasicBlock::Create(context, "entry", func);
+    auto* firstBB = llvm::BasicBlock::Create(context, "first", func);
+    auto* otherBB = llvm::BasicBlock::Create(context, "other", func);
     builder->SetInsertPoint(entryBB);
+
+    auto* visited = builder->CreateLoad(builder->getInt1Ty(), gVar);
+    builder->CreateCondBr(visited, otherBB, firstBB);
+
+    builder->SetInsertPoint(otherBB);
+    builder->CreateRetVoid();
+
+    builder->SetInsertPoint(firstBB);
+    builder->CreateStore(builder->getTrue(), gVar);
 
     for (auto& import : node.imports) {
         auto callee = functions["_" + import->realName];
