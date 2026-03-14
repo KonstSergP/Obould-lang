@@ -104,6 +104,7 @@ void SemanticAnalyzer::validateType(const std::shared_ptr<TypeInfo>& type)
                 "Procedure cannot return a structured type (Array or Record). Use a pointer or a reference parameter instead.");
         }
         // TODO: проверка параметров
+        // TODO: проверка что инит имеет правильную сигнатуру
     }
     // TODO: проверки типов элементов
 }

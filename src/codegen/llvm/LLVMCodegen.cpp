@@ -1,4 +1,7 @@
 #include "LLVMCodegen.h"
+
+#include <iostream>
+
 #include "sema/TypeInfo.h"
 
 
@@ -190,15 +193,24 @@ void LLVMCodegenVisitor::makeStructCastCheck(llvm::Value* left, llvm::Value* rig
     auto* endBB = llvm::BasicBlock::Create(context, "is.end", currentFunction);
 
     builder->CreateBr(startBB);
+
+    builder->SetInsertPoint(startBB);
     auto* objDepth = builder->CreateLoad(builder->getInt64Ty(), left);
     auto* depthCheck = builder->CreateICmpSGE(objDepth, builder->getInt64(rDepth));
     builder->CreateCondBr(depthCheck, contBB, endBB);
 
-    auto* structTy = llvm::StructType::create({builder->getInt64Ty(), builder->getPtrTy()});
-
     builder->SetInsertPoint(contBB);
-    auto* arrayPtr = builder->CreateStructGEP(structTy, left, 1);
-    auto* ancestorPtrAddr = builder->CreateGEP(builder->getPtrTy(), arrayPtr, builder->getInt64(rDepth));
+
+    auto* arrayTy = llvm::ArrayType::get(builder->getPtrTy(), 0);
+    auto* structTy = llvm::StructType::get(context, {builder->getInt64Ty(), arrayTy});
+
+    std::vector<llvm::Value*> indices = {
+        builder->getInt64(0),
+        builder->getInt32(1),
+        builder->getInt64(rDepth)
+    };
+
+    auto* ancestorPtrAddr = builder->CreateInBoundsGEP(structTy, left, indices, "ancestor.addr");
     auto* ancestorPtr = builder->CreateLoad(builder->getPtrTy(), ancestorPtrAddr, "ancestor.tag");
     auto* instCheck = builder->CreateICmpEQ(ancestorPtr, right, "is.inst");
     builder->CreateBr(endBB);
