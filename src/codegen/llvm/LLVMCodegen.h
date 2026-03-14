@@ -10,7 +10,7 @@ namespace obould
 class LLVMCodegenVisitor : public ASTVisitor
 {
 public:
-    std::unique_ptr<llvm::Module> codegen(Module& moduleAst);
+    std::unique_ptr<llvm::Module> codegen(Module& moduleAst, bool isMain);
 
     // Expressions
     void visit(IntegerLiteral& node) override;
@@ -68,6 +68,7 @@ private:
     llvm::Value* lastValue = nullptr;
     llvm::Function* currentFunction = nullptr;
     std::string currentModule;
+    bool isMainModule = false;
     bool importedModule = false;
     bool exportedType = false;
     bool lvalue = false;
@@ -87,5 +88,6 @@ private:
     llvm::GlobalVariable* createStructDescriptor(const std::shared_ptr<TypeInfo>& type);
     void makeStructCastCheck(llvm::Value* left, llvm::Value* right, int64_t rDepth);
     void createModuleInitializer(Module& node);
+    void createEntryPoint(Module& node);
 };
 }

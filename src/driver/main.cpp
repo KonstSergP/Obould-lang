@@ -147,10 +147,10 @@ int main(int argc, char** argv)
     }
 
     OutputMode mode = OutputMode::OBJ;
-    if (program["--emit-llvm"] == true) mode = OutputMode::LLVM_IR;
-    else if (program["--emit-ast"] == true) mode = OutputMode::AST;
-    else if (program["--emit-symbols"] == true) mode = OutputMode::SYMBOLS;
-    else if (program["--emit-tokens"] == true) mode = OutputMode::TOKENS;
+    if (program["emit-llvm"] == true) mode = OutputMode::LLVM_IR;
+    else if (program["emit-ast"] == true) mode = OutputMode::AST;
+    else if (program["emit-symbols"] == true) mode = OutputMode::SYMBOLS;
+    else if (program["emit-tokens"] == true) mode = OutputMode::TOKENS;
 
     auto inputPath = program.get<std::string>("input_file");
     auto outputPath = program.get<std::string>("output");
@@ -221,7 +221,7 @@ int main(int argc, char** argv)
             emitSymbolFile(*module, symDir);
 
             obould::LLVMCodegenVisitor codegen;
-            auto llvmModule = codegen.codegen(*module);
+            auto llvmModule = codegen.codegen(*module, program.get<bool>("main"));
 
             std::filesystem::path outPath;
             if (!outputPath.empty()) {
@@ -249,7 +249,7 @@ int main(int argc, char** argv)
             emitSymbolFile(*module, symDir);
 
             obould::LLVMCodegenVisitor codegen;
-            auto llvmModule = codegen.codegen(*module);
+            auto llvmModule = codegen.codegen(*module, program.get<bool>("main"));
 
             if (outputPath.empty()) {
                 llvmModule->print(llvm::outs(), nullptr);

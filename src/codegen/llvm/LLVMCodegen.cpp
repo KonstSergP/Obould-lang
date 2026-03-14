@@ -7,13 +7,14 @@
 
 namespace obould
 {
-std::unique_ptr<llvm::Module> LLVMCodegenVisitor::codegen(Module& moduleAst)
+std::unique_ptr<llvm::Module> LLVMCodegenVisitor::codegen(Module& moduleAst, bool isMain)
 {
     locals.clear();
     functions.clear();
     structTypes.clear();
     lvalue = false;
     importedModule = false;
+    isMainModule = isMain;
     lastValue = nullptr;
     currentFunction = nullptr;
     module = std::make_unique<llvm::Module>(moduleAst.name, context);
@@ -263,5 +264,18 @@ void LLVMCodegenVisitor::createModuleInitializer(Module& node)
     }
 
     builder->CreateRetVoid();
+}
+
+void LLVMCodegenVisitor::createEntryPoint(Module& node)
+{
+    if (importedModule) return;
+
+    auto* mainTy = llvm::FunctionType::get(builder->getInt32Ty(), false);
+    auto* mainFn = llvm::Function::Create(mainTy, llvm::GlobalValue::ExternalLinkage, "main", *module);
+
+    auto* entry = llvm::BasicBlock::Create(context, "entry", mainFn);
+    builder->SetInsertPoint(entry);
+    builder->CreateCall(llvm::FunctionType::get(builder->getVoidTy(), false), functions["_" + node.name]);
+    builder->CreateRet(builder->getInt32(0));
 }
 }

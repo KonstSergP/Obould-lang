@@ -184,13 +184,16 @@ void LLVMCodegenVisitor::visit(ProcedureParameter& node) {}
 void LLVMCodegenVisitor::visit(Import& node)
 {
     auto curModule = std::move(currentModule);
+    auto curMain = isMainModule;
     currentModule = node.module->name;
     importedModule = true;
+    isMainModule = false;
 
     node.module->accept(*this);
 
     currentModule = curModule;
     importedModule = false;
+    isMainModule = curMain;
 }
 
 void LLVMCodegenVisitor::visit(Module& node)
@@ -207,5 +210,8 @@ void LLVMCodegenVisitor::visit(Module& node)
         proc->accept(*this);
 
     createModuleInitializer(node);
+
+    if (isMainModule)
+        createEntryPoint(node);
 }
 }
