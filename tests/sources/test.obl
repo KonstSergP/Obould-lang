@@ -1,34 +1,31 @@
-module TypeGuardExample
+module Test
 
-type {
-    // Base type
-    Shape: struct {
-        x, y: i64;
-    };
+import Out;
 
-    // Derived types
-    Circle: struct (Shape) {
-        radius: f64;
-    };
-
-    Rectangle: struct (Shape) {
-        width, height: f64;
-    };
+var {
+    a: i64;
+    b: i64;
+    res: i64;
 }
 
-var shapePtr: *Shape;
-
-fn ProcessShape(s: *Shape) -> void
-var area: f64;
+fn Compute(x: i64) -> i64
 {
-    // Type guard: check if s is actually a Circle, then access radius
-    // This is written as: s(Circle).radius
+    return x * x + 3 * x - 7;
+}
 
-    if s is Circle {
-        area = 3.14 * s(Circle).radius * s(Circle).radius;
-    }
+fn export Run() -> i64
+var t: i64;
+{
+    a = 12;
+    b = 5;
+    t = Compute(a) + Compute(b);
+    res = t + 10;
+    Out.WriteInt(res);
+    Out.WriteLn();
+    return res;
+}
 
-    if s is Rectangle {
-        area = s(Rectangle).width * s(Rectangle).height;
-    }
+fn init() -> void
+{
+    res = Run();
 }

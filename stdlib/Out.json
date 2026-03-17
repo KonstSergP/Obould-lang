@@ -1,0 +1,32 @@
+{
+    "declarations": {
+        "constants": [],
+        "variables": [],
+        "types": []
+    },
+    "imports": [],
+    "moduleName": "Out",
+    "procedures": [
+        {
+            "name": "WriteInt",
+            "parameters": [
+                {
+                    "name": "x",
+                    "reference": false,
+                    "type": "i64"
+                }
+            ],
+            "returnType": "void"
+        },
+        {
+            "name": "WriteLn",
+            "parameters": [],
+            "returnType": "void"
+        },
+        {
+            "name": "init",
+            "parameters": [],
+            "returnType": "void"
+        }
+    ]
+}
