@@ -870,47 +870,43 @@ std::unique_ptr<Expression> Parser::parseDesignator() {
             expect(TokenType::RBRACKET, "Expected ']' after array index");
             expr = std::make_unique<ArrayAccessExpression>(std::move(expr), std::move(index));
         } else if (check(TokenType::LPAREN)) {
+            // Try to parse type guard: expr(TypeName) followed by selector
             size_t saved = current_;
             advance(); // consume '('
 
             if (check(TokenType::IDENTIFIER)) {
-                advance(); // consume first identifier
+                Token firstIdent = advance(); // consume first identifier
+
+                std::string moduleName;
+                std::string typeName;
 
                 // Check for qualified identifier: Module.Type
                 if (check(TokenType::DOT)) {
                     advance(); // consume '.'
                     if (check(TokenType::IDENTIFIER)) {
-                        advance(); // consume second identifier
+                        Token secondIdent = advance(); // consume second identifier
+                        moduleName = firstIdent.lexeme;
+                        typeName = secondIdent.lexeme;
+                    } else {
+                        current_ = saved;
+                        break;
                     }
+                } else {
+                    typeName = firstIdent.lexeme;
                 }
 
                 if (check(TokenType::RPAREN)) {
                     advance(); // consume ')'
 
-                    std::string moduleName;
-                    std::string typeName;
-
-                    // Re-parse the type identifier properly
-                    current_ = saved;
-                    advance(); // consume '('
-                    Token first = advance(); // get first identifier
-
-                    if (check(TokenType::DOT)) {
-                        advance(); // consume '.'
-                        Token second = advance(); // get second identifier
-                        moduleName = first.lexeme;
-                        typeName = second.lexeme;
-                    } else {
-                        typeName = first.lexeme;
+                    // Only treat as type guard if followed by a selector . or [
+                    // Otherwise it's a procedure call, will not consume the ')'
+                    if (check(TokenType::DOT) || check(TokenType::LBRACKET)) {
+                        auto typeExpr = std::make_unique<IdentifierExpression>(moduleName, typeName);
+                        std::vector<std::unique_ptr<Expression>> args;
+                        args.push_back(std::move(typeExpr));
+                        expr = std::make_unique<ProcedureCall>(std::move(expr), std::move(args));
+                        continue;
                     }
-
-                    advance(); // consume ')'
-
-                    auto typeExpr = std::make_unique<IdentifierExpression>(moduleName, typeName);
-                    std::vector<std::unique_ptr<Expression>> args;
-                    args.push_back(std::move(typeExpr));
-                    expr = std::make_unique<ProcedureCall>(std::move(expr), std::move(args));
-                    continue; // Continue parsing more selectors
                 }
             }
 
