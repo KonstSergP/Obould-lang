@@ -898,9 +898,9 @@ std::unique_ptr<Expression> Parser::parseDesignator() {
                 if (check(TokenType::RPAREN)) {
                     advance(); // consume ')'
 
-                    // Only treat as type guard if followed by a selector . or [
+                    // Only treat as type guard if followed by a selector '.', or '[' or '='                                                                                             
                     // Otherwise it's a procedure call, will not consume the ')'
-                    if (check(TokenType::DOT) || check(TokenType::LBRACKET)) {
+                    if (check(TokenType::DOT) || check(TokenType::LBRACKET) || check(TokenType::OP_ASSIGN)) {
                         auto typeExpr = std::make_unique<IdentifierExpression>(moduleName, typeName);
                         std::vector<std::unique_ptr<Expression>> args;
                         args.push_back(std::move(typeExpr));
