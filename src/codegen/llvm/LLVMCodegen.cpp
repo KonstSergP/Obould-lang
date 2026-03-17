@@ -27,7 +27,7 @@ std::unique_ptr<llvm::Module> LLVMCodegenVisitor::codegen(Module& moduleAst, boo
 
 std::string LLVMCodegenVisitor::getMangledName(const std::string& moduleName, const std::string& name)
 {
-    return moduleName + "." + name;
+    return "ob_" + std::to_string(moduleName.length()) + moduleName + "_" + name;
 }
 
 llvm::FunctionType* LLVMCodegenVisitor::createFunctionType(const std::shared_ptr<TypeInfo>& type)
@@ -225,7 +225,7 @@ void LLVMCodegenVisitor::makeStructCastCheck(llvm::Value* left, llvm::Value* rig
 
 void LLVMCodegenVisitor::createModuleInitializer(Module& node)
 {
-    auto funcName = "_" + node.name;
+    auto funcName = "ob_" + node.name;
     auto fnType = llvm::FunctionType::get(builder->getVoidTy(), false);
     auto func = llvm::Function::Create(fnType, llvm::GlobalValue::ExternalLinkage, funcName, *module);
     functions[funcName] = func;
@@ -238,7 +238,7 @@ void LLVMCodegenVisitor::createModuleInitializer(Module& node)
         false,
         llvm::GlobalValue::InternalLinkage,
         builder->getFalse(),
-        "_" + node.name + "_visited"
+        "ob_" + node.name + "_visited"
     );
 
     auto* entryBB = llvm::BasicBlock::Create(context, "entry", func);
@@ -256,7 +256,7 @@ void LLVMCodegenVisitor::createModuleInitializer(Module& node)
     builder->CreateStore(builder->getTrue(), gVar);
 
     for (auto& import : node.imports) {
-        auto callee = functions["_" + import->realName];
+        auto callee = functions["ob_" + import->realName];
         builder->CreateCall(fnType, callee);
     }
     if (auto it = functions.find(getMangledName(node.name, "init")); it != functions.end()) {
@@ -275,7 +275,7 @@ void LLVMCodegenVisitor::createEntryPoint(Module& node)
 
     auto* entry = llvm::BasicBlock::Create(context, "entry", mainFn);
     builder->SetInsertPoint(entry);
-    builder->CreateCall(llvm::FunctionType::get(builder->getVoidTy(), false), functions["_" + node.name]);
+    builder->CreateCall(llvm::FunctionType::get(builder->getVoidTy(), false), functions["ob_" + node.name]);
     builder->CreateRet(builder->getInt32(0));
 }
 }
