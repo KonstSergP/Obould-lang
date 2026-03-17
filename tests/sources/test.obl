@@ -2,30 +2,31 @@ module Test
 
 import Out;
 
+fn export Run() -> i64
 var {
+    i: i64;
     a: i64;
     b: i64;
-    res: i64;
+    t: i64;
 }
-
-fn Compute(x: i64) -> i64
 {
-    return x * x + 3 * x - 7;
-}
+    a = 0;
+    b = 1;
+    i = 0;
 
-fn export Run() -> i64
-var t: i64;
-{
-    a = 12;
-    b = 5;
-    t = Compute(a) + Compute(b);
-    res = t + 10;
-    Out.WriteInt(res);
-    Out.WriteLn();
-    return res;
+    while i < 100 {
+        Out.WriteInt(a);
+        Out.WriteLn();
+        t = a + b;
+        a = b;
+        b = t;
+        i = i + 1;
+    }
+
+    return a;
 }
 
 fn init() -> void
 {
-    res = Run();
+    Run();
 }
