@@ -90,6 +90,9 @@ private:
     // Map: procedure full name -> vector of bools indicating which params are references
     std::map<std::string, std::vector<bool>> procedureRefParams_;
 
+    // RTTI: struct name -> parent struct name (empty if no parent)
+    std::vector<std::pair<std::string, std::string>> structTypes_;
+
     void increaseIndent();
     void decreaseIndent();
     void emitIndent();

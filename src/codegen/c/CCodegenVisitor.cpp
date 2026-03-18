@@ -124,6 +124,32 @@ void CCodegenVisitor::visit(Nil& node)
 
 void CCodegenVisitor::visit(BinaryExpression& node)
 {
+    // Handle Is operator specially for RTTI
+    if (node.op == BinaryExpression::Op::Is) {
+        os_ << "isInstanceOf(((StructDescriptor*)";
+        node.left->accept(*this);
+        os_ << "->_desc), &";
+
+        std::visit([this](auto&& arg) {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, std::unique_ptr<Type>>) {
+                if (auto* identType = dynamic_cast<IdentifierType*>(arg.get())) {
+                    if (!identType->moduleName.empty()) {
+                        os_ << identType->moduleName << "_" << identType->name;
+                    } else if (!moduleName_.empty()) {
+                        os_ << moduleName_ << "_" << identType->name;
+                    } else {
+                        os_ << identType->name;
+                    }
+                    os_ << "_desc";
+                }
+            }
+        }, node.right);
+
+        os_ << ")";
+        return;
+    }
+
     os_ << "(";
     node.left->accept(*this);
 
@@ -143,8 +169,7 @@ void CCodegenVisitor::visit(BinaryExpression& node)
         case BinaryExpression::Op::Gt: os_ << " > "; break;
         case BinaryExpression::Op::Gte: os_ << " >= "; break;
         case BinaryExpression::Op::Is:
-            // Type check - needs runtime support, emit placeholder
-            os_ << " /* is */ ";
+            // Should not reach here
             break;
     }
 
@@ -153,7 +178,7 @@ void CCodegenVisitor::visit(BinaryExpression& node)
         if constexpr (std::is_same_v<T, std::unique_ptr<Expression>>) {
             arg->accept(*this);
         } else if constexpr (std::is_same_v<T, std::unique_ptr<Type>>) {
-            // For 'is' operator - just emit type name as comment
+            // For non-Is operators with type (shouldn't happen normally)
             os_ << "/* ";
             arg->accept(*this);
             os_ << " */0";
@@ -612,14 +637,30 @@ void CCodegenVisitor::visit(TypeDeclaration& node)
     os_ << "typedef ";
 
     if (auto* structType = dynamic_cast<StructType*>(node.type.get())) {
+        // Track struct for RTTI
+        std::string parentName;
+        if (structType->baseType) {
+            if (!structType->baseType->moduleName.empty()) {
+                parentName = structType->baseType->moduleName + "_" + structType->baseType->name;
+            } else {
+                parentName = moduleName_ + "_" + structType->baseType->name;
+            }
+        }
+        structTypes_.push_back({fullName, parentName});
+
         // Output struct with tag name for self-referential types
         os_ << "struct " << fullName << " {\n";
         increaseIndent();
 
         if (structType->baseType) {
+            // Inherited struct - _desc is in _base
             emitIndent();
             structType->baseType->accept(*this);
             os_ << " _base;\n";
+        } else {
+            // Root struct - add _desc field
+            emitIndent();
+            os_ << "StructDescriptor* _desc;\n";
         }
 
         for (auto& field : structType->fields) {
@@ -700,6 +741,12 @@ void CCodegenVisitor::visit(ProcedureDeclaration& node)
 
     os_ << ") {\n";
     increaseIndent();
+
+    // Initialize RTTI descriptors if needed (only in source mode)
+    if (mode_ == COutputMode::SOURCE && !structTypes_.empty()) {
+        emitIndent();
+        os_ << "_init_descriptors();\n";
+    }
 
     // Local declarations
     if (node.declarations) {
@@ -819,6 +866,17 @@ void CCodegenVisitor::visit(Module& node)
         os_ << "#include <stdbool.h>\n";
         os_ << "#include <stddef.h>\n\n";
 
+        // RTTI support - StructDescriptor
+        os_ << "/* RTTI Support */\n";
+        os_ << "#ifndef STRUCT_DESCRIPTOR_DEFINED\n";
+        os_ << "#define STRUCT_DESCRIPTOR_DEFINED\n";
+        os_ << "typedef struct StructDescriptor {\n";
+        os_ << "    const char* name;\n";
+        os_ << "    int level;\n";
+        os_ << "    struct StructDescriptor** ancestors;\n";
+        os_ << "} StructDescriptor;\n";
+        os_ << "#endif\n\n";
+
         // Module imports
         for (auto& import : node.imports) {
             import->accept(*this);
@@ -837,9 +895,20 @@ void CCodegenVisitor::visit(Module& node)
             }
 
             // Types (all type definitions go in header)
+            // Clear structTypes_ before visiting types
+            structTypes_.clear();
             if (node.declarations->types) {
                 os_ << "/* Types */\n";
                 node.declarations->types->accept(*this);
+                os_ << "\n";
+            }
+
+            // Struct descriptor extern declarations
+            if (!structTypes_.empty()) {
+                os_ << "/* Struct descriptors */\n";
+                for (const auto& st : structTypes_) {
+                    os_ << "extern StructDescriptor " << st.first << "_desc;\n";
+                }
                 os_ << "\n";
             }
 
@@ -913,9 +982,88 @@ void CCodegenVisitor::visit(Module& node)
         // SOURCE FILE (.c) - implementations
         // =====================================================================
 
-        // Include own header and string.h for strncpy
+        // Collect struct types for RTTI
+        structTypes_.clear();
+        if (node.declarations && node.declarations->types) {
+            for (auto& typeDecl : node.declarations->types->types) {
+                if (auto* structType = dynamic_cast<StructType*>(typeDecl->type.get())) {
+                    std::string fullName = moduleName_ + "_" + typeDecl->name;
+                    std::string parentName;
+                    if (structType->baseType) {
+                        if (!structType->baseType->moduleName.empty()) {
+                            parentName = structType->baseType->moduleName + "_" + structType->baseType->name;
+                        } else {
+                            parentName = moduleName_ + "_" + structType->baseType->name;
+                        }
+                    }
+                    structTypes_.push_back({fullName, parentName});
+                }
+            }
+        }
+
+        // Include own header and required libraries
         os_ << "#include \"" << node.name << ".h\"\n";
-        os_ << "#include <string.h>\n\n";
+        os_ << "#include <string.h>\n";
+        os_ << "#include <stdlib.h>\n\n";
+
+        // RTTI helper functions
+        if (!structTypes_.empty()) {
+            os_ << "/* RTTI helper functions */\n";
+            os_ << "#ifndef RTTI_HELPERS_DEFINED\n";
+            os_ << "#define RTTI_HELPERS_DEFINED\n";
+            os_ << "static StructDescriptor* createStructDescriptor(\n";
+            os_ << "    const char* name,\n";
+            os_ << "    StructDescriptor* parent\n";
+            os_ << ") {\n";
+            os_ << "    StructDescriptor* desc = (StructDescriptor*)malloc(sizeof(StructDescriptor));\n";
+            os_ << "    desc->name = name;\n";
+            os_ << "    if (parent == NULL) {\n";
+            os_ << "        desc->level = 0;\n";
+            os_ << "        desc->ancestors = NULL;\n";
+            os_ << "    } else {\n";
+            os_ << "        desc->level = parent->level + 1;\n";
+            os_ << "        desc->ancestors = (StructDescriptor**)malloc(sizeof(StructDescriptor*) * desc->level);\n";
+            os_ << "        for (int i = 0; i < parent->level; i++) {\n";
+            os_ << "            desc->ancestors[i] = parent->ancestors[i];\n";
+            os_ << "        }\n";
+            os_ << "        desc->ancestors[desc->level - 1] = parent;\n";
+            os_ << "    }\n";
+            os_ << "    return desc;\n";
+            os_ << "}\n\n";
+            os_ << "static int isInstanceOf(StructDescriptor* actual, StructDescriptor* expected) {\n";
+            os_ << "    if (actual == expected) return 1;\n";
+            os_ << "    if (actual->level <= expected->level) return 0;\n";
+            os_ << "    return actual->ancestors[expected->level] == expected;\n";
+            os_ << "}\n";
+            os_ << "#endif\n\n";
+
+            // Struct descriptor definitions
+            os_ << "/* Struct descriptors */\n";
+            for (const auto& st : structTypes_) {
+                os_ << "StructDescriptor " << st.first << "_desc;\n";
+            }
+            os_ << "\n";
+
+            // Initialization function
+            os_ << "static void _init_descriptors(void) {\n";
+            os_ << "    static int initialized = 0;\n";
+            os_ << "    if (initialized) return;\n";
+            os_ << "    initialized = 1;\n";
+            for (const auto& st : structTypes_) {
+                os_ << "    {\n";
+                os_ << "        StructDescriptor* d = createStructDescriptor(\"" << st.first << "\", ";
+                if (st.second.empty()) {
+                    os_ << "NULL";
+                } else {
+                    os_ << "&" << st.second << "_desc";
+                }
+                os_ << ");\n";
+                os_ << "        " << st.first << "_desc = *d;\n";
+                os_ << "        free(d);\n";
+                os_ << "    }\n";
+            }
+            os_ << "}\n\n";
+        }
 
         // Global variable definitions
         if (node.declarations && node.declarations->variables) {
