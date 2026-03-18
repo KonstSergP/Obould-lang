@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-OBUILD="$ROOT_DIR/cmake-build-debug/obould"
+OBUILD="$ROOT_DIR/build/obould"
 OBDIR="$ROOT_DIR/.obould"
 OUT_C="$ROOT_DIR/stdlib/Out.c"
 OUT_JSON="$ROOT_DIR/stdlib/Out.json"
