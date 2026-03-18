@@ -1,0 +1,60 @@
+module TypeGuardTest
+
+import Out;
+
+type {
+    Shape: struct {
+        x, y: i64;
+    };
+
+    Circle: struct (Shape) {
+        radius: i64;
+    };
+
+    Rect: struct (Shape) {
+        w, h: i64;
+    };
+}
+
+fn Check(s: &Shape) -> i64
+var {
+    res: i64;
+}
+{
+    if s is Circle {
+        res = s(Circle).radius * 2;
+    }
+    if s is Rect {
+        res = s(Rect).w + s(Rect).h;
+    }
+    return res;
+}
+
+fn export Run() -> i64
+var {
+    c: Circle;
+    r: Rect;
+    res: i64;
+}
+{
+    c.x = 0;
+    c.y = 0;
+    c.radius = 7;
+    res = Check(c);
+    Out.WriteInt(res);
+    Out.WriteLn();
+
+    r.x = 0;
+    r.y = 0;
+    r.w = 3;
+    r.h = 4;
+    res = Check(r);
+    Out.WriteInt(res);
+    Out.WriteLn();
+    return res;
+}
+
+fn init() -> void
+{
+    Run();
+}
