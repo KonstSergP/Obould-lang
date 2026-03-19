@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <set>
+#include <stdexcept>
 
 namespace obould
 {
@@ -1178,6 +1179,25 @@ void CCodegenVisitor::visit(Module& node)
         os_ << "/* Function implementations */\n";
         for (auto& proc : node.procedures) {
             proc->accept(*this);
+            // Check if this is the init() procedure
+            if (proc->name == "init") {
+                hasInitProcedure_ = true;
+            }
+        }
+
+        // Generate main() function if this is the main module
+        if (isMain_) {
+            if (!hasInitProcedure_) {
+                throw std::runtime_error(
+                    "Error: --main flag specified but no 'init' procedure found in module '" +
+                    moduleName_ + "'. The entry point must be 'fn init() -> void'.");
+            }
+
+            os_ << "/* Entry point */\n";
+            os_ << "int main(int argc, char** argv) {\n";
+            os_ << "    " << moduleName_ << "_init();\n";
+            os_ << "    return 0;\n";
+            os_ << "}\n";
         }
     }
 }

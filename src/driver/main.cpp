@@ -217,12 +217,15 @@ int main(int argc, char** argv)
                 return 1;
             }
 
+            bool isMain = program.get<bool>("main");
+
             if (outputPath.empty()) {
                 // Output both header and source to stdout (header first)
                 obould::CCodegenVisitor hgen(std::cout, obould::COutputMode::HEADER);
                 module->accept(hgen);
                 std::cout << "\n/* ========== SOURCE FILE ========== */\n\n";
                 obould::CCodegenVisitor cgen(std::cout, obould::COutputMode::SOURCE);
+                cgen.setIsMain(isMain);
                 module->accept(cgen);
             }
             else {
@@ -265,6 +268,7 @@ int main(int argc, char** argv)
                     std::ofstream sourceFile(sourcePath);
                     if (!sourceFile) throw std::runtime_error("Cannot open source file: " + sourcePath.string());
                     obould::CCodegenVisitor cgen(sourceFile, obould::COutputMode::SOURCE);
+                    cgen.setIsMain(isMain);
                     module->accept(cgen);
                 }
 

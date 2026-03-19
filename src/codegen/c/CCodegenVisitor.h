@@ -97,6 +97,16 @@ private:
     // Maps struct full name -> list of (field name, field type as string)
     std::map<std::string, std::vector<std::pair<std::string, std::string>>> structFields_;
 
+    // Flag indicating this is the main module (should generate main() calling init())
+    bool isMain_ = false;
+
+    // Track if init() procedure exists
+    bool hasInitProcedure_ = false;
+
+public:
+    void setIsMain(bool isMain) { isMain_ = isMain; }
+
+private:
     void increaseIndent();
     void decreaseIndent();
     void emitIndent();
