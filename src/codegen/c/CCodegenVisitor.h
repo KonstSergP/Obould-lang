@@ -93,6 +93,10 @@ private:
     // RTTI: struct name -> parent struct name (empty if no parent)
     std::vector<std::pair<std::string, std::string>> structTypes_;
 
+    // Struct field tracking for inheritance flattening
+    // Maps struct full name -> list of (field name, field type as string)
+    std::map<std::string, std::vector<std::pair<std::string, std::string>>> structFields_;
+
     void increaseIndent();
     void decreaseIndent();
     void emitIndent();

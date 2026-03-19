@@ -648,25 +648,50 @@ void CCodegenVisitor::visit(TypeDeclaration& node)
         }
         structTypes_.push_back({fullName, parentName});
 
+        // Collect all fields for this struct (inherited + own)
+        std::vector<std::pair<std::string, std::string>> allFields;
+
         // Output struct with tag name for self-referential types
         os_ << "struct " << fullName << " {\n";
         increaseIndent();
 
-        if (structType->baseType) {
-            // Inherited struct - _desc is in _base
-            emitIndent();
-            structType->baseType->accept(*this);
-            os_ << " _base;\n";
-        } else {
-            // Root struct - add _desc field
-            emitIndent();
-            os_ << "StructDescriptor* _desc;\n";
+        // Always add _desc as first field
+        emitIndent();
+        os_ << "StructDescriptor* _desc;\n";
+
+        // Copy inherited fields from parent (flattening)
+        if (!parentName.empty()) {
+            auto it = structFields_.find(parentName);
+            if (it != structFields_.end()) {
+                for (const auto& field : it->second) {
+                    emitIndent();
+                    os_ << field.second << " " << field.first << ";\n";
+                    allFields.push_back(field);
+                }
+            }
         }
 
+        // Add own fields
         for (auto& field : structType->fields) {
+            // Get field type as string
+            std::string fieldType = getTypeString(*field->type);
+            allFields.push_back({field->name, fieldType});
+
             emitIndent();
-            field->accept(*this);
+            // Handle array types specially
+            if (auto* arrType = dynamic_cast<ArrayType*>(field->type.get())) {
+                arrType->elementType->accept(*this);
+                os_ << " " << field->name << "[";
+                arrType->length->accept(*this);
+                os_ << "];\n";
+            } else {
+                field->type->accept(*this);
+                os_ << " " << field->name << ";\n";
+            }
         }
+
+        // Store all fields for future children
+        structFields_[fullName] = allFields;
 
         decreaseIndent();
         emitIndent();
@@ -895,8 +920,9 @@ void CCodegenVisitor::visit(Module& node)
             }
 
             // Types (all type definitions go in header)
-            // Clear structTypes_ before visiting types
+            // Clear struct tracking before visiting types
             structTypes_.clear();
+            structFields_.clear();
             if (node.declarations->types) {
                 os_ << "/* Types */\n";
                 node.declarations->types->accept(*this);
@@ -984,6 +1010,7 @@ void CCodegenVisitor::visit(Module& node)
 
         // Collect struct types for RTTI
         structTypes_.clear();
+        structFields_.clear();
         if (node.declarations && node.declarations->types) {
             for (auto& typeDecl : node.declarations->types->types) {
                 if (auto* structType = dynamic_cast<StructType*>(typeDecl->type.get())) {
