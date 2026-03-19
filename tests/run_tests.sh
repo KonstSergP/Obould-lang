@@ -9,6 +9,7 @@ OUT_JSON="$ROOT_DIR/stdlib/Out.json"
 
 mkdir -p "$OBDIR"
 
+cmake --build "$ROOT_DIR/build" -j
 cc -c "$OUT_C" -o "$OBDIR/Out.o"
 cp "$OUT_JSON" "$OBDIR/Out.json"
 
@@ -16,6 +17,7 @@ TESTS=(
   "$ROOT_DIR/tests/sources/test_fibonacci.obl"
   "$ROOT_DIR/tests/sources/test_arrays.obl"
   "$ROOT_DIR/tests/sources/test_structs_typeguards.obl"
+  "$ROOT_DIR/tests/sources/test_mutual_recursion.obl"
 )
 
 for test in "${TESTS[@]}"; do

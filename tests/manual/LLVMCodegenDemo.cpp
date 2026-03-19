@@ -66,7 +66,7 @@ int main()
         }
 
         obould::LLVMCodegenVisitor codegen;
-        auto llvmModule = codegen.codegen(*module);
+        auto llvmModule = codegen.codegen(*module, false);
 
         if (!llvmModule) {
             std::cerr << "Failed to generate LLVM IR\n";

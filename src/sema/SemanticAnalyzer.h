@@ -69,11 +69,6 @@ public:
     void visit(Module& node) override;
 
 private:
-    void createBuiltinTypes();
-    void addBuiltinTypes(SymbolTable& symTable);
-    void addBuiltinProcedures(SymbolTable& symTable);
-    std::shared_ptr<TypeInfo> getBuiltinType(TypeKind kind) const;
-
     enum class AnalyzeStages { Default, CreateType, FillType, ValidateType };
 
     AnalyzeStages analyzeStage = AnalyzeStages::Default;
@@ -88,5 +83,11 @@ private:
     std::unordered_map<std::string, std::string> moduleRealNames;
     std::string currentModuleName;
     SymbolFileParser symbolFileParser;
+
+    void createBuiltinTypes();
+    void addBuiltinTypes(SymbolTable& symTable);
+    void addBuiltinProcedures(SymbolTable& symTable);
+    std::shared_ptr<TypeInfo> getBuiltinType(TypeKind kind) const;
+    void declareProcedure(ProcedureDeclaration& node);
 };
 }

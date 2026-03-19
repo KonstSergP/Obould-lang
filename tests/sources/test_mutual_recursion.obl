@@ -1,0 +1,46 @@
+module MutualRecursionTest
+
+import Out;
+
+fn IsEven(n: i64) -> bool
+var res: bool;
+{
+    if n == 0 {
+        res = true;
+    }
+    else {
+        res = IsOdd(n - 1);
+    }
+    return res;
+}
+
+fn IsOdd(n: i64) -> bool
+var res: bool;
+{
+    if n == 0 {
+        res = false;
+    }
+    else {
+        res = IsEven(n - 1);
+    }
+    return res;
+}
+
+fn export Run() -> i64
+var res: bool;
+{
+    res = IsEven(18);
+    if res {
+        Out.WriteInt(1);
+    }
+    else {
+        Out.WriteInt(0);
+    }
+    Out.WriteLn();
+    return 0;
+}
+
+fn init() -> void
+{
+    Run();
+}

@@ -217,7 +217,7 @@ void SemanticAnalyzer::visit(DeclarationsBlock& node)
     if (node.variables) node.variables->accept(*this);
 }
 
-void SemanticAnalyzer::visit(ProcedureDeclaration& node)
+void SemanticAnalyzer::declareProcedure(ProcedureDeclaration& node)
 {
     auto procType = std::make_shared<TypeInfo>(TypeKind::Procedure);
     node.resolvedType = procType;
@@ -251,7 +251,10 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
     if (!symbolTables[currentModuleName].addSymbol(procSym)) {
         addError("Redeclaration of symbol '" + node.name + "'");
     }
+}
 
+void SemanticAnalyzer::visit(ProcedureDeclaration& node)
+{
     if (importedModule)
         return;
 
@@ -289,7 +292,8 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
         addError("Procedure '" + node.name + "' does not have a body");
     }
 
-    bool isVoid = procType->returnType->kind == TypeKind::Void;
+    auto retType = node.resolvedType->returnType;
+    bool isVoid = retType->kind == TypeKind::Void;
 
     if (isVoid && node.returnExpression) {
         addError("Procedure '" + node.name + "' is void but returns a value");
@@ -300,7 +304,7 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
     else if (!isVoid && node.returnExpression) {
         node.returnExpression->accept(*this);
         if (node.returnExpression->resolvedType
-            && !procType->returnType->isAssignableFrom(node.returnExpression->resolvedType)) {
+            && !retType->isAssignableFrom(node.returnExpression->resolvedType)) {
             addError("Return expression in procedure '" + node.name + "' does not match with return type");
         }
     }
@@ -348,8 +352,9 @@ void SemanticAnalyzer::visit(Module& node)
         node.declarations->accept(*this);
     }
 
-    for (const auto& proc : node.procedures) {
+    for (const auto& proc : node.procedures)
+        declareProcedure(*proc);
+    for (const auto& proc : node.procedures)
         proc->accept(*this);
-    }
 }
 }
