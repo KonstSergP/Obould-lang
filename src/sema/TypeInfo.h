@@ -73,6 +73,11 @@ struct ParamInfo
     bool isReference;
 };
 
+enum class BuiltinKind {
+    None,
+    NEW,
+    LEN
+};
 
 struct TypeInfo
 {
@@ -80,9 +85,9 @@ struct TypeInfo
 
     explicit TypeInfo(const TypeKind k) : kind(k) {}
 
-    bool isAssignableFrom(const std::shared_ptr<TypeInfo>& other) const;
-    bool isBaseTypeOf(const std::shared_ptr<TypeInfo>& other) const;
-    bool isArrayConvertibleFrom(const std::shared_ptr<TypeInfo>& other) const;
+    [[nodiscard]] bool isAssignableFrom(const std::shared_ptr<TypeInfo>& other) const;
+    [[nodiscard]] bool isBaseTypeOf(const std::shared_ptr<TypeInfo>& other) const;
+    [[nodiscard]] bool isArrayConvertibleFrom(const std::shared_ptr<TypeInfo>& other) const;
 
 
     TypeKind kind;
@@ -107,5 +112,6 @@ struct TypeInfo
     // Procedure
     std::shared_ptr<TypeInfo> returnType;
     std::vector<ParamInfo> parameters;
+    BuiltinKind builtin = BuiltinKind::None;
 };
 }

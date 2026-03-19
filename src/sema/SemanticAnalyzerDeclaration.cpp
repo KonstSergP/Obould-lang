@@ -227,7 +227,7 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
         procType->returnType = node.returnType->resolvedType;
     }
     else {
-        procType->returnType = std::make_shared<TypeInfo>(TypeKind::Void);
+        procType->returnType = getBuiltinType(TypeKind::Void);
     }
 
     for (const auto& param : node.parameters) {
@@ -337,6 +337,8 @@ void SemanticAnalyzer::visit(Module& node)
     symbolTables.try_emplace(currentModuleName);
     symbolTables[currentModuleName].enterScope();
     addBuiltinTypes(symbolTables[currentModuleName]);
+    if (!importedModule)
+        addBuiltinProcedures(symbolTables[currentModuleName]);
 
     for (const auto& imp : node.imports) {
         imp->accept(*this);

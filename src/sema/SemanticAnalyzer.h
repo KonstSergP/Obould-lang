@@ -1,6 +1,7 @@
 #pragma once
 #include <filesystem>
 #include "SymbolTable.h"
+#include "TypeInfo.h"
 #include "ast/ASTVisitor.h"
 #include "parser/SymbolFileParser.h"
 
@@ -70,6 +71,8 @@ public:
 private:
     void createBuiltinTypes();
     void addBuiltinTypes(SymbolTable& symTable);
+    void addBuiltinProcedures(SymbolTable& symTable);
+    std::shared_ptr<TypeInfo> getBuiltinType(TypeKind kind) const;
 
     enum class AnalyzeStages { Default, CreateType, FillType, ValidateType };
 

@@ -66,7 +66,7 @@ void SemanticAnalyzer::visit(ProcedureCall& node)
 
         if (!targetType || targetType->kind != TypeKind::Struct) {
             addError("Type guard target type must be a struct");
-            node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
+            node.resolvedType = getBuiltinType(TypeKind::Void);
             return;
         }
 
@@ -88,7 +88,7 @@ void SemanticAnalyzer::visit(ProcedureCall& node)
     }
     else {
         addError("Expression is not a procedure or type guard");
-        node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
+        node.resolvedType = getBuiltinType(TypeKind::Void);
     }
 }
 

@@ -18,6 +18,20 @@ void SemanticAnalyzer::createBuiltinTypes()
     builtinTypes["void"] = std::make_shared<TypeInfo>(TypeKind::Void);
 }
 
+std::shared_ptr<TypeInfo> SemanticAnalyzer::getBuiltinType(TypeKind kind) const
+{
+    switch (kind) {
+    case TypeKind::i64: return builtinTypes.at("i64");
+    case TypeKind::f64: return builtinTypes.at("f64");
+    case TypeKind::Bool: return builtinTypes.at("bool");
+    case TypeKind::Byte: return builtinTypes.at("byte");
+    case TypeKind::Char: return builtinTypes.at("char");
+    case TypeKind::Void: return builtinTypes.at("void");
+    default:
+        return std::make_shared<TypeInfo>(kind);
+    }
+}
+
 void SemanticAnalyzer::addBuiltinTypes(SymbolTable& symTable)
 {
     auto add = [&](const std::string& name)
@@ -35,6 +49,27 @@ void SemanticAnalyzer::addBuiltinTypes(SymbolTable& symTable)
     for (auto& [k, v] : builtinTypes) {
         add(k);
     }
+}
+
+void SemanticAnalyzer::addBuiltinProcedures(SymbolTable& symTable) {
+    auto registerBuiltin = [&](const std::string& name, BuiltinKind builtin, TypeKind retKind = TypeKind::Void) {
+        auto type = std::make_shared<TypeInfo>(TypeKind::Procedure);
+        type->builtin = builtin;
+        type->returnType = getBuiltinType(retKind);
+
+        Symbol sym;
+        sym.kind = SymbolKind::Procedure;
+        sym.name = name;
+        sym.type = type;
+        sym.isExported = true;
+        sym.isReference = false;
+        sym.isReadOnly = true;
+
+        symTable.addSymbol(std::move(sym));
+    };
+
+    registerBuiltin("NEW", BuiltinKind::NEW);
+    registerBuiltin("LEN", BuiltinKind::LEN, TypeKind::i64);
 }
 
 bool SemanticAnalyzer::analyze(Module& module)
