@@ -9,6 +9,12 @@ void SemanticAnalyzer::visit(ProcedureCall& node)
     node.procedureName->accept(*this);
 
     auto procTypeInfo = node.procedureName->resolvedType;
+
+    if (procTypeInfo->builtin != BuiltinKind::None) {
+        visitBuiltinProcedure(node);
+        return;
+    }
+
     if (procTypeInfo->kind == TypeKind::Procedure) {
         const auto& params = procTypeInfo->parameters;
 

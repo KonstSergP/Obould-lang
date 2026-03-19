@@ -18,6 +18,7 @@ TESTS=(
   "$ROOT_DIR/tests/sources/test_arrays.obl"
   "$ROOT_DIR/tests/sources/test_structs_typeguards.obl"
   "$ROOT_DIR/tests/sources/test_mutual_recursion.obl"
+  "$ROOT_DIR/tests/sources/test_len.obl"
 )
 
 for test in "${TESTS[@]}"; do

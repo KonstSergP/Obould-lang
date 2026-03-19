@@ -5,18 +5,78 @@
 
 namespace obould
 {
+void LLVMCodegenVisitor::visitBuiltinProcedure(ProcedureCall& node)
+{
+    auto procTypeInfo = node.procedureName->resolvedType;
+
+    switch (procTypeInfo->builtin) {
+    case BuiltinKind::LEN:
+    {
+        node.args[0]->accept(*this);
+        auto argType = node.args[0]->resolvedType;
+        auto* lenVal = lengths[argType.get()];
+        if (lenVal) {
+            if (lenVal->getType()->isPointerTy())
+                lenVal = builder->CreateLoad(builder->getInt64Ty(), lenVal, "arr.len");
+        }
+        else if (argType->kind == TypeKind::Array || argType->kind == TypeKind::String) {
+            lenVal = builder->getInt64(argType->length);
+        }
+        else {
+            lenVal = builder->getInt64(0);
+        }
+        lastValue = builder->CreateZExtOrTrunc(lenVal, builder->getInt64Ty());
+    }
+    break;
+    case BuiltinKind::NEW:
+    {
+        bool old = lvalue;
+        lvalue = true;
+        node.args[0]->accept(*this);
+        auto* ptrAddr = lastValue;
+        lvalue = old;
+
+        auto baseType = node.args[0]->resolvedType->baseType;
+        auto* baseLLVM = toLLVMType(baseType);
+
+        auto mallocFn = module->getOrInsertFunction(
+            "malloc",
+            llvm::FunctionType::get(builder->getPtrTy(), {builder->getInt64Ty()}, false));
+
+        auto* sizeVal = llvm::ConstantExpr::getSizeOf(baseLLVM);
+        auto* ptr = builder->CreateCall(mallocFn, {sizeVal});
+        builder->CreateStore(ptr, ptrAddr);
+
+        if (baseType->kind == TypeKind::Struct) {
+            auto* tagPtr = builder->CreateStructGEP(baseLLVM, ptr, 0);
+            builder->CreateStore(descriptors[baseType.get()], tagPtr);
+        }
+        lastValue = nullptr;
+    }
+    break;
+    default: break;
+    }
+}
+
 void LLVMCodegenVisitor::visit(ProcedureCall& node)
 {
     bool oldLvalue = lvalue;
     lvalue = false;
     node.procedureName->accept(*this);
+    auto procTypeInfo = node.procedureName->resolvedType;
+
+    if (procTypeInfo->builtin != BuiltinKind::None) {
+        visitBuiltinProcedure(node);
+        lvalue = oldLvalue;
+        return;
+    }
+
     auto* callee = lastValue;
     if (!callee) {
         lastValue = nullptr;
+        lvalue = oldLvalue;
         return;
     }
-    auto procTypeInfo = node.procedureName->resolvedType;
-
     if (node.isTypeGuard) {
         auto lType = node.procedureName->resolvedType;
         if (lType->kind == TypeKind::Pointer) lType = lType->baseType;

@@ -85,9 +85,10 @@ private:
     SymbolFileParser symbolFileParser;
 
     void createBuiltinTypes();
-    void addBuiltinTypes(SymbolTable& symTable);
-    void addBuiltinProcedures(SymbolTable& symTable);
+    void addBuiltinTypes(SymbolTable& symTable) const;
+    void addBuiltinProcedures(SymbolTable& symTable) const;
     std::shared_ptr<TypeInfo> getBuiltinType(TypeKind kind) const;
     void declareProcedure(ProcedureDeclaration& node);
+    void visitBuiltinProcedure(ProcedureCall& node);
 };
 }

@@ -89,5 +89,6 @@ private:
     void makeStructCastCheck(llvm::Value* left, llvm::Value* right, int64_t rDepth);
     void createModuleInitializer(Module& node);
     void createEntryPoint(Module& node);
+    void visitBuiltinProcedure(ProcedureCall& node);
 };
 }

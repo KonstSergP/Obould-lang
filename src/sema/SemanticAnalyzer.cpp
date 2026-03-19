@@ -32,14 +32,14 @@ std::shared_ptr<TypeInfo> SemanticAnalyzer::getBuiltinType(TypeKind kind) const
     }
 }
 
-void SemanticAnalyzer::addBuiltinTypes(SymbolTable& symTable)
+void SemanticAnalyzer::addBuiltinTypes(SymbolTable& symTable) const
 {
     auto add = [&](const std::string& name)
     {
         Symbol s;
         s.name = name;
         s.kind = SymbolKind::Type;
-        s.type = builtinTypes[name];
+        s.type = builtinTypes.at(name);
         s.isExported = false;
         s.isReference = false;
         s.isReadOnly = true;
@@ -51,8 +51,10 @@ void SemanticAnalyzer::addBuiltinTypes(SymbolTable& symTable)
     }
 }
 
-void SemanticAnalyzer::addBuiltinProcedures(SymbolTable& symTable) {
-    auto registerBuiltin = [&](const std::string& name, BuiltinKind builtin, TypeKind retKind = TypeKind::Void) {
+void SemanticAnalyzer::addBuiltinProcedures(SymbolTable& symTable) const
+{
+    auto registerBuiltin = [&](const std::string& name, BuiltinKind builtin, TypeKind retKind = TypeKind::Void)
+    {
         auto type = std::make_shared<TypeInfo>(TypeKind::Procedure);
         type->builtin = builtin;
         type->returnType = getBuiltinType(retKind);
@@ -68,8 +70,8 @@ void SemanticAnalyzer::addBuiltinProcedures(SymbolTable& symTable) {
         symTable.addSymbol(std::move(sym));
     };
 
-    registerBuiltin("NEW", BuiltinKind::NEW);
-    registerBuiltin("LEN", BuiltinKind::LEN, TypeKind::i64);
+    registerBuiltin("new", BuiltinKind::NEW);
+    registerBuiltin("len", BuiltinKind::LEN, TypeKind::i64);
 }
 
 bool SemanticAnalyzer::analyze(Module& module)
@@ -116,5 +118,45 @@ std::shared_ptr<TypeInfo> SemanticAnalyzer::getPolymorphicBase(Expression* expr)
     }
 
     return nullptr;
+}
+
+void SemanticAnalyzer::visitBuiltinProcedure(ProcedureCall& node)
+{
+    for (auto& arg : node.args) {
+        arg->accept(*this);
+    }
+
+    switch (node.procedureName->resolvedType->builtin) {
+    case BuiltinKind::NEW:
+    {
+        if (node.args.size() != 1) {
+            addError("'new' expects 1 argument");
+            return;
+        }
+        if (node.args[0]->resolvedType->kind != TypeKind::Pointer) {
+            addError("'new' requires a pointer variable");
+        }
+        if (!node.args[0]->isLvalue) {
+            addError("'new' requires a variable (l-value)");
+        }
+        break;
+    }
+    case BuiltinKind::LEN:
+    {
+        if (node.args.size() != 1) {
+            addError("'len' expects 1 argument");
+            return;
+        }
+        auto argType = node.args[0]->resolvedType;
+        if (argType->kind != TypeKind::Array && argType->kind != TypeKind::String) {
+            addError("'len' expects an array or string");
+        }
+        break;
+    }
+    default:
+        addError("Unknown builtin kind");
+    }
+    node.resolvedType = node.procedureName->resolvedType->returnType;
+    node.isLvalue = false;
 }
 }
