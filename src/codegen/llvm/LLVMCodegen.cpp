@@ -89,7 +89,9 @@ llvm::Type* LLVMCodegenVisitor::toLLVMType(const std::shared_ptr<TypeInfo>& type
             return it->second;
         }
 
-        std::vector<llvm::Type*> fieldTypes;
+        auto* structTy = llvm::StructType::create(context, "struct." + typeInfo->name);
+        structTypes[typeInfo.get()] = structTy;
+
         std::vector<TypeInfo*> chain;
         auto current = typeInfo;
         while (current) {
@@ -98,6 +100,7 @@ llvm::Type* LLVMCodegenVisitor::toLLVMType(const std::shared_ptr<TypeInfo>& type
         }
         std::reverse(chain.begin(), chain.end());
 
+        std::vector<llvm::Type*> fieldTypes;
         fieldTypes.push_back(builder->getPtrTy());
         for (const auto* info : chain) {
             for (const auto& field : info->fields) {
@@ -105,10 +108,8 @@ llvm::Type* LLVMCodegenVisitor::toLLVMType(const std::shared_ptr<TypeInfo>& type
             }
         }
 
-        std::string structName = "struct." + typeInfo->name;
-        auto* structTy = llvm::StructType::create(context, structName);
         structTy->setBody(fieldTypes, false);
-        structTypes[typeInfo.get()] = structTy;
+
         return structTy;
     }
     default:
