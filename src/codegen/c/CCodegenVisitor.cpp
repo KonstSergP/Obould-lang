@@ -228,6 +228,15 @@ void CCodegenVisitor::visit(ArrayAccessExpression& node)
 void CCodegenVisitor::visit(MemberAccessExpression& node)
 {
     node.object->accept(*this);
+
+    // Check if object is a type guard (produces pointer) - use -> instead of .
+    if (auto* call = dynamic_cast<ProcedureCall*>(node.object.get())) {
+        if (call->isTypeGuard) {
+            os_ << "->" << node.memberName;
+            return;
+        }
+    }
+
     os_ << "." << node.memberName;
 }
 
@@ -266,6 +275,25 @@ void CCodegenVisitor::visit(QualifiedNameNode& node)
 
 void CCodegenVisitor::visit(ProcedureCall& node)
 {
+    // Handle type guard: p(Point3D) -> ((RTTITest_Point3D*)p)
+    if (node.isTypeGuard && !node.args.empty()) {
+        os_ << "((";
+        // Get the target type name
+        if (auto* typeIdent = dynamic_cast<IdentifierExpression*>(node.args[0].get())) {
+            if (!typeIdent->moduleName.empty()) {
+                os_ << typeIdent->moduleName << "_" << typeIdent->name;
+            } else {
+                os_ << moduleName_ << "_" << typeIdent->name;
+            }
+        } else {
+            node.args[0]->accept(*this);
+        }
+        os_ << "*)";
+        node.procedureName->accept(*this);
+        os_ << ")";
+        return;
+    }
+
     // Determine procedure name for looking up reference parameters
     std::string procName;
     if (auto* ident = dynamic_cast<IdentifierExpression*>(node.procedureName.get())) {
