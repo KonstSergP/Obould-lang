@@ -22,7 +22,7 @@ void LLVMCodegenVisitor::visit(BooleanLiteral& node)
 
 void LLVMCodegenVisitor::visit(StringLiteral& node)
 {
-    lengths[node.resolvedType.get()] = builder->getInt64(node.value.length() + 1);
+    lengths[node.resolvedType.get()] = builder->getInt64(node.value.length());
     lastValue = getConstantValue(node);
 }
 

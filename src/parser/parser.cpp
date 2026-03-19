@@ -807,9 +807,6 @@ std::unique_ptr<Expression> Parser::parseFactor() {
 
     if (match(TokenType::STRING)) {
         std::string value = previous().lexeme;
-        if (value.size() >= 2) {
-            value = value.substr(1, value.size() - 2);
-        }
         return std::make_unique<StringLiteral>(value);
     }
 

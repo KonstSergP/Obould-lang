@@ -125,6 +125,9 @@ void LLVMCodegenVisitor::visit(ProcedureCall& node)
                 if (lenVal->getType()->isPointerTy()) {
                     lenVal = builder->CreateLoad(builder->getInt64Ty(), lenVal);
                 }
+                if (factType->kind == TypeKind::String) {
+                    lenVal = builder->CreateAdd(lenVal, builder->getInt64(1), "str.len0");
+                }
                 hiddenParams.push_back(lenVal);
 
                 formalType = formalType->baseType;
