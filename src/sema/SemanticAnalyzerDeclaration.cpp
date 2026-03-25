@@ -69,9 +69,21 @@ static bool containsRecursive(const std::shared_ptr<TypeInfo>& t,
 void SemanticAnalyzer::validateType(const std::shared_ptr<TypeInfo>& type)
 {
     std::set<TypeInfo*> visits;
+    auto checkElementType = [&](const std::shared_ptr<TypeInfo>& elem,
+                                const std::string& context,
+                                bool allowOpenArray)
+    {
+        if (!elem || !isValidVariableType(elem->kind)) {
+            addError(context + " has invalid element type");
+            return;
+        }
+        if (!allowOpenArray && elem->isOpenArray) {
+            addError(context + " cannot use open array as element type");
+        }
+    };
+
     if (type->kind == TypeKind::Pointer) {
-        auto base = type->baseType;
-        if (base->kind != TypeKind::Struct) {
+        if (type->baseType->kind != TypeKind::Struct) {
             addError("Pointer base type must be a Struct in '" + type->name + "'");
         }
     }
@@ -90,6 +102,7 @@ void SemanticAnalyzer::validateType(const std::shared_ptr<TypeInfo>& type)
             if (containsRecursive(f.type, type.get(), visits)) {
                 addError("Struct " + type->name + " cannot have itself as a field");
             }
+            checkElementType(f.type, "Field '" + f.name + "' in struct " + type->name, false);
         }
         updateStructDepth(type);
     }
@@ -97,16 +110,23 @@ void SemanticAnalyzer::validateType(const std::shared_ptr<TypeInfo>& type)
         if (containsRecursive(type->baseType, type.get(), visits)) {
             addError("Array " + type->name + " cannot use itself as element type");
         }
+        checkElementType(type->baseType, "Array " + type->name, type->isOpenArray);
     }
     else if (type->kind == TypeKind::Procedure) {
         if (type->returnType->kind == TypeKind::Array || type->returnType->kind == TypeKind::Struct) {
             addError(
                 "Procedure cannot return a structured type (Array or Record). Use a pointer or a reference parameter instead.");
         }
-        // TODO: проверка параметров
-        // TODO: проверка что инит имеет правильную сигнатуру
+        for (const auto& param : type->parameters) {
+            if (!param.type || !isValidVariableType(param.type->kind)) {
+                addError("Parameter '" + param.name + "' of procedure '" + type->name + "' has invalid type");
+                continue;
+            }
+            if (param.type->kind == TypeKind::Array && !param.type->isOpenArray) {
+                addError("Parameter '" + param.name + "' of procedure '" + type->name + "' must be an open array");
+            }
+        }
     }
-    // TODO: проверки типов элементов
 }
 
 void SemanticAnalyzer::visit(TypeDeclaration& node)
@@ -220,6 +240,7 @@ void SemanticAnalyzer::visit(DeclarationsBlock& node)
 void SemanticAnalyzer::declareProcedure(ProcedureDeclaration& node)
 {
     auto procType = std::make_shared<TypeInfo>(TypeKind::Procedure);
+    procType->name = node.name;
     node.resolvedType = procType;
 
     if (node.returnType) {
@@ -239,6 +260,15 @@ void SemanticAnalyzer::declareProcedure(ProcedureDeclaration& node)
         procType->parameters.push_back(info);
     }
     validateType(procType);
+
+    if (node.name == "init") {
+        if (!procType->parameters.empty()) {
+            addError("Procedure 'init' must not have parameters");
+        }
+        if (procType->returnType->kind != TypeKind::Void) {
+            addError("Procedure 'init' must return void");
+        }
+    }
 
     Symbol procSym;
     procSym.name = node.name;
