@@ -1,0 +1,26 @@
+{
+    "name": "obould-lang",
+    "displayName": "Obould",
+    "version": "1.0.0",
+    "description": "Syntax highlight for the Obould programming language",
+    "engines": {
+        "vscode": "^1.60.0"
+    },
+    "contributes": {
+        "languages": [
+            {
+                "id": "obould",
+                "aliases": ["Obould", "obould"],
+                "extensions": [".obl"],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "obould",
+                "scopeName": "source.obould",
+                "path": "./syntaxes/obould.tmLanguage.json"
+            }
+        ]
+    }
+}
