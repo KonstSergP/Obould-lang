@@ -1,6 +1,7 @@
+#include <iostream>
 #include "LLVMCodegen.h"
 
-#include <iostream>
+#include <deque>
 
 #include "sema/TypeInfo.h"
 
@@ -143,6 +144,40 @@ llvm::AllocaInst* LLVMCodegenVisitor::createEntryAlloca(llvm::Type* type, const 
     auto& entryBB = currentFunction->getEntryBlock();
     llvm::IRBuilder entryBuilder(&entryBB, entryBB.begin());
     return entryBuilder.CreateAlloca(type, nullptr, name);
+}
+
+llvm::Constant* LLVMCodegenVisitor::createInitConstant(const std::shared_ptr<TypeInfo>& info)
+{
+    auto* ty = toLLVMType(info);
+
+    if (info->kind == TypeKind::Struct) {
+        auto* structTy = llvm::cast<llvm::StructType>(ty);
+        std::vector<llvm::Constant*> fields;
+        fields.push_back(descriptors[info.get()]);
+
+        std::vector<TypeInfo*> chain;
+        auto current = info;
+        while (current) {
+            chain.push_back(current.get());
+            current = current->baseType;
+        }
+        std::reverse(chain.begin(), chain.end());
+
+        for (const auto* typeInfo : chain) {
+            for (const auto& f : typeInfo->fields) {
+                fields.push_back(createInitConstant(f.type));
+            }
+        }
+
+        return llvm::ConstantStruct::get(structTy, fields);
+    }
+    if (info->kind == TypeKind::Array) {
+        auto* arrayTy = llvm::cast<llvm::ArrayType>(ty);
+        auto* elemInit = createInitConstant(info->baseType);
+        std::vector elems(info->length, elemInit);
+        return llvm::ConstantArray::get(arrayTy, elems);
+    }
+    return llvm::Constant::getNullValue(ty);
 }
 
 llvm::GlobalVariable* LLVMCodegenVisitor::createStructDescriptor(const std::shared_ptr<TypeInfo>& type)

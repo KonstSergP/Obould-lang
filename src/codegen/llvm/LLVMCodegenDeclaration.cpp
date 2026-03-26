@@ -16,19 +16,9 @@ void LLVMCodegenVisitor::visit(TypeDeclaration& node)
 void LLVMCodegenVisitor::visit(VariableDeclaration& node)
 {
     node.type->accept(*this);
-    auto info = node.type->resolvedType;
+    auto& info = node.type->resolvedType;
     auto* ty = toLLVMType(info);
-
-    auto* initValue = llvm::Constant::getNullValue(ty);
-    if (info->kind == TypeKind::Struct) {
-        auto* structTy = llvm::cast<llvm::StructType>(ty);
-        std::vector<llvm::Constant*> fields;
-        fields.push_back(descriptors[info.get()]);
-        for (int i = 1; i < structTy->getNumElements(); i++) {
-            fields.push_back(llvm::Constant::getNullValue(structTy->getElementType(i)));
-        }
-        initValue = llvm::ConstantStruct::get(structTy, fields);
-    }
+    auto* initValue = createInitConstant(info);
 
     auto linkage = (node.isExported || importedModule)
                        ? llvm::GlobalValue::ExternalLinkage
@@ -46,10 +36,6 @@ void LLVMCodegenVisitor::visit(VariableDeclaration& node)
     else {
         auto* allocaInst = createEntryAlloca(ty, node.name);
         builder->CreateStore(initValue, allocaInst);
-        if (info->kind == TypeKind::Struct) {
-            auto* fieldPtr = builder->CreateStructGEP(ty, allocaInst, 0);
-            builder->CreateStore(descriptors[info.get()], fieldPtr);
-        }
         locals[node.name] = allocaInst;
     }
 }

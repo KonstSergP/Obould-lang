@@ -45,12 +45,9 @@ void LLVMCodegenVisitor::visitBuiltinProcedure(ProcedureCall& node)
 
         auto* sizeVal = llvm::ConstantExpr::getSizeOf(baseLLVM);
         auto* ptr = builder->CreateCall(mallocFn, {sizeVal});
+        auto* init = createInitConstant(baseType);
         builder->CreateStore(ptr, ptrAddr);
-
-        if (baseType->kind == TypeKind::Struct) {
-            auto* tagPtr = builder->CreateStructGEP(baseLLVM, ptr, 0);
-            builder->CreateStore(descriptors[baseType.get()], tagPtr);
-        }
+        builder->CreateStore(init, ptr);
         lastValue = nullptr;
     }
     break;
