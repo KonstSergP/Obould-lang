@@ -159,4 +159,116 @@ void SemanticAnalyzer::visitBuiltinProcedure(ProcedureCall& node)
     node.resolvedType = node.procedureName->resolvedType->returnType;
     node.isLvalue = false;
 }
+
+static void updateStructDepth(const std::shared_ptr<TypeInfo>& type)
+{
+    if (auto base = type->baseType) {
+        if (base->depth == -1) updateStructDepth(base);
+        type->depth = base->depth + 1;
+    }
+    else type->depth = 0;
+}
+
+static bool containsRecursiveInternal(const std::shared_ptr<TypeInfo>& t,
+                              const TypeInfo* target,
+                              std::set<TypeInfo*>& visiting)
+{
+    if (!t) return false;
+    if (!visiting.insert(t.get()).second) return false;
+    if (t.get() == target) return true;
+
+    switch (t->kind) {
+    case TypeKind::Struct:
+        if (t->baseType && containsRecursiveInternal(t->baseType, target, visiting)) return true;
+        for (const auto& f : t->fields) {
+            if (containsRecursiveInternal(f.type, target, visiting)) return true;
+        }
+        return false;
+    case TypeKind::Array:
+        return containsRecursiveInternal(t->baseType, target, visiting);
+    default:
+        return false;
+    }
+}
+
+static bool containsRecursive(const std::shared_ptr<TypeInfo>& t,
+                              const TypeInfo* target)
+{
+    std::set<TypeInfo*> visiting;
+    return containsRecursiveInternal(t, target, visiting);
+}
+
+void SemanticAnalyzer::validateTypeInternal(const std::shared_ptr<TypeInfo>& type, std::set<TypeInfo*>& visiting)
+{
+    if (!type) return;
+    if (!visiting.insert(type.get()).second) return;
+
+    auto checkElementType = [&](const std::shared_ptr<TypeInfo>& elem,
+                                const std::string& context,
+                                bool allowOpenArray)
+    {
+        if (!elem || !isValidVariableType(elem->kind)) {
+            addError(context + " has invalid element type");
+            return;
+        }
+        if (!allowOpenArray && elem->isOpenArray) {
+            addError(context + " cannot use open array as element type");
+        }
+    };
+
+    if (type->kind == TypeKind::Pointer) {
+        if (!type->baseType || type->baseType->kind != TypeKind::Struct) {
+            addError("Pointer base type must be a Struct in '" + type->name + "'");
+        }
+        validateTypeInternal(type->baseType, visiting);
+    }
+    else if (type->kind == TypeKind::Struct) {
+        if (type->baseType && type->baseType->kind != TypeKind::Struct) {
+            addError("Struct base type must be a struct");
+        }
+        if (type->baseType && containsRecursive(type->baseType, type.get())) {
+            addError("Struct " + type->name + " cannot be used in its base");
+        }
+        for (const auto& f : type->fields) {
+            if (containsRecursive(f.type, type.get())) {
+                addError("Struct " + type->name + " cannot have itself as a field");
+            }
+            checkElementType(f.type, "Field '" + f.name + "' in struct " + type->name, false);
+            validateTypeInternal(f.type, visiting);
+        }
+        updateStructDepth(type);
+    }
+    else if (type->kind == TypeKind::Array) {
+        if (containsRecursive(type->baseType, type.get())) {
+            addError("Array " + type->name + " cannot use itself as element type");
+        }
+        checkElementType(type->baseType, "Array " + type->name, type->isOpenArray);
+        validateTypeInternal(type->baseType, visiting);
+    }
+    else if (type->kind == TypeKind::Procedure) {
+        if (type->returnType->kind == TypeKind::Array || type->returnType->kind == TypeKind::Struct) {
+            addError("Procedure cannot return a structured type.");
+        }
+        else {
+            validateTypeInternal(type->returnType, visiting);
+        }
+        for (const auto& param : type->parameters) {
+            if (!param.type || !isValidVariableType(param.type->kind)) {
+                addError("Parameter '" + param.name + "' of procedure '" + type->name + "' has invalid type");
+                continue;
+            }
+            if (param.type->kind == TypeKind::Array && !param.type->isOpenArray) {
+                addError("Parameter '" + param.name + "' of procedure '" + type->name + "' must be an open array");
+            }
+            validateTypeInternal(param.type, visiting);
+        }
+    }
+    visiting.erase(type.get());
+}
+
+void SemanticAnalyzer::validateType(const std::shared_ptr<TypeInfo>& type)
+{
+    std::set<TypeInfo*> visiting;
+    validateTypeInternal(type, visiting);
+}
 }

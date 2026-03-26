@@ -1,4 +1,3 @@
-#include <set>
 #include "SemanticAnalyzer.h"
 #include "SymbolTable.h"
 #include "TypeInfo.h"
@@ -32,100 +31,6 @@ void SemanticAnalyzer::visit(ConstantDeclaration& node)
 
     if (!symbolTables[currentModuleName].addSymbol(sym)) {
         addError("Redeclaration of constant '" + node.name + "'");
-    }
-}
-
-static void updateStructDepth(const std::shared_ptr<TypeInfo>& type)
-{
-    if (auto base = type->baseType) {
-        if (base->depth == -1) updateStructDepth(base);
-        type->depth = base->depth + 1;
-    }
-    else type->depth = 0;
-}
-
-static bool containsRecursive(const std::shared_ptr<TypeInfo>& t,
-                              const TypeInfo* target,
-                              std::set<TypeInfo*>& visiting)
-{
-    if (!t) return false;
-    if (!visiting.insert(t.get()).second) return false;
-    if (t.get() == target) return true;
-
-    switch (t->kind) {
-    case TypeKind::Struct:
-        if (t->baseType && containsRecursive(t->baseType, target, visiting)) return true;
-        for (const auto& f : t->fields) {
-            if (containsRecursive(f.type, target, visiting)) return true;
-        }
-        return false;
-    case TypeKind::Array:
-        return containsRecursive(t->baseType, target, visiting);
-    default:
-        return false;
-    }
-}
-
-void SemanticAnalyzer::validateType(const std::shared_ptr<TypeInfo>& type)
-{
-    std::set<TypeInfo*> visits;
-    auto checkElementType = [&](const std::shared_ptr<TypeInfo>& elem,
-                                const std::string& context,
-                                bool allowOpenArray)
-    {
-        if (!elem || !isValidVariableType(elem->kind)) {
-            addError(context + " has invalid element type");
-            return;
-        }
-        if (!allowOpenArray && elem->isOpenArray) {
-            addError(context + " cannot use open array as element type");
-        }
-    };
-
-    if (type->kind == TypeKind::Pointer) {
-        if (type->baseType->kind != TypeKind::Struct) {
-            addError("Pointer base type must be a Struct in '" + type->name + "'");
-        }
-    }
-    else if (type->kind == TypeKind::Struct) {
-        if (type->baseType && type->baseType->kind != TypeKind::Struct) {
-            addError("Struct base type must be a struct");
-        }
-        if (type->baseType && type->name == type->baseType->name) {
-            addError("Struct cannot use itself as base type");
-        }
-        if (type->baseType && containsRecursive(type->baseType, type.get(), visits)) {
-            addError("Struct " + type->name + " cannot be extension of itself");
-        }
-        visits.clear();
-        for (const auto& f : type->fields) {
-            if (containsRecursive(f.type, type.get(), visits)) {
-                addError("Struct " + type->name + " cannot have itself as a field");
-            }
-            checkElementType(f.type, "Field '" + f.name + "' in struct " + type->name, false);
-        }
-        updateStructDepth(type);
-    }
-    else if (type->kind == TypeKind::Array) {
-        if (containsRecursive(type->baseType, type.get(), visits)) {
-            addError("Array " + type->name + " cannot use itself as element type");
-        }
-        checkElementType(type->baseType, "Array " + type->name, type->isOpenArray);
-    }
-    else if (type->kind == TypeKind::Procedure) {
-        if (type->returnType->kind == TypeKind::Array || type->returnType->kind == TypeKind::Struct) {
-            addError(
-                "Procedure cannot return a structured type (Array or Record). Use a pointer or a reference parameter instead.");
-        }
-        for (const auto& param : type->parameters) {
-            if (!param.type || !isValidVariableType(param.type->kind)) {
-                addError("Parameter '" + param.name + "' of procedure '" + type->name + "' has invalid type");
-                continue;
-            }
-            if (param.type->kind == TypeKind::Array && !param.type->isOpenArray) {
-                addError("Parameter '" + param.name + "' of procedure '" + type->name + "' must be an open array");
-            }
-        }
     }
 }
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <set>
 #include <filesystem>
 #include "SymbolTable.h"
 #include "TypeInfo.h"
@@ -17,8 +18,6 @@ public:
     void setSymbolFileDir(const std::filesystem::path& dir);
     const std::vector<std::string>& getErrors() const;
     void addError(const std::string& error);
-    std::shared_ptr<TypeInfo> getPolymorphicBase(Expression* expr);
-    void validateType(const std::shared_ptr<TypeInfo>& type);
 
     // Expressions
     void visit(IntegerLiteral& node) override;
@@ -90,5 +89,8 @@ private:
     std::shared_ptr<TypeInfo> getBuiltinType(TypeKind kind) const;
     void declareProcedure(ProcedureDeclaration& node);
     void visitBuiltinProcedure(ProcedureCall& node);
+    std::shared_ptr<TypeInfo> getPolymorphicBase(Expression* expr);
+    void validateType(const std::shared_ptr<TypeInfo>& type);
+    void validateTypeInternal(const std::shared_ptr<TypeInfo>& type, std::set<TypeInfo*>& visiting);
 };
 }
