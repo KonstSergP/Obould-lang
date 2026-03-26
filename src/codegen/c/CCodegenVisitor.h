@@ -97,6 +97,10 @@ private:
     // Maps struct full name -> list of (field name, field type as string)
     std::map<std::string, std::vector<std::pair<std::string, std::string>>> structFields_;
 
+    // Global variable and constant tracking (names that need module prefix)
+    std::set<std::string> globalVariables_;
+    std::set<std::string> globalConstants_;
+
     // Flag indicating this is the main module (should generate main() calling init())
     bool isMain_ = false;
 

@@ -203,6 +203,8 @@ void CCodegenVisitor::visit(UnaryExpression& node)
 void CCodegenVisitor::visit(IdentifierExpression& node)
 {
     bool isRefParam = referenceParams_.count(node.name) > 0;
+    bool isGlobalVar = globalVariables_.count(node.name) > 0;
+    bool isGlobalConst = globalConstants_.count(node.name) > 0;
 
     if (isRefParam) {
         os_ << "(*";
@@ -210,6 +212,9 @@ void CCodegenVisitor::visit(IdentifierExpression& node)
 
     if (!node.moduleName.empty()) {
         os_ << node.moduleName << "_";
+    } else if (isGlobalVar || isGlobalConst) {
+        // Add module prefix for global variables and constants
+        os_ << moduleName_ << "_";
     }
     os_ << node.name;
 
@@ -893,6 +898,22 @@ void CCodegenVisitor::visit(Module& node)
 {
     moduleName_ = node.name;
     std::string guardName = generateGuardName(node.name);
+
+    // Collect global variable and constant names for prefix handling
+    globalVariables_.clear();
+    globalConstants_.clear();
+    if (node.declarations) {
+        if (node.declarations->variables) {
+            for (auto& var : node.declarations->variables->variables) {
+                globalVariables_.insert(var->name);
+            }
+        }
+        if (node.declarations->constants) {
+            for (auto& constant : node.declarations->constants->constants) {
+                globalConstants_.insert(constant->name);
+            }
+        }
+    }
 
     // Collect procedure reference parameter info for call site handling
     for (auto& proc : node.procedures) {
