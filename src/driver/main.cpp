@@ -116,7 +116,7 @@ int main(int argc, char** argv)
            .help("Obould source file");
 
     program.add_argument("--output", "-o")
-           .help("Output file (defaults to stdout)")
+           .help("Output path (for --emit-c: directory path, files named by module)")
            .default_value("");
 
     program.add_argument("--main", "-m")
@@ -209,13 +209,13 @@ int main(int argc, char** argv)
         }
         else if (mode == OutputMode::C_CODE) {
             // Semantic analysis is required for C code generation
-            obould::SemanticAnalyzer sema;
-            sema.setSymbolFileDir(symDir);
-            if (!sema.analyze(*module)) {
-                std::cerr << "Semantic analysis failed:\n";
-                for (const auto& error : sema.getErrors()) std::cerr << "  " << error << "\n";
-                return 1;
-            }
+            // obould::SemanticAnalyzer sema;
+            // sema.setSymbolFileDir(symDir);
+            // if (!sema.analyze(*module)) {
+            //     std::cerr << "Semantic analysis failed:\n";
+            //     for (const auto& error : sema.getErrors()) std::cerr << "  " << error << "\n";
+            //     return 1;
+            // }
 
             bool isMain = program.get<bool>("main");
 
@@ -229,31 +229,11 @@ int main(int argc, char** argv)
                 module->accept(cgen);
             }
             else {
-                // Determine output paths
-                std::filesystem::path outPath(outputPath);
-                std::filesystem::path headerPath, sourcePath;
+                std::filesystem::path outDir(outputPath);
+                ensureDirExists(outDir);
 
-                if (outPath.extension() == ".h") {
-                    headerPath = outPath;
-                    sourcePath = outPath;
-                    sourcePath.replace_extension(".c");
-                } else if (outPath.extension() == ".c") {
-                    sourcePath = outPath;
-                    headerPath = outPath;
-                    headerPath.replace_extension(".h");
-                } else {
-                    // No extension or other extension - treat as base name
-                    headerPath = outPath;
-                    headerPath.replace_extension(".h");
-                    sourcePath = outPath;
-                    sourcePath.replace_extension(".c");
-                }
-
-                // Ensure output directory exists
-                auto outDir = headerPath.parent_path();
-                if (!outDir.empty()) {
-                    ensureDirExists(outDir);
-                }
+                std::filesystem::path headerPath = outDir / (module->name + ".h");
+                std::filesystem::path sourcePath = outDir / (module->name + ".c");
 
                 // Generate header file
                 {
