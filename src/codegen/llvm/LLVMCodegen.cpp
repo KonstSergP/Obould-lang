@@ -308,10 +308,16 @@ void LLVMCodegenVisitor::createEntryPoint(Module& node)
 
     auto* mainTy = llvm::FunctionType::get(builder->getInt32Ty(), false);
     auto* mainFn = llvm::Function::Create(mainTy, llvm::GlobalValue::ExternalLinkage, "main", *module);
+    auto gcInitFn = module->getOrInsertFunction(
+        "GC_init",
+        llvm::FunctionType::get(builder->getVoidTy(), false));
 
     auto* entry = llvm::BasicBlock::Create(context, "entry", mainFn);
     builder->SetInsertPoint(entry);
-    builder->CreateCall(llvm::FunctionType::get(builder->getVoidTy(), false), functions["ob_" + node.name]);
+
+    builder->CreateCall(gcInitFn);
+    builder->CreateCall(functions["ob_" + node.name]);
+
     builder->CreateRet(builder->getInt32(0));
 }
 }

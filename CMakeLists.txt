@@ -7,6 +7,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(FetchContent)
 
 
+# ==========================================
+
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
@@ -26,6 +28,15 @@ llvm_map_components_to_libnames(llvm_libs
 )
 
 # ==========================================
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+        bdwgc
+        GIT_REPOSITORY https://github.com/bdwgc/bdwgc
+        GIT_TAG v8.2.12
+)
+FetchContent_MakeAvailable(bdwgc)
+
+# ==========================================
 
 FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz)
 FetchContent_MakeAvailable(json)
@@ -42,12 +53,18 @@ list(FILTER LIB_SOURCES EXCLUDE REGEX ".*main\\.cpp$")
 
 add_library(obould_lib STATIC ${LIB_SOURCES})
 target_include_directories(obould_lib PUBLIC src)
-target_link_libraries(obould_lib PRIVATE nlohmann_json::nlohmann_json argparse)
+target_link_libraries(obould_lib PRIVATE ${llvm_libs} nlohmann_json::nlohmann_json argparse)
 
 # ==========================================
 
 add_executable(obould src/driver/main.cpp)
 target_link_libraries(obould PRIVATE obould_lib ${llvm_libs} nlohmann_json::nlohmann_json argparse)
+
+add_dependencies(obould gc)
+add_custom_command(TARGET obould POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:obould>/lib
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:gc> $<TARGET_FILE_DIR:obould>/lib/$<TARGET_FILE_NAME:gc>
+)
 
 # ==========================================
 

@@ -40,7 +40,7 @@ void LLVMCodegenVisitor::visitBuiltinProcedure(ProcedureCall& node)
         auto* baseLLVM = toLLVMType(baseType);
 
         auto mallocFn = module->getOrInsertFunction(
-            "malloc",
+            "GC_malloc",
             llvm::FunctionType::get(builder->getPtrTy(), {builder->getInt64Ty()}, false));
 
         auto* sizeVal = llvm::ConstantExpr::getSizeOf(baseLLVM);

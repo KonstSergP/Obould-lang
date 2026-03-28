@@ -85,7 +85,7 @@ void emitObjectFile(llvm::Module& module, const std::filesystem::path& outPath)
     }
 
     llvm::TargetOptions opt;
-    auto rm = std::optional<llvm::Reloc::Model>();
+    auto rm = std::optional(llvm::Reloc::PIC_);
     auto targetMachine = std::unique_ptr<llvm::TargetMachine>(
         target->createTargetMachine(targetTriple, "generic", "", opt, rm));
 
