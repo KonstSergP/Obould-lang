@@ -46,6 +46,11 @@ std::string CCodegenVisitor::generateGuardName(const std::string& moduleName)
     return guard + "_H";
 }
 
+std::string CCodegenVisitor::makePrefix(const std::string& moduleName)
+{
+    return "ob_" + std::to_string(moduleName.size()) + moduleName + "_";
+}
+
 std::string CCodegenVisitor::getTypeString(Type& type)
 {
     std::stringstream ss;
@@ -69,7 +74,6 @@ std::string CCodegenVisitor::getExpressionString(Expression& expr)
 
 void CCodegenVisitor::emitTypeWithName(Type& type, const std::string& name)
 {
-    // Handle array types specially
     if (auto* arrType = dynamic_cast<ArrayType*>(&type)) {
         emitTypeWithName(*arrType->elementType, name);
         os_ << "[";
@@ -136,9 +140,9 @@ void CCodegenVisitor::visit(BinaryExpression& node)
             if constexpr (std::is_same_v<T, std::unique_ptr<Type>>) {
                 if (auto* identType = dynamic_cast<IdentifierType*>(arg.get())) {
                     if (!identType->moduleName.empty()) {
-                        os_ << identType->moduleName << "_" << identType->name;
+                        os_ << makePrefix(identType->moduleName) << identType->name;
                     } else if (!moduleName_.empty()) {
-                        os_ << moduleName_ << "_" << identType->name;
+                        os_ << makePrefix(moduleName_) << identType->name;
                     } else {
                         os_ << identType->name;
                     }
@@ -211,10 +215,9 @@ void CCodegenVisitor::visit(IdentifierExpression& node)
     }
 
     if (!node.moduleName.empty()) {
-        os_ << node.moduleName << "_";
+        os_ << makePrefix(node.moduleName);
     } else if (isGlobalVar || isGlobalConst) {
-        // Add module prefix for global variables and constants
-        os_ << moduleName_ << "_";
+        os_ << makePrefix(moduleName_);
     }
     os_ << node.name;
 
@@ -267,7 +270,7 @@ void CCodegenVisitor::visit(QualifiedNameNode& node)
         // Module names start with uppercase, variable names with lowercase
         if (!node.first.empty() && std::isupper(node.first[0])) {
             // Looks like Module.identifier
-            os_ << node.first << "_" << node.second;
+            os_ << makePrefix(node.first) << node.second;
         } else {
             // Looks like object.field
             os_ << node.first << "." << node.second;
@@ -287,9 +290,9 @@ void CCodegenVisitor::visit(ProcedureCall& node)
         // Get the target type name
         if (auto* typeIdent = dynamic_cast<IdentifierExpression*>(node.args[0].get())) {
             if (!typeIdent->moduleName.empty()) {
-                os_ << typeIdent->moduleName << "_" << typeIdent->name;
+                os_ << makePrefix(typeIdent->moduleName) << typeIdent->name;
             } else {
-                os_ << moduleName_ << "_" << typeIdent->name;
+                os_ << makePrefix(moduleName_) << typeIdent->name;
             }
         } else {
             node.args[0]->accept(*this);
@@ -305,17 +308,17 @@ void CCodegenVisitor::visit(ProcedureCall& node)
     if (auto* ident = dynamic_cast<IdentifierExpression*>(node.procedureName.get())) {
         if (ident->moduleName.empty()) {
             // Local function call - add current module prefix
-            os_ << moduleName_ << "_" << ident->name;
+            os_ << makePrefix(moduleName_) << ident->name;
             procName = ident->name;
         } else {
             // External function call
-            os_ << ident->moduleName << "_" << ident->name;
-            procName = ident->moduleName + "_" + ident->name;
+            os_ << makePrefix(ident->moduleName) << ident->name;
+            procName = makePrefix(ident->moduleName) + ident->name;
         }
     } else if (auto* qn = dynamic_cast<QualifiedNameNode*>(node.procedureName.get())) {
         // Module.function call
-        os_ << qn->first << "_" << qn->second;
-        procName = qn->first + "_" + qn->second;
+        os_ << makePrefix(qn->first) << qn->second;
+        procName = makePrefix(qn->first) + qn->second;
     } else {
         node.procedureName->accept(*this);
     }
@@ -342,7 +345,7 @@ void CCodegenVisitor::visit(ProcedureCall& node)
                 if (referenceParams_.count(argIdent->name) > 0) {
                     // Already a pointer, pass directly without dereferencing
                     if (!argIdent->moduleName.empty()) {
-                        os_ << argIdent->moduleName << "_";
+                        os_ << makePrefix(argIdent->moduleName);
                     }
                     os_ << argIdent->name;
                     continue;
@@ -370,12 +373,10 @@ void CCodegenVisitor::visit(StatementsBlock& node)
 
 void CCodegenVisitor::visit(AssignmentStatement& node)
 {
-    // Check for special char/string assignments
     auto* strLit = dynamic_cast<StringLiteral*>(node.value.get());
     if (strLit && node.target->resolvedType) {
         auto& targetType = node.target->resolvedType;
 
-        // Single char assignment: ch = "a" -> ch = 'a'
         if (targetType->kind == TypeKind::Char && strLit->value.length() == 1) {
             node.target->accept(*this);
             os_ << " = '";
@@ -391,7 +392,6 @@ void CCodegenVisitor::visit(AssignmentStatement& node)
             return;
         }
 
-        // Char array assignment: buf = "hello" -> strncpy(buf, "hello", sizeof(buf))
         if (targetType->kind == TypeKind::Array &&
             targetType->baseType &&
             targetType->baseType->kind == TypeKind::Char) {
@@ -406,7 +406,6 @@ void CCodegenVisitor::visit(AssignmentStatement& node)
         }
     }
 
-    // Default assignment
     node.target->accept(*this);
     os_ << " = ";
     node.value->accept(*this);
@@ -579,7 +578,6 @@ void CCodegenVisitor::visit(CaseLabel& node)
 
 void CCodegenVisitor::visit(IdentifierType& node)
 {
-    // Check if it's a primitive type
     static const std::set<std::string> primitiveTypes = {
         "i64", "f64", "bool", "char", "byte", "void"
     };
@@ -589,10 +587,10 @@ void CCodegenVisitor::visit(IdentifierType& node)
 
     if (!node.moduleName.empty()) {
         // Explicit module prefix
-        os_ << node.moduleName << "_" << typeName;
+        os_ << makePrefix(node.moduleName) << typeName;
     } else if (!isPrimitive && !moduleName_.empty()) {
         // User-defined type from current module - add module prefix
-        os_ << moduleName_ << "_" << typeName;
+        os_ << makePrefix(moduleName_) << typeName;
     } else {
         // Primitive type or no module context
         os_ << typeName;
@@ -658,14 +656,14 @@ void CCodegenVisitor::visit(ProcedureType& node)
 
 void CCodegenVisitor::visit(ConstantDeclaration& node)
 {
-    os_ << "#define " << moduleName_ << "_" << node.name << " (";
+    os_ << "#define " << makePrefix(moduleName_) << node.name << " (";
     node.value->accept(*this);
     os_ << ")\n";
 }
 
 void CCodegenVisitor::visit(TypeDeclaration& node)
 {
-    std::string fullName = moduleName_ + "_" + node.name;
+    std::string fullName = makePrefix(moduleName_) + node.name;
     currentTypedefName_ = fullName;
 
     os_ << "typedef ";
@@ -675,17 +673,15 @@ void CCodegenVisitor::visit(TypeDeclaration& node)
         std::string parentName;
         if (structType->baseType) {
             if (!structType->baseType->moduleName.empty()) {
-                parentName = structType->baseType->moduleName + "_" + structType->baseType->name;
+                parentName = makePrefix(structType->baseType->moduleName) + structType->baseType->name;
             } else {
-                parentName = moduleName_ + "_" + structType->baseType->name;
+                parentName = makePrefix(moduleName_) + structType->baseType->name;
             }
         }
         structTypes_.push_back({fullName, parentName});
 
-        // Collect all fields for this struct (inherited + own)
         std::vector<std::pair<std::string, std::string>> allFields;
 
-        // Output struct with tag name for self-referential types
         os_ << "struct " << fullName << " {\n";
         increaseIndent();
 
@@ -712,9 +708,7 @@ void CCodegenVisitor::visit(TypeDeclaration& node)
             allFields.push_back({field->name, fieldType});
 
             emitIndent();
-            // Handle array types specially (including multi-dimensional)
             if (auto* arrType = dynamic_cast<ArrayType*>(field->type.get())) {
-                // Collect all dimensions and find base element type
                 std::vector<Expression*> dimensions;
                 Type* currentType = field->type.get();
 
@@ -765,9 +759,7 @@ void CCodegenVisitor::visit(TypeDeclaration& node)
 
 void CCodegenVisitor::visit(VariableDeclaration& node)
 {
-    // Check if it's an array type - need to handle multi-dimensional arrays
     if (auto* arrType = dynamic_cast<ArrayType*>(node.type.get())) {
-        // Collect all dimensions and find base element type
         std::vector<Expression*> dimensions;
         Type* currentType = node.type.get();
 
@@ -776,11 +768,9 @@ void CCodegenVisitor::visit(VariableDeclaration& node)
             currentType = arr->elementType.get();
         }
 
-        // Output base type
         currentType->accept(*this);
         os_ << " " << node.name;
 
-        // Output all dimensions
         for (auto* dim : dimensions) {
             os_ << "[";
             dim->accept(*this);
@@ -806,7 +796,6 @@ void CCodegenVisitor::visit(ProcedureDeclaration& node)
         }
     }
 
-    // Add static for non-exported functions in source mode
     if (mode_ == COutputMode::SOURCE && !node.isExported) {
         os_ << "static ";
     }
@@ -818,7 +807,7 @@ void CCodegenVisitor::visit(ProcedureDeclaration& node)
         os_ << "void";
     }
 
-    os_ << " " << moduleName_ << "_" << node.name << "(";
+    os_ << " " << makePrefix(moduleName_) << node.name << "(";
 
     // Parameters
     for (size_t i = 0; i < node.parameters.size(); ++i) {
@@ -945,7 +934,7 @@ void CCodegenVisitor::visit(Module& node)
 
     // Collect procedure reference parameter info for call site handling
     for (auto& proc : node.procedures) {
-        std::string fullName = moduleName_ + "_" + proc->name;
+        std::string fullName = makePrefix(moduleName_) + proc->name;
         std::vector<bool> refParams;
         for (auto& param : proc->parameters) {
             refParams.push_back(param->isReference);
@@ -1030,7 +1019,7 @@ void CCodegenVisitor::visit(Module& node)
                     for (auto& var : node.declarations->variables->variables) {
                         if (var->isExported) {
                             os_ << "extern ";
-                            std::string varName = moduleName_ + "_" + var->name;
+                            std::string varName = makePrefix(moduleName_) + var->name;
                             if (auto* arrType = dynamic_cast<ArrayType*>(var->type.get())) {
                                 // Handle multi-dimensional arrays
                                 std::vector<Expression*> dimensions;
@@ -1078,7 +1067,7 @@ void CCodegenVisitor::visit(Module& node)
                     } else {
                         os_ << "void";
                     }
-                    os_ << " " << moduleName_ << "_" << proc->name << "(";
+                    os_ << " " << makePrefix(moduleName_) << proc->name << "(";
                     for (size_t i = 0; i < proc->parameters.size(); ++i) {
                         if (i > 0) os_ << ", ";
                         proc->parameters[i]->accept(*this);
@@ -1103,13 +1092,13 @@ void CCodegenVisitor::visit(Module& node)
         if (node.declarations && node.declarations->types) {
             for (auto& typeDecl : node.declarations->types->types) {
                 if (auto* structType = dynamic_cast<StructType*>(typeDecl->type.get())) {
-                    std::string fullName = moduleName_ + "_" + typeDecl->name;
+                    std::string fullName = makePrefix(moduleName_) + typeDecl->name;
                     std::string parentName;
                     if (structType->baseType) {
                         if (!structType->baseType->moduleName.empty()) {
-                            parentName = structType->baseType->moduleName + "_" + structType->baseType->name;
+                            parentName = makePrefix(structType->baseType->moduleName) + structType->baseType->name;
                         } else {
-                            parentName = moduleName_ + "_" + structType->baseType->name;
+                            parentName = makePrefix(moduleName_) + structType->baseType->name;
                         }
                     }
                     structTypes_.push_back({fullName, parentName});
@@ -1189,7 +1178,7 @@ void CCodegenVisitor::visit(Module& node)
                 if (!var->isExported) {
                     os_ << "static ";
                 }
-                std::string varName = moduleName_ + "_" + var->name;
+                std::string varName = makePrefix(moduleName_) + var->name;
                 if (auto* arrType = dynamic_cast<ArrayType*>(var->type.get())) {
                     // Handle multi-dimensional arrays
                     std::vector<Expression*> dimensions;
@@ -1235,7 +1224,7 @@ void CCodegenVisitor::visit(Module& node)
                     } else {
                         os_ << "void";
                     }
-                    os_ << " " << moduleName_ << "_" << proc->name << "(";
+                    os_ << " " << makePrefix(moduleName_) << proc->name << "(";
                     for (size_t i = 0; i < proc->parameters.size(); ++i) {
                         if (i > 0) os_ << ", ";
                         proc->parameters[i]->accept(*this);
@@ -1266,7 +1255,7 @@ void CCodegenVisitor::visit(Module& node)
 
             os_ << "/* Entry point */\n";
             os_ << "int main(int argc, char** argv) {\n";
-            os_ << "    " << moduleName_ << "_init();\n";
+            os_ << "    " << makePrefix(moduleName_) << "init();\n";
             os_ << "    return 0;\n";
             os_ << "}\n";
         }
