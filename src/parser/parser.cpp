@@ -415,9 +415,28 @@ std::unique_ptr<Type> Parser::parseType() {
 
     std::unique_ptr<Type> type = parseIdentifierType();
 
-    // Check for array dimensions
+    std::vector<std::unique_ptr<Expression>> dimensions;
+    std::vector<bool> isOpenArray;
+
     while (check(TokenType::LBRACKET)) {
-        type = parseArrayType(std::move(type));
+        advance(); // consume '['
+        if (match(TokenType::RBRACKET)) {
+            // Open array (no size)
+            dimensions.push_back(nullptr);
+            isOpenArray.push_back(true);
+        } else {
+            dimensions.push_back(parseExpression());
+            isOpenArray.push_back(false);
+            expect(TokenType::RBRACKET, "Expected ']' after array length");
+        }
+    }
+
+    for (int i = static_cast<int>(dimensions.size()) - 1; i >= 0; i--) {
+        if (isOpenArray[i]) {
+            type = std::make_unique<OpenArrayType>(std::move(type));
+        } else {
+            type = std::make_unique<ArrayType>(std::move(type), std::move(dimensions[i]));
+        }
     }
 
     return type;
@@ -439,14 +458,7 @@ std::unique_ptr<Type> Parser::parseArrayType(std::unique_ptr<Type> elementType) 
     auto length = parseExpression();
     expect(TokenType::RBRACKET, "Expected ']' after array length");
 
-    auto arrayType = std::make_unique<ArrayType>(std::move(elementType), std::move(length));
-
-    // Check for multi-dimensional arrays
-    if (check(TokenType::LBRACKET)) {
-        return parseArrayType(std::move(arrayType));
-    }
-
-    return arrayType;
+    return std::make_unique<ArrayType>(std::move(elementType), std::move(length));
 }
 
 std::unique_ptr<StructType> Parser::parseStructType() {
@@ -806,6 +818,7 @@ std::unique_ptr<Expression> Parser::parseFactor() {
     }
 
     if (match(TokenType::STRING)) {
+        // Lexer already strips quotes, so use lexeme directly
         std::string value = previous().lexeme;
         return std::make_unique<StringLiteral>(value);
     }
