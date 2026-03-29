@@ -712,12 +712,25 @@ void CCodegenVisitor::visit(TypeDeclaration& node)
             allFields.push_back({field->name, fieldType});
 
             emitIndent();
-            // Handle array types specially
+            // Handle array types specially (including multi-dimensional)
             if (auto* arrType = dynamic_cast<ArrayType*>(field->type.get())) {
-                arrType->elementType->accept(*this);
-                os_ << " " << field->name << "[";
-                arrType->length->accept(*this);
-                os_ << "];\n";
+                // Collect all dimensions and find base element type
+                std::vector<Expression*> dimensions;
+                Type* currentType = field->type.get();
+
+                while (auto* arr = dynamic_cast<ArrayType*>(currentType)) {
+                    dimensions.push_back(arr->length.get());
+                    currentType = arr->elementType.get();
+                }
+
+                currentType->accept(*this);
+                os_ << " " << field->name;
+                for (auto* dim : dimensions) {
+                    os_ << "[";
+                    dim->accept(*this);
+                    os_ << "]";
+                }
+                os_ << ";\n";
             } else {
                 field->type->accept(*this);
                 os_ << " " << field->name << ";\n";
@@ -752,13 +765,28 @@ void CCodegenVisitor::visit(TypeDeclaration& node)
 
 void CCodegenVisitor::visit(VariableDeclaration& node)
 {
-    // Check if it's an array type
+    // Check if it's an array type - need to handle multi-dimensional arrays
     if (auto* arrType = dynamic_cast<ArrayType*>(node.type.get())) {
-        arrType->elementType->accept(*this);
+        // Collect all dimensions and find base element type
+        std::vector<Expression*> dimensions;
+        Type* currentType = node.type.get();
+
+        while (auto* arr = dynamic_cast<ArrayType*>(currentType)) {
+            dimensions.push_back(arr->length.get());
+            currentType = arr->elementType.get();
+        }
+
+        // Output base type
+        currentType->accept(*this);
         os_ << " " << node.name;
-        os_ << "[";
-        arrType->length->accept(*this);
-        os_ << "];\n";
+
+        // Output all dimensions
+        for (auto* dim : dimensions) {
+            os_ << "[";
+            dim->accept(*this);
+            os_ << "]";
+        }
+        os_ << ";\n";
     } else if (auto* openArr = dynamic_cast<OpenArrayType*>(node.type.get())) {
         openArr->elementType->accept(*this);
         os_ << "* " << node.name << ";\n";
@@ -1004,10 +1032,21 @@ void CCodegenVisitor::visit(Module& node)
                             os_ << "extern ";
                             std::string varName = moduleName_ + "_" + var->name;
                             if (auto* arrType = dynamic_cast<ArrayType*>(var->type.get())) {
-                                arrType->elementType->accept(*this);
-                                os_ << " " << varName << "[";
-                                arrType->length->accept(*this);
-                                os_ << "];\n";
+                                // Handle multi-dimensional arrays
+                                std::vector<Expression*> dimensions;
+                                Type* currentType = var->type.get();
+                                while (auto* arr = dynamic_cast<ArrayType*>(currentType)) {
+                                    dimensions.push_back(arr->length.get());
+                                    currentType = arr->elementType.get();
+                                }
+                                currentType->accept(*this);
+                                os_ << " " << varName;
+                                for (auto* dim : dimensions) {
+                                    os_ << "[";
+                                    dim->accept(*this);
+                                    os_ << "]";
+                                }
+                                os_ << ";\n";
                             } else if (auto* openArr = dynamic_cast<OpenArrayType*>(var->type.get())) {
                                 openArr->elementType->accept(*this);
                                 os_ << "* " << varName << ";\n";
@@ -1152,10 +1191,21 @@ void CCodegenVisitor::visit(Module& node)
                 }
                 std::string varName = moduleName_ + "_" + var->name;
                 if (auto* arrType = dynamic_cast<ArrayType*>(var->type.get())) {
-                    arrType->elementType->accept(*this);
-                    os_ << " " << varName << "[";
-                    arrType->length->accept(*this);
-                    os_ << "];\n";
+                    // Handle multi-dimensional arrays
+                    std::vector<Expression*> dimensions;
+                    Type* currentType = var->type.get();
+                    while (auto* arr = dynamic_cast<ArrayType*>(currentType)) {
+                        dimensions.push_back(arr->length.get());
+                        currentType = arr->elementType.get();
+                    }
+                    currentType->accept(*this);
+                    os_ << " " << varName;
+                    for (auto* dim : dimensions) {
+                        os_ << "[";
+                        dim->accept(*this);
+                        os_ << "]";
+                    }
+                    os_ << ";\n";
                 } else if (auto* openArr = dynamic_cast<OpenArrayType*>(var->type.get())) {
                     openArr->elementType->accept(*this);
                     os_ << "* " << varName << ";\n";
