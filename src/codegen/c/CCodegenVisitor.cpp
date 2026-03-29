@@ -174,8 +174,7 @@ void CCodegenVisitor::visit(BinaryExpression& node)
         case BinaryExpression::Op::Gt: os_ << " > "; break;
         case BinaryExpression::Op::Gte: os_ << " >= "; break;
         case BinaryExpression::Op::Is:
-            // Should not reach here
-            break;
+            throw std::runtime_error("CCodegenVisitor: BinaryExpression::Op::Is reached in switch (should be handled above)");
     }
 
     std::visit([this](auto&& arg) {
@@ -183,10 +182,7 @@ void CCodegenVisitor::visit(BinaryExpression& node)
         if constexpr (std::is_same_v<T, std::unique_ptr<Expression>>) {
             arg->accept(*this);
         } else if constexpr (std::is_same_v<T, std::unique_ptr<Type>>) {
-            // For non-Is operators with type (shouldn't happen normally)
-            os_ << "/* ";
-            arg->accept(*this);
-            os_ << " */0";
+            throw std::runtime_error("CCodegenVisitor: non-Is binary operator with Type right-hand side");
         }
     }, node.right);
 
@@ -266,15 +262,7 @@ void CCodegenVisitor::visit(QualifiedNameNode& node)
         auto& ident = std::get<std::unique_ptr<IdentifierExpression>>(node.realisation);
         ident->accept(*this);
     } else {
-        // Not resolved - use heuristic:
-        // Module names start with uppercase, variable names with lowercase
-        if (!node.first.empty() && std::isupper(node.first[0])) {
-            // Looks like Module.identifier
-            os_ << makePrefix(node.first) << node.second;
-        } else {
-            // Looks like object.field
-            os_ << node.first << "." << node.second;
-        }
+        throw std::runtime_error("CCodegenVisitor: unresolved QualifiedNameNode '" + node.first + "." + node.second + "'");
     }
 }
 
@@ -489,7 +477,7 @@ void CCodegenVisitor::visit(WhileStatement& node)
 
 void CCodegenVisitor::visit(WhileBranch& node)
 {
-    // Handled by WhileStatement
+    throw std::runtime_error("CCodegenVisitor: WhileBranch::visit called directly (should be handled by WhileStatement)");
 }
 
 void CCodegenVisitor::visit(DoWhileStatement& node)
