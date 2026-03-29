@@ -177,22 +177,30 @@ public:
     std::unique_ptr<Module> module;
 };
 
+struct Properties
+{
+    bool needsGC = false;
+};
+
 class Module : public ASTNode
 {
 public:
     Module(std::string name,
            std::vector<std::unique_ptr<Import>> imports,
            std::unique_ptr<DeclarationsBlock> declarations,
-           std::vector<std::unique_ptr<ProcedureDeclaration>> procedures)
+           std::vector<std::unique_ptr<ProcedureDeclaration>> procedures,
+           Properties properties = {})
         : name(std::move(name)),
           imports(std::move(imports)),
           declarations(std::move(declarations)),
-          procedures(std::move(procedures)) {}
+          procedures(std::move(procedures)),
+          properties(std::move(properties)) {}
 
     void accept(ASTVisitor& v) override;
 
 
     std::string name;
+    Properties properties;
     std::vector<std::unique_ptr<Import>> imports;
     std::unique_ptr<DeclarationsBlock> declarations;
     std::vector<std::unique_ptr<ProcedureDeclaration>> procedures;

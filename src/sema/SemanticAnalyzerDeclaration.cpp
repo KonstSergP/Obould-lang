@@ -264,6 +264,7 @@ void SemanticAnalyzer::visit(Import& node)
     moduleRealNames[node.realName] = node.realName;
 
     mod->accept(*this);
+    rootModule->properties.needsGC |= mod->properties.needsGC;
 
     importedModule = false;
     currentModuleName = curName;

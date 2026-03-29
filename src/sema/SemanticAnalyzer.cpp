@@ -80,7 +80,10 @@ bool SemanticAnalyzer::analyze(Module& module)
     importedModule = false;
     currentModuleName = module.name;
     moduleRealNames[module.name] = module.name;
+    rootModule = &module;
+
     module.accept(*this);
+
     return errors.empty();
 }
 
@@ -120,46 +123,6 @@ std::shared_ptr<TypeInfo> SemanticAnalyzer::getPolymorphicBase(Expression* expr)
     return nullptr;
 }
 
-void SemanticAnalyzer::visitBuiltinProcedure(ProcedureCall& node)
-{
-    for (auto& arg : node.args) {
-        arg->accept(*this);
-    }
-
-    switch (node.procedureName->resolvedType->builtin) {
-    case BuiltinKind::NEW:
-    {
-        if (node.args.size() != 1) {
-            addError("'new' expects 1 argument");
-            return;
-        }
-        if (node.args[0]->resolvedType->kind != TypeKind::Pointer) {
-            addError("'new' requires a pointer variable");
-        }
-        if (!node.args[0]->isLvalue) {
-            addError("'new' requires a variable (l-value)");
-        }
-        break;
-    }
-    case BuiltinKind::LEN:
-    {
-        if (node.args.size() != 1) {
-            addError("'len' expects 1 argument");
-            return;
-        }
-        auto argType = node.args[0]->resolvedType;
-        if (argType->kind != TypeKind::Array && argType->kind != TypeKind::String) {
-            addError("'len' expects an array or string");
-        }
-        break;
-    }
-    default:
-        addError("Unknown builtin kind");
-    }
-    node.resolvedType = node.procedureName->resolvedType->returnType;
-    node.isLvalue = false;
-}
-
 static void updateStructDepth(const std::shared_ptr<TypeInfo>& type)
 {
     if (auto base = type->baseType) {
@@ -170,8 +133,8 @@ static void updateStructDepth(const std::shared_ptr<TypeInfo>& type)
 }
 
 static bool containsRecursiveInternal(const std::shared_ptr<TypeInfo>& t,
-                              const TypeInfo* target,
-                              std::set<TypeInfo*>& visiting)
+                                      const TypeInfo* target,
+                                      std::set<TypeInfo*>& visiting)
 {
     if (!t) return false;
     if (!visiting.insert(t.get()).second) return false;

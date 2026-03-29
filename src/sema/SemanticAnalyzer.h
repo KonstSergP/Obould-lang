@@ -68,21 +68,6 @@ public:
     void visit(Module& node) override;
 
 private:
-    enum class AnalyzeStages { Default, CreateType, FillType, ValidateType };
-
-    AnalyzeStages analyzeStage = AnalyzeStages::Default;
-
-    std::shared_ptr<TypeInfo> switchSelectorType;
-
-    bool importedModule = false;
-
-    std::vector<std::string> errors;
-    std::unordered_map<std::string, std::shared_ptr<TypeInfo>> builtinTypes;
-    std::unordered_map<std::string, SymbolTable> symbolTables;
-    std::unordered_map<std::string, std::string> moduleRealNames;
-    std::string currentModuleName;
-    SymbolFileParser symbolFileParser;
-
     void createBuiltinTypes();
     void addBuiltinTypes(SymbolTable& symTable) const;
     void addBuiltinProcedures(SymbolTable& symTable) const;
@@ -92,5 +77,19 @@ private:
     std::shared_ptr<TypeInfo> getPolymorphicBase(Expression* expr);
     void validateType(const std::shared_ptr<TypeInfo>& type);
     void validateTypeInternal(const std::shared_ptr<TypeInfo>& type, std::set<TypeInfo*>& visiting);
+
+
+    enum class AnalyzeStages { Default, CreateType, FillType, ValidateType };
+
+    AnalyzeStages analyzeStage = AnalyzeStages::Default;
+    std::shared_ptr<TypeInfo> switchSelectorType;
+    bool importedModule = false;
+    std::vector<std::string> errors;
+    std::unordered_map<std::string, std::shared_ptr<TypeInfo>> builtinTypes;
+    std::unordered_map<std::string, SymbolTable> symbolTables;
+    std::unordered_map<std::string, std::string> moduleRealNames;
+    std::string currentModuleName;
+    SymbolFileParser symbolFileParser;
+    Module* rootModule = nullptr;
 };
 }

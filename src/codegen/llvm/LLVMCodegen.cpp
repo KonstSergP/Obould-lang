@@ -21,6 +21,7 @@ std::unique_ptr<llvm::Module> LLVMCodegenVisitor::codegen(Module& moduleAst, boo
     module = std::make_unique<llvm::Module>(moduleAst.name, context);
     builder = std::make_unique<llvm::IRBuilder<>>(context);
     currentModule = moduleAst.name;
+    rootModule = &moduleAst;
 
     moduleAst.accept(*this);
     return std::move(module);
@@ -308,14 +309,17 @@ void LLVMCodegenVisitor::createEntryPoint(Module& node)
 
     auto* mainTy = llvm::FunctionType::get(builder->getInt32Ty(), false);
     auto* mainFn = llvm::Function::Create(mainTy, llvm::GlobalValue::ExternalLinkage, "main", *module);
-    auto gcInitFn = module->getOrInsertFunction(
-        "GC_init",
-        llvm::FunctionType::get(builder->getVoidTy(), false));
 
     auto* entry = llvm::BasicBlock::Create(context, "entry", mainFn);
     builder->SetInsertPoint(entry);
 
-    builder->CreateCall(gcInitFn);
+    if (rootModule->properties.needsGC) {
+        auto gcInitFn = module->getOrInsertFunction(
+            "GC_init",
+            llvm::FunctionType::get(builder->getVoidTy(), false));
+        builder->CreateCall(gcInitFn);
+    }
+
     builder->CreateCall(functions["ob_" + node.name]);
 
     builder->CreateRet(builder->getInt32(0));

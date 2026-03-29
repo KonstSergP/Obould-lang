@@ -61,24 +61,6 @@ public:
     void visit(Module& node) override;
 
 private:
-    llvm::LLVMContext context;
-    std::unique_ptr<llvm::Module> module;
-    std::unique_ptr<llvm::IRBuilder<>> builder;
-
-    llvm::Value* lastValue = nullptr;
-    llvm::Function* currentFunction = nullptr;
-    std::string currentModule;
-    bool isMainModule = false;
-    bool importedModule = false;
-    bool exportedType = false;
-    bool lvalue = false;
-
-    std::unordered_map<std::string, llvm::Value*> locals;
-    std::unordered_map<std::string, llvm::Function*> functions;
-    std::unordered_map<TypeInfo*, llvm::StructType*> structTypes;
-    std::unordered_map<TypeInfo*, llvm::GlobalVariable*> descriptors;
-    std::unordered_map<TypeInfo*, llvm::Value*> lengths;
-
     static std::string getMangledName(const std::string& moduleName, const std::string& name);
     llvm::Type* toLLVMType(const std::shared_ptr<TypeInfo>& typeInfo);
     llvm::Value* getConstantValue(const Expression& node);
@@ -91,5 +73,25 @@ private:
     void createModuleInitializer(Module& node);
     void createEntryPoint(Module& node);
     void visitBuiltinProcedure(ProcedureCall& node);
+
+
+    llvm::LLVMContext context;
+    std::unique_ptr<llvm::Module> module;
+    std::unique_ptr<llvm::IRBuilder<>> builder;
+
+    llvm::Value* lastValue = nullptr;
+    llvm::Function* currentFunction = nullptr;
+    std::string currentModule;
+    Module* rootModule = nullptr;
+    bool isMainModule = false;
+    bool importedModule = false;
+    bool exportedType = false;
+    bool lvalue = false;
+
+    std::unordered_map<std::string, llvm::Value*> locals;
+    std::unordered_map<std::string, llvm::Function*> functions;
+    std::unordered_map<TypeInfo*, llvm::StructType*> structTypes;
+    std::unordered_map<TypeInfo*, llvm::GlobalVariable*> descriptors;
+    std::unordered_map<TypeInfo*, llvm::Value*> lengths;
 };
 }
