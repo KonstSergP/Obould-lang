@@ -47,10 +47,15 @@ static std::string transpileCompileRun(const std::string& moduleName,
                        fs::copy_options::overwrite_existing);
         fs::copy_file(getStdlibDir() / "Out.c", tmpDir / "Out.c",
                        fs::copy_options::overwrite_existing);
+        auto symDir = tmpDir / ".obould";
+        fs::create_directories(symDir);
+        fs::copy_file(getStdlibDir() / "Out.json", symDir / "Out.json",
+                       fs::copy_options::overwrite_existing);
     }
 
     // Transpile: obould <file> --emit-c -o <dir> --main
-    std::string transpileCmd = getObould().string() +
+    std::string transpileCmd = "cd " + tmpDir.string() + " && " +
+        getObould().string() +
         " " + oblPath.string() +
         " --emit-c -o " + tmpDir.string() +
         " --main 2>&1";
@@ -104,7 +109,7 @@ import Out;
 fn init() -> void {
     Out.WriteInt(2 + 3 * 4);
     Out.WriteLn();
-    Out.WriteInt(100 / 10);
+    Out.WriteInt(100 div 10);
     Out.WriteLn();
     Out.WriteInt(17 mod 5);
     Out.WriteLn();
@@ -247,7 +252,10 @@ TEST_CASE("For loop", "[ccodegen][control]")
     std::string src = R"(module ForLoop
 import Out;
 fn init() -> void
-var sum: i64;
+var {
+    sum: i64;
+    i: i64;
+}
 {
     sum = 0;
     for (i = 1, 10, 1) {
@@ -264,7 +272,9 @@ TEST_CASE("For loop with step", "[ccodegen][control]")
 {
     std::string src = R"(module ForStep
 import Out;
-fn init() -> void {
+fn init() -> void
+var i: i64;
+{
     for (i = 0, 20, 5) {
         Out.WriteInt(i);
         Out.WriteLn();
@@ -457,7 +467,10 @@ TEST_CASE("Array — basic indexing", "[ccodegen][array]")
     std::string src = R"(module ArrBasic
 import Out;
 fn init() -> void
-var arr: i64[5];
+var {
+    arr: i64[5];
+    i: i64;
+}
 {
     for (i = 0, 4, 1) {
         arr[i] = i * i;
@@ -479,6 +492,7 @@ fn init() -> void
 var {
     arr: i64[5];
     sum: i64;
+    i: i64;
 }
 {
     arr[0] = 1;
@@ -707,6 +721,8 @@ fn init() -> void
 var {
     arr: i64[5];
     n: i64;
+    i: i64;
+    j: i64;
 }
 {
     arr[0] = 5;
