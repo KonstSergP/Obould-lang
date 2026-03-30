@@ -1,10 +1,16 @@
 #include <stdint.h>
 #include <stdio.h>
 
-void WriteInt(int64_t x) __asm__("ob_3Out_WriteInt");
-void WriteLn(void) __asm__("ob_3Out_WriteLn");
-void init(void) __asm__("ob_3Out_init");
-void Out(void) __asm__("ob_Out");
+#if defined(__APPLE__)
+#define OB_SYMBOL(name) __asm__("_" name)
+#else
+#define OB_SYMBOL(name) __asm__(name)
+#endif
+
+void WriteInt(int64_t x) OB_SYMBOL("ob_3Out_WriteInt");
+void WriteLn(void) OB_SYMBOL("ob_3Out_WriteLn");
+void init(void) OB_SYMBOL("ob_3Out_init");
+void Out(void) OB_SYMBOL("ob_Out");
 
 void WriteInt(int64_t x)
 {
