@@ -261,6 +261,15 @@ void SymbolFileGenerator::visit(Module& node)
         moduleJson["procedures"].push_back(json_);
     }
 
+    auto& props = node.properties;
+    auto propsJson = json::object();
+    if (props.needsGC) {
+        propsJson["needsGC"] = true;
+    }
+    if (!propsJson.empty()) {
+        moduleJson["properties"] = propsJson;
+    }
+
     json_ = moduleJson;
 }
 }

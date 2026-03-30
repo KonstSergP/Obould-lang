@@ -1,6 +1,7 @@
+#include <iostream>
 #include "LLVMCodegen.h"
 
-#include <iostream>
+#include <deque>
 
 #include "sema/TypeInfo.h"
 
@@ -20,6 +21,7 @@ std::unique_ptr<llvm::Module> LLVMCodegenVisitor::codegen(Module& moduleAst, boo
     module = std::make_unique<llvm::Module>(moduleAst.name, context);
     builder = std::make_unique<llvm::IRBuilder<>>(context);
     currentModule = moduleAst.name;
+    rootModule = &moduleAst;
 
     moduleAst.accept(*this);
     return std::move(module);
@@ -89,7 +91,9 @@ llvm::Type* LLVMCodegenVisitor::toLLVMType(const std::shared_ptr<TypeInfo>& type
             return it->second;
         }
 
-        std::vector<llvm::Type*> fieldTypes;
+        auto* structTy = llvm::StructType::create(context, "struct." + typeInfo->name);
+        structTypes[typeInfo.get()] = structTy;
+
         std::vector<TypeInfo*> chain;
         auto current = typeInfo;
         while (current) {
@@ -98,6 +102,7 @@ llvm::Type* LLVMCodegenVisitor::toLLVMType(const std::shared_ptr<TypeInfo>& type
         }
         std::reverse(chain.begin(), chain.end());
 
+        std::vector<llvm::Type*> fieldTypes;
         fieldTypes.push_back(builder->getPtrTy());
         for (const auto* info : chain) {
             for (const auto& field : info->fields) {
@@ -105,10 +110,8 @@ llvm::Type* LLVMCodegenVisitor::toLLVMType(const std::shared_ptr<TypeInfo>& type
             }
         }
 
-        std::string structName = "struct." + typeInfo->name;
-        auto* structTy = llvm::StructType::create(context, structName);
         structTy->setBody(fieldTypes, false);
-        structTypes[typeInfo.get()] = structTy;
+
         return structTy;
     }
     default:
@@ -142,6 +145,40 @@ llvm::AllocaInst* LLVMCodegenVisitor::createEntryAlloca(llvm::Type* type, const 
     auto& entryBB = currentFunction->getEntryBlock();
     llvm::IRBuilder entryBuilder(&entryBB, entryBB.begin());
     return entryBuilder.CreateAlloca(type, nullptr, name);
+}
+
+llvm::Constant* LLVMCodegenVisitor::createInitConstant(const std::shared_ptr<TypeInfo>& info)
+{
+    auto* ty = toLLVMType(info);
+
+    if (info->kind == TypeKind::Struct) {
+        auto* structTy = llvm::cast<llvm::StructType>(ty);
+        std::vector<llvm::Constant*> fields;
+        fields.push_back(descriptors[info.get()]);
+
+        std::vector<TypeInfo*> chain;
+        auto current = info;
+        while (current) {
+            chain.push_back(current.get());
+            current = current->baseType;
+        }
+        std::reverse(chain.begin(), chain.end());
+
+        for (const auto* typeInfo : chain) {
+            for (const auto& f : typeInfo->fields) {
+                fields.push_back(createInitConstant(f.type));
+            }
+        }
+
+        return llvm::ConstantStruct::get(structTy, fields);
+    }
+    if (info->kind == TypeKind::Array) {
+        auto* arrayTy = llvm::cast<llvm::ArrayType>(ty);
+        auto* elemInit = createInitConstant(info->baseType);
+        std::vector elems(info->length, elemInit);
+        return llvm::ConstantArray::get(arrayTy, elems);
+    }
+    return llvm::Constant::getNullValue(ty);
 }
 
 llvm::GlobalVariable* LLVMCodegenVisitor::createStructDescriptor(const std::shared_ptr<TypeInfo>& type)
@@ -275,7 +312,16 @@ void LLVMCodegenVisitor::createEntryPoint(Module& node)
 
     auto* entry = llvm::BasicBlock::Create(context, "entry", mainFn);
     builder->SetInsertPoint(entry);
-    builder->CreateCall(llvm::FunctionType::get(builder->getVoidTy(), false), functions["ob_" + node.name]);
+
+    if (rootModule->properties.needsGC) {
+        auto gcInitFn = module->getOrInsertFunction(
+            "GC_init",
+            llvm::FunctionType::get(builder->getVoidTy(), false));
+        builder->CreateCall(gcInitFn);
+    }
+
+    builder->CreateCall(functions["ob_" + node.name]);
+
     builder->CreateRet(builder->getInt32(0));
 }
 }

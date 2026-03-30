@@ -36,19 +36,31 @@ cmake --build build -j
 Вывести токены:
 
 ```bash
-./build/obould -t tests/test.obl
+./build/obould -t tests/sources/comprehensive_test.obl
 ```
 
 Построить и вывести AST:
 
 ```bash
-./build/obould -a tests/test.obl
+./build/obould -a tests/sources/comprehensive_test.obl
 ```
 
 Сгенерировать и вывести LLVM IR:
 
 ```bash
-./build/obould -l tests/test.obl
+./build/obould -l tests/sources/comprehensive_test.obl
+```
+
+Сгенерировать объектный файл
+
+```bash
+./build/obould tests/sources/comprehensive_test.obl
+```
+
+Компиляция и запуск демонстрационных программ
+
+```bash
+./tests/run_tests.sh
 ```
 
 ## Транспилятор в Си

@@ -190,6 +190,13 @@ std::unique_ptr<ProcedureDeclaration> parseProcedureDeclaration(const json& j)
                                                   std::move(emptyDecls), std::move(emptyBody), nullptr);
 }
 
+Properties parseProperties(const json& j)
+{
+    Properties properties;
+    properties.needsGC = j.value("needsGC", false);
+    return properties;
+}
+
 std::unique_ptr<Module> parseModule(const json& j);
 }
 
@@ -222,7 +229,8 @@ std::unique_ptr<Module> parseModule(const json& j)
     std::vector<std::unique_ptr<ProcedureDeclaration>> procedures;
     for (const auto& proc : j.value("procedures", json::array()))
         procedures.push_back(parseProcedureDeclaration(proc));
-    return std::make_unique<Module>(name, std::move(imports), std::move(declarations), std::move(procedures));
+    auto properties = parseProperties(j.value("properties", json::object()));
+    return std::make_unique<Module>(name, std::move(imports), std::move(declarations), std::move(procedures), properties);
 }
 }
 

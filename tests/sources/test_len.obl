@@ -1,0 +1,75 @@
+module LenTest
+
+import Out;
+
+type {
+    Int10: i64[10];
+    Int3: i64[3];
+}
+
+var {
+    a: i64[10];
+    m: i64[4][7];
+    s: char[6];
+}
+
+fn SumLen(x: i64[]) -> i64
+{
+    return len(x);
+}
+
+fn Len2DOuter(m: i64[][]) -> i64
+{
+    return len(m);
+}
+
+fn Len2DInner(m: i64[][]) -> i64
+{
+    return len(m[0]);
+}
+
+fn export Run() -> i64
+var {
+    t: i64;
+}
+{
+    t = len(a);
+    Out.WriteInt(t);
+    Out.WriteLn();
+
+    t = len(m);
+    Out.WriteInt(t);
+    Out.WriteLn();
+
+    t = len(m[0]);
+    Out.WriteInt(t);
+    Out.WriteLn();
+
+    t = SumLen(a);
+    Out.WriteInt(t);
+    Out.WriteLn();
+
+    t = Len2DOuter(m);
+    Out.WriteInt(t);
+    Out.WriteLn();
+
+    t = Len2DInner(m);
+    Out.WriteInt(t);
+    Out.WriteLn();
+
+    s = "Hello";
+    t = len(s);
+    Out.WriteInt(t);
+    Out.WriteLn();
+
+    t = len("Hello");
+    Out.WriteInt(t);
+    Out.WriteLn();
+
+    return 0;
+}
+
+fn init() -> void
+{
+    Run();
+}

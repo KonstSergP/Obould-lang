@@ -4,11 +4,58 @@
 
 namespace obould
 {
+void SemanticAnalyzer::visitBuiltinProcedure(ProcedureCall& node)
+{
+    for (auto& arg : node.args) {
+        arg->accept(*this);
+    }
+
+    switch (node.procedureName->resolvedType->builtin) {
+    case BuiltinKind::NEW:
+    {
+        if (node.args.size() != 1) {
+            addError("'new' expects 1 argument");
+            return;
+        }
+        if (node.args[0]->resolvedType->kind != TypeKind::Pointer) {
+            addError("'new' requires a pointer variable");
+        }
+        if (!node.args[0]->isLvalue) {
+            addError("'new' requires a variable (l-value)");
+        }
+        rootModule->properties.needsGC = true;
+        break;
+    }
+    case BuiltinKind::LEN:
+    {
+        if (node.args.size() != 1) {
+            addError("'len' expects 1 argument");
+            return;
+        }
+        auto argType = node.args[0]->resolvedType;
+        if (argType->kind != TypeKind::Array && argType->kind != TypeKind::String) {
+            addError("'len' expects an array or string");
+        }
+        break;
+    }
+    default:
+        addError("Unknown builtin kind");
+    }
+    node.resolvedType = node.procedureName->resolvedType->returnType;
+    node.isLvalue = false;
+}
+
 void SemanticAnalyzer::visit(ProcedureCall& node)
 {
     node.procedureName->accept(*this);
 
     auto procTypeInfo = node.procedureName->resolvedType;
+
+    if (procTypeInfo->builtin != BuiltinKind::None) {
+        visitBuiltinProcedure(node);
+        return;
+    }
+
     if (procTypeInfo->kind == TypeKind::Procedure) {
         const auto& params = procTypeInfo->parameters;
 
@@ -66,7 +113,7 @@ void SemanticAnalyzer::visit(ProcedureCall& node)
 
         if (!targetType || targetType->kind != TypeKind::Struct) {
             addError("Type guard target type must be a struct");
-            node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
+            node.resolvedType = getBuiltinType(TypeKind::Void);
             return;
         }
 
@@ -88,7 +135,7 @@ void SemanticAnalyzer::visit(ProcedureCall& node)
     }
     else {
         addError("Expression is not a procedure or type guard");
-        node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
+        node.resolvedType = getBuiltinType(TypeKind::Void);
     }
 }
 

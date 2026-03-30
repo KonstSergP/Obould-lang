@@ -1,0 +1,99 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "Obould",
+    "scopeName": "source.obould",
+    "patterns": [
+        { "include": "#comments" },
+        { "include": "#strings" },
+        { "include": "#characters" },
+        { "include": "#keywords" },
+        { "include": "#types" },
+        { "include": "#builtins" },
+        { "include": "#numbers" }
+    ],
+    "repository": {
+        "comments": {
+            "patterns": [
+                {
+                    "name": "comment.line.double-slash.obould",
+                    "match": "//.*$"
+                },
+                {
+                    "name": "comment.block.obould",
+                    "begin": "/\\*",
+                    "end": "\\*/"
+                }
+            ]
+        },
+        "strings": {
+            "name": "string.quoted.double.obould",
+            "begin": "\"",
+            "end": "\"",
+            "patterns": [
+                {
+                    "name": "constant.character.escape.obould",
+                    "match": "\\\\."
+                }
+            ]
+        },
+        "characters": {
+            "name": "string.quoted.single.obould",
+            "begin": "'",
+            "end": "'",
+            "patterns": [
+                {
+                    "name": "constant.character.escape.obould",
+                    "match": "\\\\."
+                }
+            ]
+        },
+        "keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.control.obould",
+                    "match": "\\b(module|import|fn|export|var|const|type|struct|if|else|elif|while|do|for|switch|case|return)\\b"
+                },
+                {
+                    "name": "keyword.operator.word.obould",
+                    "match": "\\b(div|mod|is)\\b"
+                },
+                {
+                    "name": "constant.language.obould",
+                    "match": "\\b(nil|true|false)\\b"
+                }
+            ]
+        },
+        "types": {
+            "patterns": [
+                {
+                    "name": "support.type.obould",
+                    "match": "\\b(i64|f64|bool|char|byte|void)\\b"
+                }
+            ]
+        },
+        "builtins": {
+            "patterns": [
+                {
+                    "name": "support.function.builtin.obould",
+                    "match": "\\b(new|len)\\b"
+                }
+            ]
+        },
+        "numbers": {
+            "patterns": [
+                {
+                    "name": "constant.numeric.hex.obould",
+                    "match": "\\b0[xX][0-9a-fA-F]+\\b"
+                },
+                {
+                    "name": "constant.numeric.float.obould",
+                    "match": "\\b[0-9]+\\.[0-9]+([eE][\\+\\-]?[0-9]+)?\\b"
+                },
+                {
+                    "name": "constant.numeric.integer.obould",
+                    "match": "\\b[0-9]+\\b"
+                }
+            ]
+        }
+    }
+}

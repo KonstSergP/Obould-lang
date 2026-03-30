@@ -60,7 +60,7 @@ void SemanticAnalyzer::visit(ArrayType& node)
     node.elementType->accept(*this);
 
     if (!node.elementType->resolvedType) {
-        node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
+        node.resolvedType = getBuiltinType(TypeKind::Void);
         return;
     }
 
@@ -153,7 +153,7 @@ void SemanticAnalyzer::visit(ProcedureType& node)
         procInfo->returnType = node.returnType->resolvedType;
     }
     else {
-        procInfo->returnType = std::make_shared<TypeInfo>(TypeKind::Void);
+        procInfo->returnType = getBuiltinType(TypeKind::Void);
     }
     node.resolvedType = procInfo;
 }

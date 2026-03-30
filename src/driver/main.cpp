@@ -15,6 +15,7 @@
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Target/TargetMachine.h>
+#include <llvm/Passes/PassBuilder.h>
 
 #include "lexer/Lexer.h"
 #include "parser/Parser.h"
@@ -86,7 +87,7 @@ void emitObjectFile(llvm::Module& module, const std::filesystem::path& outPath)
     }
 
     llvm::TargetOptions opt;
-    auto rm = std::optional<llvm::Reloc::Model>();
+    auto rm = std::optional(llvm::Reloc::PIC_);
     auto targetMachine = std::unique_ptr<llvm::TargetMachine>(
         target->createTargetMachine(targetTriple, "generic", "", opt, rm));
 
@@ -105,6 +106,54 @@ void emitObjectFile(llvm::Module& module, const std::filesystem::path& outPath)
 
     pass.run(module);
     dest.flush();
+}
+
+void optimizeModule(llvm::Module& module, llvm::OptimizationLevel level)
+{
+    if (level == llvm::OptimizationLevel::O0) {
+        return;
+    }
+
+    llvm::LoopAnalysisManager LAM;
+    llvm::FunctionAnalysisManager FAM;
+    llvm::CGSCCAnalysisManager CGAM;
+    llvm::ModuleAnalysisManager MAM;
+
+    llvm::PassBuilder PB;
+
+    PB.registerModuleAnalyses(MAM);
+    PB.registerCGSCCAnalyses(CGAM);
+    PB.registerFunctionAnalyses(FAM);
+    PB.registerLoopAnalyses(LAM);
+    PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+
+    llvm::ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(level);
+
+    MPM.run(module, MAM);
+}
+
+llvm::OptimizationLevel getOptLevel(const argparse::ArgumentParser& program)
+{
+    auto opt_level = llvm::OptimizationLevel::O1;
+    if (program.is_used("-O0")) {
+        opt_level = llvm::OptimizationLevel::O0;
+    }
+    else if (program.is_used("-O1")) {
+        opt_level = llvm::OptimizationLevel::O1;
+    }
+    else if (program.is_used("-O2")) {
+        opt_level = llvm::OptimizationLevel::O2;
+    }
+    else if (program.is_used("-O3")) {
+        opt_level = llvm::OptimizationLevel::O3;
+    }
+    else if (program.is_used("-Os")) {
+        opt_level = llvm::OptimizationLevel::Os;
+    }
+    else if (program.is_used("-Oz")) {
+        opt_level = llvm::OptimizationLevel::Oz;
+    }
+    return opt_level;
 }
 
 
@@ -140,8 +189,17 @@ int main(int argc, char** argv)
            .flag();
 
     program.add_argument("--emit-c", "-c")
-           .help("Emit C code")
-           .flag();
+       .help("Emit C code")
+       .flag();
+
+    auto& opt_group = program.add_mutually_exclusive_group();
+    opt_group.add_argument("-O0").flag().help("No optimization");
+    opt_group.add_argument("-O1").flag().help("Fast optimization (default)");
+    opt_group.add_argument("-O2").flag().help("Execution speed optimization");
+    opt_group.add_argument("-O3").flag().help("Aggressive execution speed optimization");
+    opt_group.add_argument("-Os").flag().help("Binary size optimization");
+    opt_group.add_argument("-Oz").flag().help("Aggressive binary size optimization");
+
 
     try {
         program.parse_args(argc, argv);
@@ -158,6 +216,8 @@ int main(int argc, char** argv)
     else if (program["emit-ast"] == true) mode = OutputMode::AST;
     else if (program["emit-symbols"] == true) mode = OutputMode::SYMBOLS;
     else if (program["emit-tokens"] == true) mode = OutputMode::TOKENS;
+
+    auto optLevel = getOptLevel(program);
 
     auto inputPath = program.get<std::string>("input_file");
     auto outputPath = program.get<std::string>("output");
@@ -208,19 +268,18 @@ int main(int argc, char** argv)
             }
         }
         else if (mode == OutputMode::C_CODE) {
-            // Semantic analysis is required for C code generation
-            // obould::SemanticAnalyzer sema;
-            // sema.setSymbolFileDir(symDir);
-            // if (!sema.analyze(*module)) {
-            //     std::cerr << "Semantic analysis failed:\n";
-            //     for (const auto& error : sema.getErrors()) std::cerr << "  " << error << "\n";
-            //     return 1;
-            // }
+            //Semantic analysis is required for C code generation
+            obould::SemanticAnalyzer sema;
+            sema.setSymbolFileDir(symDir);
+            if (!sema.analyze(*module)) {
+                std::cerr << "Semantic analysis failed:\n";
+                for (const auto& error : sema.getErrors()) std::cerr << "  " << error << "\n";
+                return 1;
+            }
 
             bool isMain = program.get<bool>("main");
 
             if (outputPath.empty()) {
-                // Output both header and source to stdout (header first)
                 obould::CCodegenVisitor hgen(std::cout, obould::COutputMode::HEADER);
                 module->accept(hgen);
                 std::cout << "\n/* ========== SOURCE FILE ========== */\n\n";
@@ -279,6 +338,8 @@ int main(int argc, char** argv)
             obould::LLVMCodegenVisitor codegen;
             auto llvmModule = codegen.codegen(*module, program.get<bool>("main"));
 
+            optimizeModule(*llvmModule, optLevel);
+
             std::filesystem::path outPath;
             if (!outputPath.empty()) {
                 outPath = outputPath;
@@ -306,6 +367,8 @@ int main(int argc, char** argv)
 
             obould::LLVMCodegenVisitor codegen;
             auto llvmModule = codegen.codegen(*module, program.get<bool>("main"));
+
+            optimizeModule(*llvmModule, optLevel);
 
             if (outputPath.empty()) {
                 llvmModule->print(llvm::outs(), nullptr);

@@ -1,4 +1,3 @@
-#include <set>
 #include "SemanticAnalyzer.h"
 #include "SymbolTable.h"
 #include "TypeInfo.h"
@@ -33,80 +32,6 @@ void SemanticAnalyzer::visit(ConstantDeclaration& node)
     if (!symbolTables[currentModuleName].addSymbol(sym)) {
         addError("Redeclaration of constant '" + node.name + "'");
     }
-}
-
-static void updateStructDepth(const std::shared_ptr<TypeInfo>& type)
-{
-    if (auto base = type->baseType) {
-        if (base->depth == -1) updateStructDepth(base);
-        type->depth = base->depth + 1;
-    }
-    else type->depth = 0;
-}
-
-static bool containsRecursive(const std::shared_ptr<TypeInfo>& t,
-                              const TypeInfo* target,
-                              std::set<TypeInfo*>& visiting)
-{
-    if (!t) return false;
-    if (!visiting.insert(t.get()).second) return false;
-    if (t.get() == target) return true;
-
-    switch (t->kind) {
-    case TypeKind::Struct:
-        if (t->baseType && containsRecursive(t->baseType, target, visiting)) return true;
-        for (const auto& f : t->fields) {
-            if (containsRecursive(f.type, target, visiting)) return true;
-        }
-        return false;
-    case TypeKind::Array:
-        return containsRecursive(t->baseType, target, visiting);
-    default:
-        return false;
-    }
-}
-
-void SemanticAnalyzer::validateType(const std::shared_ptr<TypeInfo>& type)
-{
-    std::set<TypeInfo*> visits;
-    if (type->kind == TypeKind::Pointer) {
-        auto base = type->baseType;
-        if (base->kind != TypeKind::Struct) {
-            addError("Pointer base type must be a Struct in '" + type->name + "'");
-        }
-    }
-    else if (type->kind == TypeKind::Struct) {
-        if (type->baseType && type->baseType->kind != TypeKind::Struct) {
-            addError("Struct base type must be a struct");
-        }
-        if (type->baseType && type->name == type->baseType->name) {
-            addError("Struct cannot use itself as base type");
-        }
-        if (type->baseType && containsRecursive(type->baseType, type.get(), visits)) {
-            addError("Struct " + type->name + " cannot be extension of itself");
-        }
-        visits.clear();
-        for (const auto& f : type->fields) {
-            if (containsRecursive(f.type, type.get(), visits)) {
-                addError("Struct " + type->name + " cannot have itself as a field");
-            }
-        }
-        updateStructDepth(type);
-    }
-    else if (type->kind == TypeKind::Array) {
-        if (containsRecursive(type->baseType, type.get(), visits)) {
-            addError("Array " + type->name + " cannot use itself as element type");
-        }
-    }
-    else if (type->kind == TypeKind::Procedure) {
-        if (type->returnType->kind == TypeKind::Array || type->returnType->kind == TypeKind::Struct) {
-            addError(
-                "Procedure cannot return a structured type (Array or Record). Use a pointer or a reference parameter instead.");
-        }
-        // TODO: проверка параметров
-        // TODO: проверка что инит имеет правильную сигнатуру
-    }
-    // TODO: проверки типов элементов
 }
 
 void SemanticAnalyzer::visit(TypeDeclaration& node)
@@ -217,9 +142,10 @@ void SemanticAnalyzer::visit(DeclarationsBlock& node)
     if (node.variables) node.variables->accept(*this);
 }
 
-void SemanticAnalyzer::visit(ProcedureDeclaration& node)
+void SemanticAnalyzer::declareProcedure(ProcedureDeclaration& node)
 {
     auto procType = std::make_shared<TypeInfo>(TypeKind::Procedure);
+    procType->name = node.name;
     node.resolvedType = procType;
 
     if (node.returnType) {
@@ -227,7 +153,7 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
         procType->returnType = node.returnType->resolvedType;
     }
     else {
-        procType->returnType = std::make_shared<TypeInfo>(TypeKind::Void);
+        procType->returnType = getBuiltinType(TypeKind::Void);
     }
 
     for (const auto& param : node.parameters) {
@@ -240,6 +166,15 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
     }
     validateType(procType);
 
+    if (node.name == "init") {
+        if (!procType->parameters.empty()) {
+            addError("Procedure 'init' must not have parameters");
+        }
+        if (procType->returnType->kind != TypeKind::Void) {
+            addError("Procedure 'init' must return void");
+        }
+    }
+
     Symbol procSym;
     procSym.name = node.name;
     procSym.kind = SymbolKind::Procedure;
@@ -251,7 +186,10 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
     if (!symbolTables[currentModuleName].addSymbol(procSym)) {
         addError("Redeclaration of symbol '" + node.name + "'");
     }
+}
 
+void SemanticAnalyzer::visit(ProcedureDeclaration& node)
+{
     if (importedModule)
         return;
 
@@ -289,7 +227,8 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
         addError("Procedure '" + node.name + "' does not have a body");
     }
 
-    bool isVoid = procType->returnType->kind == TypeKind::Void;
+    auto retType = node.resolvedType->returnType;
+    bool isVoid = retType->kind == TypeKind::Void;
 
     if (isVoid && node.returnExpression) {
         addError("Procedure '" + node.name + "' is void but returns a value");
@@ -300,7 +239,7 @@ void SemanticAnalyzer::visit(ProcedureDeclaration& node)
     else if (!isVoid && node.returnExpression) {
         node.returnExpression->accept(*this);
         if (node.returnExpression->resolvedType
-            && !procType->returnType->isAssignableFrom(node.returnExpression->resolvedType)) {
+            && !retType->isAssignableFrom(node.returnExpression->resolvedType)) {
             addError("Return expression in procedure '" + node.name + "' does not match with return type");
         }
     }
@@ -325,6 +264,7 @@ void SemanticAnalyzer::visit(Import& node)
     moduleRealNames[node.realName] = node.realName;
 
     mod->accept(*this);
+    rootModule->properties.needsGC |= mod->properties.needsGC;
 
     importedModule = false;
     currentModuleName = curName;
@@ -337,6 +277,8 @@ void SemanticAnalyzer::visit(Module& node)
     symbolTables.try_emplace(currentModuleName);
     symbolTables[currentModuleName].enterScope();
     addBuiltinTypes(symbolTables[currentModuleName]);
+    if (!importedModule)
+        addBuiltinProcedures(symbolTables[currentModuleName]);
 
     for (const auto& imp : node.imports) {
         imp->accept(*this);
@@ -346,8 +288,9 @@ void SemanticAnalyzer::visit(Module& node)
         node.declarations->accept(*this);
     }
 
-    for (const auto& proc : node.procedures) {
+    for (const auto& proc : node.procedures)
+        declareProcedure(*proc);
+    for (const auto& proc : node.procedures)
         proc->accept(*this);
-    }
 }
 }

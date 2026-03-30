@@ -61,6 +61,20 @@ public:
     void visit(Module& node) override;
 
 private:
+    static std::string getMangledName(const std::string& moduleName, const std::string& name);
+    llvm::Type* toLLVMType(const std::shared_ptr<TypeInfo>& typeInfo);
+    llvm::Value* getConstantValue(const Expression& node);
+    llvm::AllocaInst* createEntryAlloca(llvm::Type* type, const std::string& name = "") const;
+    llvm::Function* declareFunction(ProcedureDeclaration& node);
+    llvm::FunctionType* createFunctionType(const std::shared_ptr<TypeInfo>& type);
+    llvm::GlobalVariable* createStructDescriptor(const std::shared_ptr<TypeInfo>& type);
+    llvm::Constant* createInitConstant(const std::shared_ptr<TypeInfo>& type);
+    void makeStructCastCheck(llvm::Value* left, llvm::Value* right, int64_t rDepth);
+    void createModuleInitializer(Module& node);
+    void createEntryPoint(Module& node);
+    void visitBuiltinProcedure(ProcedureCall& node);
+
+
     llvm::LLVMContext context;
     std::unique_ptr<llvm::Module> module;
     std::unique_ptr<llvm::IRBuilder<>> builder;
@@ -68,6 +82,7 @@ private:
     llvm::Value* lastValue = nullptr;
     llvm::Function* currentFunction = nullptr;
     std::string currentModule;
+    Module* rootModule = nullptr;
     bool isMainModule = false;
     bool importedModule = false;
     bool exportedType = false;
@@ -78,16 +93,5 @@ private:
     std::unordered_map<TypeInfo*, llvm::StructType*> structTypes;
     std::unordered_map<TypeInfo*, llvm::GlobalVariable*> descriptors;
     std::unordered_map<TypeInfo*, llvm::Value*> lengths;
-
-    static std::string getMangledName(const std::string& moduleName, const std::string& name);
-    llvm::Type* toLLVMType(const std::shared_ptr<TypeInfo>& typeInfo);
-    llvm::Value* getConstantValue(const Expression& node);
-    llvm::AllocaInst* createEntryAlloca(llvm::Type* type, const std::string& name = "") const;
-    llvm::Function* declareFunction(ProcedureDeclaration& node);
-    llvm::FunctionType* createFunctionType(const std::shared_ptr<TypeInfo>& type);
-    llvm::GlobalVariable* createStructDescriptor(const std::shared_ptr<TypeInfo>& type);
-    void makeStructCastCheck(llvm::Value* left, llvm::Value* right, int64_t rDepth);
-    void createModuleInitializer(Module& node);
-    void createEntryPoint(Module& node);
 };
 }

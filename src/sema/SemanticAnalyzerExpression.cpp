@@ -8,21 +8,21 @@ namespace obould
 {
 void SemanticAnalyzer::visit(IntegerLiteral& node)
 {
-    node.resolvedType = std::make_shared<TypeInfo>(TypeKind::i64);
+    node.resolvedType = getBuiltinType(TypeKind::i64);
     node.constantValue = node.value;
     node.isLvalue = false;
 }
 
 void SemanticAnalyzer::visit(RealLiteral& node)
 {
-    node.resolvedType = std::make_shared<TypeInfo>(TypeKind::f64);
+    node.resolvedType = getBuiltinType(TypeKind::f64);
     node.constantValue = node.value;
     node.isLvalue = false;
 }
 
 void SemanticAnalyzer::visit(BooleanLiteral& node)
 {
-    node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Bool);
+    node.resolvedType = getBuiltinType(TypeKind::Bool);
     node.constantValue = node.value;
     node.isLvalue = false;
 }
@@ -64,13 +64,13 @@ void SemanticAnalyzer::visit(IdentifierExpression& node)
 
     if (!sym) {
         addError("Undefined identifier: " + node.name);
-        node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
+        node.resolvedType = getBuiltinType(TypeKind::Void);
         return;
     }
 
     if (sym->kind == SymbolKind::Type) {
         addError("Identifier '" + node.name + "' cannot be used as an expression");
-        node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
+        node.resolvedType = getBuiltinType(TypeKind::Void);
         return;
     }
 
@@ -94,7 +94,7 @@ void SemanticAnalyzer::visit(UnaryExpression& node)
     auto type = node.operand->resolvedType;
 
     if (!type) {
-        node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
+        node.resolvedType = getBuiltinType(TypeKind::Void);
         return;
     }
 
@@ -104,7 +104,7 @@ void SemanticAnalyzer::visit(UnaryExpression& node)
             addError("Operator '!' requires boolean operand");
             return;
         }
-        node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Bool);
+        node.resolvedType = getBuiltinType(TypeKind::Bool);
         break;
 
     case UnaryExpression::Op::Negate:
@@ -164,7 +164,7 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
     auto lType = node.left->resolvedType;
     auto rType = std::visit([](auto&& nd) { return nd->resolvedType; }, node.right);
     if (!lType || !rType) {
-        node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
+        node.resolvedType = getBuiltinType(TypeKind::Void);
         return;
     }
 
@@ -181,28 +181,28 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
     case Op::Sub:
     case Op::Mul:
         if (lType->kind == TypeKind::i64 || rType->kind == TypeKind::i64) {
-            node.resolvedType = std::make_shared<TypeInfo>(TypeKind::i64);
+            node.resolvedType = getBuiltinType(TypeKind::i64);
         }
         else if (lType->kind == TypeKind::Byte && rType->kind == TypeKind::Byte) {
-            node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Byte);
+            node.resolvedType = getBuiltinType(TypeKind::Byte);
         }
         else if (isRealType(lType->kind) && isRealType(rType->kind)) {
-            node.resolvedType = std::make_shared<TypeInfo>(TypeKind::f64);
+            node.resolvedType = getBuiltinType(TypeKind::f64);
         }
         else {
             addError("Arithmetic operators require compatible numeric operands (both int/byte or both real)");
-            node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
+            node.resolvedType = getBuiltinType(TypeKind::Void);
             correct = false;
         }
         break;
 
     case Op::FDiv:
         if (isRealType(lType->kind) && isRealType(rType->kind)) {
-            node.resolvedType = std::make_shared<TypeInfo>(TypeKind::f64);
+            node.resolvedType = getBuiltinType(TypeKind::f64);
         }
         else {
             addError("Real division requires real operands");
-            node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
+            node.resolvedType = getBuiltinType(TypeKind::Void);
             correct = false;
         }
         break;
@@ -210,11 +210,11 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
     case Op::IDiv:
     case Op::Mod:
         if (isIntegerType(lType->kind) && isIntegerType(rType->kind)) {
-            node.resolvedType = std::make_shared<TypeInfo>(TypeKind::i64);
+            node.resolvedType = getBuiltinType(TypeKind::i64);
         }
         else {
             addError("Integer division/mod requires integer operands");
-            node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
+            node.resolvedType = getBuiltinType(TypeKind::Void);
             correct = false;
         }
         break;
@@ -222,11 +222,11 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
     case Op::And:
     case Op::Or:
         if (lType->kind == TypeKind::Bool && rType->kind == TypeKind::Bool) {
-            node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Bool);
+            node.resolvedType = getBuiltinType(TypeKind::Bool);
         }
         else {
             addError("Logical operators require boolean operands");
-            node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Bool);
+            node.resolvedType = getBuiltinType(TypeKind::Bool);
             correct = false;
         }
         break;
@@ -237,7 +237,7 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
     case Op::Gt:
     case Op::Lte:
     case Op::Gte:
-        node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Bool);
+        node.resolvedType = getBuiltinType(TypeKind::Bool);
 
         if (isIntegerType(lType->kind) && isIntegerType(rType->kind)) {}
         else if (isRealType(lType->kind) && isRealType(rType->kind)) {}
@@ -262,7 +262,7 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
 
     case Op::Is:
     {
-        node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Bool);
+        node.resolvedType = getBuiltinType(TypeKind::Bool);
 
         auto baseType = getPolymorphicBase(node.left.get());
         if (!baseType) {
@@ -289,7 +289,7 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
     }
 
     default:
-        node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
+        node.resolvedType = getBuiltinType(TypeKind::Void);
         correct = false;
     }
     if (!correct) return;
@@ -416,13 +416,13 @@ void SemanticAnalyzer::visit(ArrayAccessExpression& node)
 
     if (!arrType || arrType->kind != TypeKind::Array) {
         addError("Indexing requires an array type");
-        node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
+        node.resolvedType = getBuiltinType(TypeKind::Void);
         return;
     }
 
     if (!idxType || !isIntegerType(idxType->kind)) {
         addError("Array index must be an integer");
-        node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
+        node.resolvedType = getBuiltinType(TypeKind::Void);
         return;
     }
 
@@ -436,7 +436,7 @@ void SemanticAnalyzer::visit(MemberAccessExpression& node)
     auto objType = node.object->resolvedType;
 
     if (!objType) {
-        node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
+        node.resolvedType = getBuiltinType(TypeKind::Void);
         return;
     }
 
@@ -452,7 +452,7 @@ void SemanticAnalyzer::visit(MemberAccessExpression& node)
 
     if (!structInfo) {
         addError("Member access requires a record or a pointer to record");
-        node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
+        node.resolvedType = getBuiltinType(TypeKind::Void);
         return;
     }
 
@@ -463,7 +463,7 @@ void SemanticAnalyzer::visit(MemberAccessExpression& node)
             if (field.name == node.memberName) {
                 if (!field.isExported && current->ownerModule != currentModuleName) {
                     addError("Cannot access private field '" + field.name + "'");
-                    node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
+                    node.resolvedType = getBuiltinType(TypeKind::Void);
                     return;
                 }
                 fieldType = field.type;
@@ -485,7 +485,7 @@ void SemanticAnalyzer::visit(MemberAccessExpression& node)
     }
     else {
         addError("Field '" + node.memberName + "' not found in record");
-        node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
+        node.resolvedType = getBuiltinType(TypeKind::Void);
     }
 }
 
@@ -496,7 +496,7 @@ void SemanticAnalyzer::visit(DereferenceExpression& node)
 
     if (!type || type->kind != TypeKind::Pointer) {
         addError("Dereference operator requires a pointer");
-        node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Void);
+        node.resolvedType = getBuiltinType(TypeKind::Void);
         return;
     }
 

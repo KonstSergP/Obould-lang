@@ -1,6 +1,8 @@
 #pragma once
+#include <set>
 #include <filesystem>
 #include "SymbolTable.h"
+#include "TypeInfo.h"
 #include "ast/ASTVisitor.h"
 #include "parser/SymbolFileParser.h"
 
@@ -16,8 +18,6 @@ public:
     void setSymbolFileDir(const std::filesystem::path& dir);
     const std::vector<std::string>& getErrors() const;
     void addError(const std::string& error);
-    std::shared_ptr<TypeInfo> getPolymorphicBase(Expression* expr);
-    void validateType(const std::shared_ptr<TypeInfo>& type);
 
     // Expressions
     void visit(IntegerLiteral& node) override;
@@ -69,21 +69,27 @@ public:
 
 private:
     void createBuiltinTypes();
-    void addBuiltinTypes(SymbolTable& symTable);
+    void addBuiltinTypes(SymbolTable& symTable) const;
+    void addBuiltinProcedures(SymbolTable& symTable) const;
+    std::shared_ptr<TypeInfo> getBuiltinType(TypeKind kind) const;
+    void declareProcedure(ProcedureDeclaration& node);
+    void visitBuiltinProcedure(ProcedureCall& node);
+    std::shared_ptr<TypeInfo> getPolymorphicBase(Expression* expr);
+    void validateType(const std::shared_ptr<TypeInfo>& type);
+    void validateTypeInternal(const std::shared_ptr<TypeInfo>& type, std::set<TypeInfo*>& visiting);
+
 
     enum class AnalyzeStages { Default, CreateType, FillType, ValidateType };
 
     AnalyzeStages analyzeStage = AnalyzeStages::Default;
-
     std::shared_ptr<TypeInfo> switchSelectorType;
-
     bool importedModule = false;
-
     std::vector<std::string> errors;
     std::unordered_map<std::string, std::shared_ptr<TypeInfo>> builtinTypes;
     std::unordered_map<std::string, SymbolTable> symbolTables;
     std::unordered_map<std::string, std::string> moduleRealNames;
     std::string currentModuleName;
     SymbolFileParser symbolFileParser;
+    Module* rootModule = nullptr;
 };
 }
