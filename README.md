@@ -82,7 +82,7 @@ cmake --build build -j
 
 Флаг `--main` (`-m`) добавляет в `.c` файл функцию `main()`, которая вызывает `init()` модуля.
 
-### Компиляция и запуск транспилированного кода
+### Компиляция и запуск одномодульной программы
 
 ```bash
 # 1. Транспилировать
@@ -94,6 +94,38 @@ cp stdlib/Out.h stdlib/Out.c out/
 # 3. Скомпилировать и запустить
 cc -o out/my_program out/MyProgram.c out/Out.c
 ./out/my_program
+```
+
+### Многомодульный проект
+
+Допустим, есть два файла: библиотечный модуль `MathLib.obl` и главный модуль `Main.obl`, который его импортирует.
+
+**Пошаговая сборка:**
+
+```bash
+# 1. Создать выходную директорию
+mkdir -p out
+
+# 2. Скопировать стандартную библиотеку
+cp stdlib/Out.h stdlib/Out.c stdlib/Out.json out/
+mkdir -p out/.obould
+cp stdlib/Out.json out/.obould/
+
+# 3. Сгенерировать символьный файл для библиотечного модуля.
+cd out
+../build/obould ../MathLib.obl --emit-symbols
+
+# 4. Транспилировать библиотечный модуль (без --main)
+../build/obould ../MathLib.obl --emit-c -o .
+
+# 5. Транспилировать главный модуль (с --main)
+../build/obould ../Main.obl --emit-c -o . --main
+
+# 6. Скомпилировать все .c файлы вместе
+cc -o main Main.c MathLib.c Out.c
+
+# 7. Запустить
+./main
 ```
 
 ### Именование символов
@@ -120,3 +152,4 @@ ctest --test-dir build -R blackbox
 
 # 3. Напрямую
 ./build/blackbox_ccodegen_tests
+```

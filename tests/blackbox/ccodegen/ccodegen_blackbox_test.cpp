@@ -90,6 +90,76 @@ static std::string transpileCompileRun(const std::string& moduleName,
     return ss.str();
 }
 
+struct ModuleSource {
+    std::string name;
+    std::string source;
+};
+
+static std::string multiModuleRun(const std::vector<ModuleSource>& libs,
+                                  const ModuleSource& main)
+{
+    auto tmpDir = fs::temp_directory_path() / ("obould_mm_" + main.name + "_" +
+        std::to_string(std::hash<std::string>{}(main.source)));
+    fs::create_directories(tmpDir);
+
+    auto symDir = tmpDir / ".obould";
+    fs::create_directories(symDir);
+
+    fs::copy_file(getStdlibDir() / "Out.h", tmpDir / "Out.h",
+                   fs::copy_options::overwrite_existing);
+    fs::copy_file(getStdlibDir() / "Out.c", tmpDir / "Out.c",
+                   fs::copy_options::overwrite_existing);
+    fs::copy_file(getStdlibDir() / "Out.json", symDir / "Out.json",
+                   fs::copy_options::overwrite_existing);
+
+    std::vector<fs::path> cFiles = { tmpDir / "Out.c" };
+
+    for (auto& lib : libs) {
+        auto oblPath = tmpDir / (lib.name + ".obl");
+        { std::ofstream f(oblPath); f << lib.source; }
+
+        std::string symCmd = "cd " + tmpDir.string() + " && " +
+            getObould().string() + " " + oblPath.string() +
+            " --emit-symbols 2>&1";
+        REQUIRE(std::system(symCmd.c_str()) == 0);
+
+        std::string cCmd = "cd " + tmpDir.string() + " && " +
+            getObould().string() + " " + oblPath.string() +
+            " --emit-c -o " + tmpDir.string() + " 2>&1";
+        REQUIRE(std::system(cCmd.c_str()) == 0);
+
+        cFiles.push_back(tmpDir / (lib.name + ".c"));
+    }
+
+    auto mainObl = tmpDir / (main.name + ".obl");
+    { std::ofstream f(mainObl); f << main.source; }
+
+    std::string mainCmd = "cd " + tmpDir.string() + " && " +
+        getObould().string() + " " + mainObl.string() +
+        " --emit-c -o " + tmpDir.string() + " --main 2>&1";
+    REQUIRE(std::system(mainCmd.c_str()) == 0);
+    cFiles.push_back(tmpDir / (main.name + ".c"));
+
+    auto binPath = tmpDir / main.name;
+    std::string compileCmd = "cc -o " + binPath.string();
+    for (auto& cf : cFiles) {
+        compileCmd += " " + cf.string();
+    }
+    compileCmd += " 2>&1";
+    REQUIRE(std::system(compileCmd.c_str()) == 0);
+
+    auto outPath = tmpDir / "stdout.txt";
+    std::string runCmd = binPath.string() + " > " + outPath.string() + " 2>&1";
+    REQUIRE(std::system(runCmd.c_str()) == 0);
+
+    std::ifstream f(outPath);
+    std::stringstream ss;
+    ss << f.rdbuf();
+
+    fs::remove_all(tmpDir);
+    return ss.str();
+}
+
 TEST_CASE("Hello world — WriteInt and WriteLn", "[ccodegen][basic]")
 {
     std::string src = R"(module Hello
@@ -798,4 +868,128 @@ var {
 }
 )";
     REQUIRE(transpileCompileRun("ForAfter", src, true) == "68\n13\n");
+}
+
+TEST_CASE("Multi-module — import custom library", "[ccodegen][multimodule]")
+{
+    ModuleSource mathLib = {"MathLib", R"(module MathLib
+
+fn export Square(x: i64) -> i64 {
+    return x * x;
+}
+
+fn export Cube(x: i64) -> i64 {
+    return x * Square(x);
+}
+
+fn export Add(a, b: i64) -> i64 {
+    return a + b;
+}
+
+fn init() -> void {
+}
+)"};
+
+    ModuleSource main = {"Main", R"(module Main
+
+import MathLib, Out;
+
+fn init() -> void {
+    Out.WriteInt(MathLib.Square(5));
+    Out.WriteLn();
+    Out.WriteInt(MathLib.Cube(3));
+    Out.WriteLn();
+    Out.WriteInt(MathLib.Add(10, 20));
+    Out.WriteLn();
+}
+)"};
+
+    REQUIRE(multiModuleRun({mathLib}, main) == "25\n27\n30\n");
+}
+
+TEST_CASE("Multi-module — library with global state", "[ccodegen][multimodule]")
+{
+    ModuleSource counter = {"Counter", R"(module Counter
+
+var count: i64;
+
+fn export Reset() -> void {
+    count = 0;
+}
+
+fn export Increment() -> void {
+    count = count + 1;
+}
+
+fn export Get() -> i64 {
+    return count;
+}
+
+fn init() -> void {
+    count = 0;
+}
+)"};
+
+    ModuleSource main = {"UseCounter", R"(module UseCounter
+
+import Counter, Out;
+
+fn init() -> void {
+    Counter.Reset();
+    Counter.Increment();
+    Counter.Increment();
+    Counter.Increment();
+    Out.WriteInt(Counter.Get());
+    Out.WriteLn();
+    Counter.Increment();
+    Counter.Increment();
+    Out.WriteInt(Counter.Get());
+    Out.WriteLn();
+}
+)"};
+
+    REQUIRE(multiModuleRun({counter}, main) == "3\n5\n");
+}
+
+TEST_CASE("Multi-module — two libraries", "[ccodegen][multimodule]")
+{
+    ModuleSource mathLib = {"Math", R"(module Math
+
+fn export Double(x: i64) -> i64 {
+    return x + x;
+}
+
+fn init() -> void {
+}
+)"};
+
+    ModuleSource strLib = {"Fmt", R"(module Fmt
+
+import Out;
+
+fn export PrintLabeled(label: i64, value: i64) -> void {
+    Out.WriteInt(label);
+    Out.WriteInt(value);
+    Out.WriteLn();
+}
+
+fn init() -> void {
+}
+)"};
+
+    ModuleSource main = {"App", R"(module App
+
+import Math, Fmt, Out;
+
+fn init() -> void
+var x: i64;
+{
+    x = Math.Double(21);
+    Fmt.PrintLabeled(0, x);
+    x = Math.Double(x);
+    Fmt.PrintLabeled(1, x);
+}
+)"};
+
+    REQUIRE(multiModuleRun({mathLib, strLib}, main) == "042\n184\n");
 }
