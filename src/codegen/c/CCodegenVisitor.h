@@ -129,5 +129,8 @@ private:
 
     // Helper for expressions - returns the expression as string
     std::string getExpressionString(Expression& expr);
+
+    // Helper to generate mangled prefix: "ob_{len}{moduleName}_"
+    static std::string makePrefix(const std::string& moduleName);
 };
 }
