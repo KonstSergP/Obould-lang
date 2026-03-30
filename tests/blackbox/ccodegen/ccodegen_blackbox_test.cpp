@@ -774,3 +774,28 @@ fn init() -> void {
 )";
     REQUIRE(transpileCompileRun("GCD", src, true) == "6\n25\n");
 }
+
+TEST_CASE("For counter visible after loop", "[ccodegen][control]")
+{
+    std::string src = R"(module ForAfter
+import Out;
+fn init() -> void
+var {
+    sum: i64;
+    i: i64;
+}
+{
+    sum = 0;
+    for (i = 1, 10, 1) {
+        sum = sum + i;
+    }
+    i = i + 2;
+    sum = sum + i;
+    Out.WriteInt(sum);
+    Out.WriteLn();
+    Out.WriteInt(i);
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("ForAfter", src, true) == "68\n13\n");
+}

@@ -494,7 +494,7 @@ void CCodegenVisitor::visit(DoWhileStatement& node)
 
 void CCodegenVisitor::visit(ForStatement& node)
 {
-    os_ << "for (int64_t " << node.counterName << " = ";
+    os_ << "for (" << node.counterName << " = ";
     node.rangeStart->accept(*this);
     os_ << "; " << node.counterName << " <= ";
     node.rangeEnd->accept(*this);
