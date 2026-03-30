@@ -101,6 +101,10 @@ private:
     std::set<std::string> globalVariables_;
     std::set<std::string> globalConstants_;
 
+    // When true, reference params are emitted as raw pointers (no dereference).
+    // Used for RTTI: `is` operator and type guards need the pointer, not the value.
+    bool suppressDeref_ = false;
+
     // Flag indicating this is the main module (should generate main() calling init())
     bool isMain_ = false;
 

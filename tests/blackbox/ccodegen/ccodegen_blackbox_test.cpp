@@ -68,8 +68,8 @@ static std::string transpileCompileRun(const std::string& moduleName,
 
     // Compile
     auto binPath = tmpDir / moduleName;
-    std::string compileCmd = "cc -o " + binPath.string() +
-        " " + cPath.string();
+    std::string compileCmd = "cc -Wno-incompatible-pointer-types -o " +
+        binPath.string() + " " + cPath.string();
     if (needsOut) {
         compileCmd += " " + (tmpDir / "Out.c").string();
     }
@@ -141,7 +141,7 @@ static std::string multiModuleRun(const std::vector<ModuleSource>& libs,
     cFiles.push_back(tmpDir / (main.name + ".c"));
 
     auto binPath = tmpDir / main.name;
-    std::string compileCmd = "cc -o " + binPath.string();
+    std::string compileCmd = "cc -Wno-incompatible-pointer-types -o " + binPath.string();
     for (auto& cf : cFiles) {
         compileCmd += " " + cf.string();
     }
@@ -992,4 +992,233 @@ var x: i64;
 )"};
 
     REQUIRE(multiModuleRun({mathLib, strLib}, main) == "042\n184\n");
+}
+
+// ============================================================================
+// RTTI tests
+// ============================================================================
+
+TEST_CASE("RTTI — struct fields and inheritance", "[ccodegen][rtti]")
+{
+    std::string src = R"(module StructFields
+import Out;
+
+type {
+    Point: struct {
+        x, y: i64;
+    };
+    Point3D: struct (Point) {
+        z: i64;
+    };
+}
+
+fn init() -> void
+var {
+    p: Point;
+    p3: Point3D;
+}
+{
+    p.x = 10;
+    p.y = 20;
+    Out.WriteInt(p.x + p.y);
+    Out.WriteLn();
+    p3.x = 1;
+    p3.y = 2;
+    p3.z = 3;
+    Out.WriteInt(p3.x + p3.y + p3.z);
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("StructFields", src, true) == "30\n6\n");
+}
+
+TEST_CASE("RTTI — is operator", "[ccodegen][rtti]")
+{
+    std::string src = R"(module IsOp
+import Out;
+
+type {
+    Shape: struct {
+        id: i64;
+    };
+    Circle: struct (Shape) {
+        radius: i64;
+    };
+    Rect: struct (Shape) {
+        w, h: i64;
+    };
+}
+
+fn Identify(s: &Shape) -> i64
+var result: i64;
+{
+    result = 0;
+    if s is Rect {
+        result = 2;
+    }
+    if s is Circle {
+        result = 1;
+    }
+    return result;
+}
+
+fn init() -> void
+var {
+    c: Circle;
+    r: Rect;
+    s: Shape;
+}
+{
+    c.id = 0;
+    c.radius = 5;
+    Out.WriteInt(Identify(c));
+    Out.WriteLn();
+    r.id = 0;
+    r.w = 3;
+    r.h = 4;
+    Out.WriteInt(Identify(r));
+    Out.WriteLn();
+    s.id = 0;
+    Out.WriteInt(Identify(s));
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("IsOp", src, true) == "1\n2\n0\n");
+}
+
+TEST_CASE("RTTI — type guard with field access", "[ccodegen][rtti]")
+{
+    std::string src = R"(module TypeGuardAccess
+import Out;
+
+type {
+    Animal: struct {
+        legs: i64;
+    };
+    Dog: struct (Animal) {
+        barkVolume: i64;
+    };
+    Cat: struct (Animal) {
+        purring: i64;
+    };
+}
+
+fn Describe(a: &Animal) -> void {
+    Out.WriteInt(a.legs);
+    if a is Dog {
+        Out.WriteInt(a(Dog).barkVolume);
+    }
+    if a is Cat {
+        Out.WriteInt(a(Cat).purring);
+    }
+    Out.WriteLn();
+}
+
+fn init() -> void
+var {
+    d: Dog;
+    c: Cat;
+}
+{
+    d.legs = 4;
+    d.barkVolume = 90;
+    Describe(d);
+    c.legs = 4;
+    c.purring = 1;
+    Describe(c);
+}
+)";
+    REQUIRE(transpileCompileRun("TypeGuardAccess", src, true) == "490\n41\n");
+}
+
+TEST_CASE("RTTI — three-level inheritance chain", "[ccodegen][rtti]")
+{
+    std::string src = R"(module ThreeLevel
+import Out;
+
+type {
+    Base: struct {
+        a: i64;
+    };
+    Mid: struct (Base) {
+        b: i64;
+    };
+    Leaf: struct (Mid) {
+        c: i64;
+    };
+}
+
+fn Level(x: &Base) -> i64
+var result: i64;
+{
+    if x is Leaf {
+        result = 3;
+    } else if x is Mid {
+        result = 2;
+    } else {
+        result = 1;
+    }
+    return result;
+}
+
+fn init() -> void
+var {
+    b: Base;
+    m: Mid;
+    l: Leaf;
+}
+{
+    b.a = 0;
+    m.a = 0;
+    m.b = 0;
+    l.a = 0;
+    l.b = 0;
+    l.c = 0;
+    Out.WriteInt(Level(b));
+    Out.WriteLn();
+    Out.WriteInt(Level(m));
+    Out.WriteLn();
+    Out.WriteInt(Level(l));
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("ThreeLevel", src, true) == "1\n2\n3\n");
+}
+
+TEST_CASE("RTTI — type guard reading inherited fields", "[ccodegen][rtti]")
+{
+    std::string src = R"(module InheritedFields
+import Out;
+
+type {
+    Vehicle: struct {
+        speed: i64;
+    };
+    Car: struct (Vehicle) {
+        doors: i64;
+    };
+}
+
+fn PrintSpeed(v: &Vehicle) -> void {
+    Out.WriteInt(v.speed);
+    if v is Car {
+        Out.WriteInt(v(Car).doors);
+    }
+    Out.WriteLn();
+}
+
+fn init() -> void
+var {
+    c: Car;
+    v: Vehicle;
+}
+{
+    c.speed = 120;
+    c.doors = 4;
+    PrintSpeed(c);
+    v.speed = 60;
+    PrintSpeed(v);
+}
+)";
+    REQUIRE(transpileCompileRun("InheritedFields", src, true) == "1204\n60\n");
 }

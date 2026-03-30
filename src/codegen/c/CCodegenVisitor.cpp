@@ -132,7 +132,9 @@ void CCodegenVisitor::visit(BinaryExpression& node)
     // Handle Is operator specially for RTTI
     if (node.op == BinaryExpression::Op::Is) {
         os_ << "isInstanceOf(((StructDescriptor*)";
+        suppressDeref_ = true;
         node.left->accept(*this);
+        suppressDeref_ = false;
         os_ << "->_desc), &";
 
         std::visit([this](auto&& arg) {
@@ -206,7 +208,9 @@ void CCodegenVisitor::visit(IdentifierExpression& node)
     bool isGlobalVar = globalVariables_.count(node.name) > 0;
     bool isGlobalConst = globalConstants_.count(node.name) > 0;
 
-    if (isRefParam) {
+    bool deref = isRefParam && !suppressDeref_;
+
+    if (deref) {
         os_ << "(*";
     }
 
@@ -217,7 +221,7 @@ void CCodegenVisitor::visit(IdentifierExpression& node)
     }
     os_ << node.name;
 
-    if (isRefParam) {
+    if (deref) {
         os_ << ")";
     }
 }
@@ -286,7 +290,9 @@ void CCodegenVisitor::visit(ProcedureCall& node)
             node.args[0]->accept(*this);
         }
         os_ << "*)";
+        suppressDeref_ = true;
         node.procedureName->accept(*this);
+        suppressDeref_ = false;
         os_ << ")";
         return;
     }
@@ -432,7 +438,6 @@ void CCodegenVisitor::visit(IfStatement& node)
 
 void CCodegenVisitor::visit(WhileStatement& node)
 {
-    // Obould while with elif branches - generate as nested if-else
     if (node.branches.size() == 1) {
         os_ << "while (";
         node.branches[0]->condition->accept(*this);
@@ -443,7 +448,6 @@ void CCodegenVisitor::visit(WhileStatement& node)
         emitIndent();
         os_ << "}";
     } else {
-        // Multiple branches - generate loop with if-else chain
         os_ << "while (1) {\n";
         increaseIndent();
 
@@ -673,7 +677,6 @@ void CCodegenVisitor::visit(TypeDeclaration& node)
         os_ << "struct " << fullName << " {\n";
         increaseIndent();
 
-        // Always add _desc as first field
         emitIndent();
         os_ << "StructDescriptor* _desc;\n";
 
@@ -771,6 +774,23 @@ void CCodegenVisitor::visit(VariableDeclaration& node)
     } else {
         node.type->accept(*this);
         os_ << " " << node.name << ";\n";
+
+        // Initialize _desc for struct variables (RTTI support)
+        if (auto* identType = dynamic_cast<IdentifierType*>(node.type.get())) {
+            std::string fullTypeName;
+            if (!identType->moduleName.empty()) {
+                fullTypeName = makePrefix(identType->moduleName) + identType->name;
+            } else if (!moduleName_.empty()) {
+                fullTypeName = makePrefix(moduleName_) + identType->name;
+            }
+            for (const auto& st : structTypes_) {
+                if (st.first == fullTypeName) {
+                    emitIndent();
+                    os_ << node.name << "._desc = &" << fullTypeName << "_desc;\n";
+                    break;
+                }
+            }
+        }
     }
 }
 
