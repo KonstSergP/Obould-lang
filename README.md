@@ -50,3 +50,61 @@ cmake --build build -j
 ```bash
 ./build/obould -l tests/test.obl
 ```
+
+## Транспилятор в Си
+
+Компилятор может транспилировать исходники Обольда в пару `.h` / `.c` файлов.
+
+### Генерация C-кода
+
+```bash
+# Вывести заголовок и исходник в stdout
+./build/obould -c tests/sources/test.obl
+
+# Сгенерировать файлы в указанную директорию
+./build/obould -c tests/sources/test.obl -o out/
+
+# Сгенерировать с точкой входа main() (для главного модуля)
+./build/obould -c tests/sources/test.obl -o out/ --main
+```
+
+Флаг `--main` (`-m`) добавляет в `.c` файл функцию `main()`, которая вызывает `init()` модуля.
+
+### Компиляция и запуск транспилированного кода
+
+```bash
+# 1. Транспилировать
+./build/obould -c my_program.obl -o out/ --main
+
+# 2. Скопировать stdlib (если модуль использует import Out)
+cp stdlib/Out.h stdlib/Out.c out/
+
+# 3. Скомпилировать и запустить
+cc -o out/my_program out/MyProgram.c out/Out.c
+./out/my_program
+```
+
+### Именование символов
+
+Транспилятор использует манглирование имён формата `ob_{длина_модуля}{Модуль}_{Имя}`. Например, для модуля `Out` функция `WriteLn` получает имя `ob_3Out_WriteLn`.
+
+## Тесты
+
+### Сборка тестов
+
+```bash
+cmake -DO_TESTS=ON -S . -B build
+cmake --build build
+```
+
+### Варианты запуск тестов
+
+```bash
+# 1. Все тесты через ctest
+ctest --test-dir build
+
+# 2. Только blackbox-тесты транспилятора
+ctest --test-dir build -R blackbox
+
+# 3. Напрямую
+./build/blackbox_ccodegen_tests

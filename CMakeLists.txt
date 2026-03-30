@@ -67,18 +67,29 @@ include(CTest)
 file(GLOB_RECURSE UNIT_TEST_SOURCES CONFIGURE_DEPENDS "tests/unit/*.cpp")
 option(O_TESTS "Build unit tests (requires Catch2)" OFF)
 
-if (O_TESTS AND UNIT_TEST_SOURCES)
+if (O_TESTS)
     FetchContent_Declare(
             Catch2
             GIT_REPOSITORY https://github.com/catchorg/Catch2.git
             GIT_TAG v3.4.0
     )
     FetchContent_MakeAvailable(Catch2)
-
-    add_executable(unit_tests ${UNIT_TEST_SOURCES})
     include(Catch)
-    target_link_libraries(unit_tests PRIVATE obould_lib Catch2::Catch2WithMain ${llvm_libs} nlohmann_json::nlohmann_json)
-    catch_discover_tests(unit_tests)
-elseif (O_TESTS)
-    message(STATUS "No unit tests found")
+
+    if (UNIT_TEST_SOURCES)
+        add_executable(unit_tests ${UNIT_TEST_SOURCES})
+        target_link_libraries(unit_tests PRIVATE obould_lib Catch2::Catch2WithMain ${llvm_libs} nlohmann_json::nlohmann_json)
+        catch_discover_tests(unit_tests)
+    endif ()
+
+    file(GLOB_RECURSE BLACKBOX_CCODEGEN_SOURCES CONFIGURE_DEPENDS "tests/blackbox/ccodegen/*.cpp")
+    if (BLACKBOX_CCODEGEN_SOURCES)
+        add_executable(blackbox_ccodegen_tests ${BLACKBOX_CCODEGEN_SOURCES})
+        target_compile_definitions(blackbox_ccodegen_tests PRIVATE
+            OBOULD_BUILD_DIR="${CMAKE_BINARY_DIR}"
+            OBOULD_STDLIB_DIR="${CMAKE_SOURCE_DIR}/stdlib"
+        )
+        target_link_libraries(blackbox_ccodegen_tests PRIVATE Catch2::Catch2WithMain)
+        catch_discover_tests(blackbox_ccodegen_tests TEST_PREFIX "blackbox/")
+    endif ()
 endif ()
