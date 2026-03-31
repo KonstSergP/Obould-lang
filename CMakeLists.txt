@@ -51,7 +51,7 @@ FetchContent_MakeAvailable(argparse)
 
 # ==========================================
 
-file(GLOB_RECURSE LIB_SOURCES "src/*.cpp")
+file(GLOB_RECURSE LIB_SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 list(FILTER LIB_SOURCES EXCLUDE REGEX ".*main\\.cpp$")
 
 add_library(obould_lib STATIC ${LIB_SOURCES})
@@ -60,21 +60,24 @@ target_link_libraries(obould_lib PRIVATE ${llvm_libs} nlohmann_json::nlohmann_js
 
 # ==========================================
 
-file(GLOB STD_HEADERS "stdlib/*.json" "stdlib/*.h")
-file(GLOB_RECURSE STD_SOURCES "stdlib/*.c")
+file(GLOB STD_HEADERS CONFIGURE_DEPENDS "stdlib/*.json" "stdlib/*.h")
+file(GLOB_RECURSE STD_SOURCES CONFIGURE_DEPENDS "stdlib/*.c")
 add_library(obould_std STATIC ${STD_SOURCES})
+
+add_custom_command(TARGET obould_std POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/lib
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:obould_std> ${CMAKE_BINARY_DIR}/lib/$<TARGET_FILE_NAME:obould_std>
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:gc> ${CMAKE_BINARY_DIR}/lib/$<TARGET_FILE_NAME:gc>
+)
 
 # ==========================================
 
 add_executable(obould src/driver/main.cpp)
 target_link_libraries(obould PRIVATE obould_lib ${llvm_libs} nlohmann_json::nlohmann_json argparse)
-
 add_dependencies(obould gc obould_std)
+
 add_custom_command(TARGET obould POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:obould>/lib
-        COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:obould>/system
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:gc> $<TARGET_FILE_DIR:obould>/lib/$<TARGET_FILE_NAME:gc>
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:obould_std> $<TARGET_FILE_DIR:obould>/lib/$<TARGET_FILE_NAME:obould_std>
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/system
 )
 
 foreach(HEADER_FILE IN LISTS STD_HEADERS)
@@ -85,7 +88,7 @@ endforeach()
 
 # ==========================================
 
-file(GLOB MANUAL_TESTS "tests/manual/*.cpp")
+file(GLOB MANUAL_TESTS CONFIGURE_DEPENDS "tests/manual/*.cpp")
 
 foreach (test_source ${MANUAL_TESTS})
     get_filename_component(test_name ${test_source} NAME_WE)

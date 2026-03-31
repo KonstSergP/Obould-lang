@@ -41,7 +41,7 @@ bool TypeInfo::isAssignableFrom(const std::shared_ptr<TypeInfo>& other) const
             return other->length == 1;
         }
         if (kind == TypeKind::Array && baseType->kind == TypeKind::Char) {
-            return length > other->length;
+            return length > other->length || isOpenArray;
         }
         return false;
     }

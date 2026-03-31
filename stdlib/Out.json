@@ -8,10 +8,113 @@
     "moduleName": "Out",
     "procedures": [
         {
+            "name": "WriteString",
+            "parameters": [
+                {
+                    "name": "s",
+                    "reference": false,
+                    "type": {
+                        "kind": "open array",
+                        "elementType": "char"
+                    }
+                }
+            ],
+            "returnType": "void"
+        },
+        {
+            "name": "WriteStringLen",
+            "parameters": [
+                {
+                    "name": "s",
+                    "reference": false,
+                    "type": {
+                        "kind": "open array",
+                        "elementType": "char"
+                    }
+                },
+                {
+                    "name": "n",
+                    "reference": false,
+                    "type": "i64"
+                }
+            ],
+            "returnType": "void"
+        },
+        {
             "name": "WriteInt",
             "parameters": [
                 {
                     "name": "x",
+                    "reference": false,
+                    "type": "i64"
+                }
+            ],
+            "returnType": "void"
+        },
+        {
+            "name": "WriteIntWidth",
+            "parameters": [
+                {
+                    "name": "x",
+                    "reference": false,
+                    "type": "i64"
+                },
+                {
+                    "name": "width",
+                    "reference": false,
+                    "type": "i64"
+                }
+            ],
+            "returnType": "void"
+        },
+        {
+            "name": "WriteHex",
+            "parameters": [
+                {
+                    "name": "x",
+                    "reference": false,
+                    "type": "i64"
+                },
+                {
+                    "name": "width",
+                    "reference": false,
+                    "type": "i64"
+                }
+            ],
+            "returnType": "void"
+        },
+        {
+            "name": "WriteByte",
+            "parameters": [
+                {
+                    "name": "x",
+                    "reference": false,
+                    "type": "byte"
+                }
+            ],
+            "returnType": "void"
+        },
+        {
+            "name": "WriteBool",
+            "parameters": [
+                {
+                    "name": "b",
+                    "reference": false,
+                    "type": "bool"
+                }
+            ],
+            "returnType": "void"
+        },
+        {
+            "name": "WriteReal",
+            "parameters": [
+                {
+                    "name": "x",
+                    "reference": false,
+                    "type": "f64"
+                },
+                {
+                    "name": "digits",
                     "reference": false,
                     "type": "i64"
                 }
@@ -24,8 +127,19 @@
             "returnType": "void"
         },
         {
-            "name": "init",
+            "name": "WriteSpace",
             "parameters": [],
+            "returnType": "void"
+        },
+        {
+            "name": "WriteChar",
+            "parameters": [
+                {
+                    "name": "ch",
+                    "reference": false,
+                    "type": "char"
+                }
+            ],
             "returnType": "void"
         }
     ]

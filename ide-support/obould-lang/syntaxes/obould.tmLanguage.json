@@ -36,17 +36,6 @@
                 }
             ]
         },
-        "characters": {
-            "name": "string.quoted.single.obould",
-            "begin": "'",
-            "end": "'",
-            "patterns": [
-                {
-                    "name": "constant.character.escape.obould",
-                    "match": "\\\\."
-                }
-            ]
-        },
         "keywords": {
             "patterns": [
                 {

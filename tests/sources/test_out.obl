@@ -1,0 +1,46 @@
+module OutTest
+
+import Out;
+
+fn export Run() -> i64
+var {
+    ch: char;
+    s: char[6];
+    t: i64;
+}
+{
+    ch = "A";
+    Out.WriteChar(ch);
+    Out.WriteSpace();
+    Out.WriteString("Hello");
+    Out.WriteSpace();
+    Out.WriteStringLen("Hello", 2);
+    Out.WriteLn();
+
+    t = 42;
+    Out.WriteInt(t);
+    Out.WriteSpace();
+    Out.WriteIntWidth(t, 5);
+    Out.WriteSpace();
+    Out.WriteHex(255, 4);
+    Out.WriteSpace();
+    Out.WriteByte(255);
+    Out.WriteSpace();
+    Out.WriteBool(true);
+    Out.WriteSpace();
+    Out.WriteBool(false);
+    Out.WriteSpace();
+    Out.WriteReal(3.14159, 2);
+    Out.WriteLn();
+
+    s = "Hello";
+    Out.WriteString(s);
+    Out.WriteLn();
+
+    return 0;
+}
+
+fn init() -> void
+{
+    Run();
+}
