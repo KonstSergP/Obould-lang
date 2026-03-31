@@ -11,22 +11,10 @@ namespace obould
 {
 using json = nlohmann::json;
 
-SymbolFileParser::SymbolFileParser() : symbolDir_(".obould") {}
+SymbolFileParser::SymbolFileParser(const std::vector<std::filesystem::path>& dirs) : searchDirs(dirs) {}
 
-SymbolFileParser::SymbolFileParser(std::filesystem::path symbolDir) : symbolDir_(std::move(symbolDir)) {}
-
-void SymbolFileParser::setSymbolDir(std::filesystem::path symbolDir)
-{
-    symbolDir_ = std::move(symbolDir);
-}
-
-std::string SymbolFileParser::findSymbolFile(const std::string& moduleName) const
-{
-    auto path = symbolDir_ / (moduleName + ".json");
-    std::ifstream f(path);
-    if (f.good())
-        return path.string();
-    return "";
+void SymbolFileParser::setSearchDirs(const std::vector<std::filesystem::path>& dirs) {
+    searchDirs = dirs;
 }
 
 namespace
@@ -200,9 +188,27 @@ Properties parseProperties(const json& j)
 std::unique_ptr<Module> parseModule(const json& j);
 }
 
-std::unique_ptr<Module> SymbolFileParser::parse(std::string moduleName)
+std::string SymbolFileParser::findSymbolFile(const std::string& moduleName) const
 {
-    std::string path = findSymbolFile(moduleName);
+    for (const auto& dir : searchDirs) {
+        auto tryPath = dir / (moduleName + ".json");
+
+        if (fs::exists(tryPath)) {
+            return tryPath;
+        }
+    }
+
+    std::string searchList;
+    for (const auto& dir : searchDirs) {
+        searchList += "  - " + dir.string() + "\n";
+    }
+    throw std::runtime_error("Critical Error: Symbol file not found for module: " + moduleName +
+                             "\nSearched in:\n" + searchList);
+}
+
+std::unique_ptr<Module> SymbolFileParser::parse(const std::string& moduleName) const
+{
+    auto path = findSymbolFile(moduleName);
     if (path.empty())
         throw std::runtime_error("Symbol file not found for module: " + moduleName);
 

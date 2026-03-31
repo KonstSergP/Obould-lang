@@ -6,21 +6,22 @@ OBUILD="$ROOT_DIR/build/obould"
 OBDIR="$ROOT_DIR/.obould"
 OUT_C="$ROOT_DIR/stdlib/Out.c"
 OUT_JSON="$ROOT_DIR/stdlib/Out.json"
-GC_LIB_DIR="$ROOT_DIR/build/lib"
+LIB_DIR="$ROOT_DIR/build/lib"
 
 mkdir -p "$OBDIR"
 
 cmake --build "$ROOT_DIR/build" -j
-cc -c "$OUT_C" -o "$OBDIR/Out.o"
-cp "$OUT_JSON" "$OBDIR/Out.json"
 
-mapfile -t TESTS < <(find "$ROOT_DIR/tests/sources" -maxdepth 1 -type f -name "test_*.obl" | sort)
+
+shopt -s nullglob
+TESTS=("$ROOT_DIR/tests/sources"/test_*.obl)
 
 for test in "${TESTS[@]}"; do
+  [[ -f "$test" ]] || continue
   name=$(basename "$test" .obl)
   echo "==> $name"
   "$OBUILD" "$test" --main
-  cc "$OBDIR/$name.o" "$OBDIR/Out.o" "$GC_LIB_DIR/libgc.a" -o "$OBDIR/$name"
+  cc "$OBDIR/$name.o" "$LIB_DIR/libobould_std.a" "$LIB_DIR/libgc.a" -o "$OBDIR/$name"
   "$OBDIR/$name"
   echo
   done

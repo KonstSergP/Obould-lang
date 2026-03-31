@@ -26,6 +26,8 @@
 #include "symbol/SymbolFileGenerator.h"
 
 
+namespace fs = std::filesystem;
+
 enum class OutputMode
 {
     TOKENS,
@@ -189,8 +191,8 @@ int main(int argc, char** argv)
            .flag();
 
     program.add_argument("--emit-c", "-c")
-       .help("Emit C code")
-       .flag();
+           .help("Emit C code")
+           .flag();
 
     auto& opt_group = program.add_mutually_exclusive_group();
     opt_group.add_argument("-O0").flag().help("No optimization");
@@ -199,6 +201,10 @@ int main(int argc, char** argv)
     opt_group.add_argument("-O3").flag().help("Aggressive execution speed optimization");
     opt_group.add_argument("-Os").flag().help("Binary size optimization");
     opt_group.add_argument("-Oz").flag().help("Aggressive binary size optimization");
+
+    program.add_argument("--sympath", "-S")
+           .help("Directories to search for imported symbol files (can be used multiple times)")
+           .append();
 
 
     try {
@@ -209,6 +215,14 @@ int main(int argc, char** argv)
         std::cerr << program;
         return 1;
     }
+
+    std::error_code ec;
+    fs::path compilerPath = fs::canonical(fs::path(argv[0]), ec);
+    if (ec) {
+        compilerPath = fs::absolute(argv[0]);
+    }
+    fs::path systemDir = compilerPath.parent_path() / "system";
+    fs::path defaultLocalDir = fs::current_path() / ".obould";
 
     OutputMode mode = OutputMode::OBJ;
     if (program["emit-llvm"] == true) mode = OutputMode::LLVM_IR;
@@ -221,12 +235,32 @@ int main(int argc, char** argv)
 
     auto inputPath = program.get<std::string>("input_file");
     auto outputPath = program.get<std::string>("output");
+    auto symPathsStrings = program.get<std::vector<std::string>>("sympath");
+
+    std::vector<fs::path> searchDirs;
+    if (fs::exists(systemDir)) {
+        searchDirs.push_back(systemDir);
+    }
+    if (symPathsStrings.empty()) {
+        searchDirs.push_back(defaultLocalDir);
+    }
+    for (const auto& path : symPathsStrings) {
+        searchDirs.push_back(fs::absolute(path));
+    }
+    fs::path outDir;
+    if (!outputPath.empty()) {
+        outDir = fs::absolute(outputPath);
+        if (mode != OutputMode::C_CODE) outDir = outDir.parent_path();
+    }
+    else if (!symPathsStrings.empty()) {
+        outDir = fs::absolute(symPathsStrings[0]);
+    }
+    else {
+        outDir = fs::absolute(defaultLocalDir);
+    }
 
     try {
-        std::string source = readFile(inputPath);
-        std::filesystem::path symDir = std::filesystem::current_path() / ".obould";
-
-        obould::Lexer lexer(source);
+        obould::Lexer lexer(readFile(inputPath));
         auto tokens = lexer.tokenize();
 
         if (lexer.hasErrors()) {
@@ -268,9 +302,8 @@ int main(int argc, char** argv)
             }
         }
         else if (mode == OutputMode::C_CODE) {
-            //Semantic analysis is required for C code generation
             obould::SemanticAnalyzer sema;
-            sema.setSymbolFileDir(symDir);
+            sema.setSymbolSearchDirs(searchDirs);
             if (!sema.analyze(*module)) {
                 std::cerr << "Semantic analysis failed:\n";
                 for (const auto& error : sema.getErrors()) std::cerr << "  " << error << "\n";
@@ -317,23 +350,23 @@ int main(int argc, char** argv)
         }
         else if (mode == OutputMode::SYMBOLS) {
             obould::SemanticAnalyzer sema;
-            sema.setSymbolFileDir(symDir);
+            sema.setSymbolSearchDirs(searchDirs);
             if (!sema.analyze(*module)) {
                 for (const auto& error : sema.getErrors()) std::cerr << error << "\n";
                 return 1;
             }
 
-            emitSymbolFile(*module, symDir);
+            emitSymbolFile(*module, outDir);
         }
         else if (mode == OutputMode::OBJ) {
             obould::SemanticAnalyzer sema;
-            sema.setSymbolFileDir(symDir);
+            sema.setSymbolSearchDirs(searchDirs);
             if (!sema.analyze(*module)) {
                 for (const auto& error : sema.getErrors()) std::cerr << error << "\n";
                 return 1;
             }
 
-            emitSymbolFile(*module, symDir);
+            emitSymbolFile(*module, outDir);
 
             obould::LLVMCodegenVisitor codegen;
             auto llvmModule = codegen.codegen(*module, program.get<bool>("main"));
@@ -346,7 +379,7 @@ int main(int argc, char** argv)
             }
             else {
                 auto stem = std::filesystem::path(inputPath).stem().string();
-                outPath = symDir / (stem + ".o");
+                outPath = outDir / (stem + ".o");
             }
 
             auto outDir = outPath.parent_path();
@@ -357,13 +390,13 @@ int main(int argc, char** argv)
         }
         else if (mode == OutputMode::LLVM_IR) {
             obould::SemanticAnalyzer sema;
-            sema.setSymbolFileDir(symDir);
+            sema.setSymbolSearchDirs(searchDirs);
             if (!sema.analyze(*module)) {
                 for (const auto& error : sema.getErrors()) std::cerr << error << "\n";
                 return 1;
             }
 
-            emitSymbolFile(*module, symDir);
+            emitSymbolFile(*module, outDir);
 
             obould::LLVMCodegenVisitor codegen;
             auto llvmModule = codegen.codegen(*module, program.get<bool>("main"));

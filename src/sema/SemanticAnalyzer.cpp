@@ -87,9 +87,9 @@ bool SemanticAnalyzer::analyze(Module& module)
     return errors.empty();
 }
 
-void SemanticAnalyzer::setSymbolFileDir(const std::filesystem::path& dir)
+void SemanticAnalyzer::setSymbolSearchDirs(const std::vector<std::filesystem::path>& dirs)
 {
-    symbolFileParser.setSymbolDir(dir);
+    symbolFileParser.setSearchDirs(dirs);
 }
 
 const std::vector<std::string>& SemanticAnalyzer::getErrors() const

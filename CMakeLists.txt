@@ -60,14 +60,28 @@ target_link_libraries(obould_lib PRIVATE ${llvm_libs} nlohmann_json::nlohmann_js
 
 # ==========================================
 
+file(GLOB STD_HEADERS "stdlib/*.json" "stdlib/*.h")
+file(GLOB_RECURSE STD_SOURCES "stdlib/*.c")
+add_library(obould_std STATIC ${STD_SOURCES})
+
+# ==========================================
+
 add_executable(obould src/driver/main.cpp)
 target_link_libraries(obould PRIVATE obould_lib ${llvm_libs} nlohmann_json::nlohmann_json argparse)
 
-add_dependencies(obould gc)
+add_dependencies(obould gc obould_std)
 add_custom_command(TARGET obould POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:obould>/lib
+        COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:obould>/system
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:gc> $<TARGET_FILE_DIR:obould>/lib/$<TARGET_FILE_NAME:gc>
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:obould_std> $<TARGET_FILE_DIR:obould>/lib/$<TARGET_FILE_NAME:obould_std>
 )
+
+foreach(HEADER_FILE IN LISTS STD_HEADERS)
+    add_custom_command(TARGET obould POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${HEADER_FILE} $<TARGET_FILE_DIR:obould>/system/
+    )
+endforeach()
 
 # ==========================================
 

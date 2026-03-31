@@ -15,7 +15,7 @@ public:
     SemanticAnalyzer();
 
     bool analyze(Module& module);
-    void setSymbolFileDir(const std::filesystem::path& dir);
+    void setSymbolSearchDirs(const std::vector<std::filesystem::path>& dirs);
     const std::vector<std::string>& getErrors() const;
     void addError(const std::string& error);
 
