@@ -87,8 +87,13 @@ private:
 
     // Reference parameter tracking
     std::set<std::string> referenceParams_;  // Names of reference parameters in current function
+    // Open array parameter tracking: param name -> list of hidden len param names per dimension
+    // "m" -> ["m_len", "m_len2", "m_len3"] for m: i64[][][]
+    std::map<std::string, std::vector<std::string>> openArrayParams_;
     // Map: procedure full name -> vector of bools indicating which params are references
     std::map<std::string, std::vector<bool>> procedureRefParams_;
+    // Map: procedure full name -> list of (paramIndex, paramName) for open array params
+    std::map<std::string, std::vector<std::pair<int, std::string>>> procedureOpenArrayParams_;
 
     // RTTI: struct name -> parent struct name (empty if no parent)
     std::vector<std::pair<std::string, std::string>> structTypes_;
