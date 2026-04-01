@@ -24,8 +24,8 @@ void SemanticAnalyzer::visitBuiltinProcedure(ProcedureCall& node)
             addError("'new' requires a variable (l-value)");
         }
         rootModule->properties.needsGC = true;
-        break;
     }
+    break;
     case BuiltinKind::LEN:
     {
         if (node.args.size() != 1) {
@@ -36,8 +36,24 @@ void SemanticAnalyzer::visitBuiltinProcedure(ProcedureCall& node)
         if (argType->kind != TypeKind::Array && argType->kind != TypeKind::String) {
             addError("'len' expects an array or string");
         }
-        break;
     }
+    break;
+    case BuiltinKind::ASSERT:
+    {
+        if (node.args.empty() || node.args.size() > 2) {
+            addError("ASSERT expects 1 or 2 arguments");
+            return;
+        }
+        if (node.args[0]->resolvedType->kind != TypeKind::Bool) {
+            addError("First argument of ASSERT must be a boolean expression");
+        }
+        if (node.args.size() == 2) {
+            if (node.args[1]->resolvedType->kind != TypeKind::String) {
+                addError("Second argument of ASSERT must be a string literal");
+            }
+        }
+    }
+    break;
     default:
         addError("Unknown builtin kind");
     }

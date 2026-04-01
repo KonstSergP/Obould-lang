@@ -51,6 +51,33 @@ void LLVMCodegenVisitor::visitBuiltinProcedure(ProcedureCall& node)
         lastValue = nullptr;
     }
     break;
+    case BuiltinKind::ASSERT:
+    {
+        node.args[0]->accept(*this);
+        auto* condVal = lastValue;
+
+        auto* failBB = llvm::BasicBlock::Create(context, "assert.fail", currentFunction);
+        auto* contBB = llvm::BasicBlock::Create(context, "assert.cont", currentFunction);
+        builder->CreateCondBr(condVal, contBB, failBB);
+
+        builder->SetInsertPoint(failBB);
+
+        if (node.args.size() == 2) {
+            node.args[1]->accept(*this);
+            auto* msgVal = lastValue;
+            auto putsFunc = module->getOrInsertFunction(
+                "puts", llvm::FunctionType::get(builder->getInt32Ty(), {builder->getPtrTy()}, false));
+            builder->CreateCall(putsFunc, {msgVal});
+        }
+
+        auto abortFunc = module->getOrInsertFunction("abort", llvm::FunctionType::get(builder->getVoidTy(), false));
+        builder->CreateCall(abortFunc);
+        builder->CreateUnreachable();
+
+        builder->SetInsertPoint(contBB);
+        lastValue = nullptr;
+    }
+    break;
     default: break;
     }
 }

@@ -76,7 +76,8 @@ struct ParamInfo
 enum class BuiltinKind {
     None,
     NEW,
-    LEN
+    LEN,
+    ASSERT
 };
 
 struct TypeInfo

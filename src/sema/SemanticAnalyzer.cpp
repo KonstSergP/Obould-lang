@@ -72,6 +72,7 @@ void SemanticAnalyzer::addBuiltinProcedures(SymbolTable& symTable) const
 
     registerBuiltin("new", BuiltinKind::NEW);
     registerBuiltin("len", BuiltinKind::LEN, TypeKind::i64);
+    registerBuiltin("assert", BuiltinKind::ASSERT);
 }
 
 bool SemanticAnalyzer::analyze(Module& module)
