@@ -60,31 +60,77 @@ target_link_libraries(obould_lib PRIVATE ${llvm_libs} nlohmann_json::nlohmann_js
 
 # ==========================================
 
-file(GLOB STD_HEADERS CONFIGURE_DEPENDS "stdlib/*.json" "stdlib/*.h")
-file(GLOB_RECURSE STD_SOURCES CONFIGURE_DEPENDS "stdlib/*.c")
-add_library(obould_std STATIC ${STD_SOURCES})
-
-add_custom_command(TARGET obould_std POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/lib
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:obould_std> ${CMAKE_BINARY_DIR}/lib/$<TARGET_FILE_NAME:obould_std>
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:gc> ${CMAKE_BINARY_DIR}/lib/$<TARGET_FILE_NAME:gc>
-)
+add_executable(obould src/driver/main.cpp)
+target_link_libraries(obould PRIVATE obould_lib ${llvm_libs} nlohmann_json::nlohmann_json argparse)
 
 # ==========================================
 
-add_executable(obould src/driver/main.cpp)
-target_link_libraries(obould PRIVATE obould_lib ${llvm_libs} nlohmann_json::nlohmann_json argparse)
-add_dependencies(obould gc obould_std)
+set(SYS_DIR "${CMAKE_BINARY_DIR}/system")
+set(LIB_DIR "${CMAKE_BINARY_DIR}/lib")
+set(ARTIFACTS_DIR "${CMAKE_BINARY_DIR}/artifacts")
+set(LIB_ARTIFACTS "")
 
-add_custom_command(TARGET obould POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/system
+
+set(GC_LIB "${LIB_DIR}/libgc.a")
+add_custom_command(
+        OUTPUT "${GC_LIB}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${LIB_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:gc>" "${GC_LIB}"
+        DEPENDS gc
 )
+list(APPEND LIB_ARTIFACTS "${GC_LIB}")
 
-foreach(HEADER_FILE IN LISTS STD_HEADERS)
-    add_custom_command(TARGET obould POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy ${HEADER_FILE} $<TARGET_FILE_DIR:obould>/system/
+
+file(GLOB STD_HEADERS CONFIGURE_DEPENDS "stdlib/*.json" "stdlib/*.h")
+foreach(HEADER IN LISTS STD_HEADERS)
+    get_filename_component(FNAME "${HEADER}" NAME)
+    add_custom_command(
+            OUTPUT "${SYS_DIR}/${FNAME}"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${SYS_DIR}"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${HEADER}" "${SYS_DIR}/${FNAME}"
+            DEPENDS "${HEADER}"
     )
+    list(APPEND LIB_ARTIFACTS "${SYS_DIR}/${FNAME}")
 endforeach()
+
+
+file(GLOB_RECURSE STD_C_SOURCES CONFIGURE_DEPENDS "stdlib/*.c")
+
+set(STD_OBL_OBJS "")
+
+file(GLOB STD_OBL_SOURCES CONFIGURE_DEPENDS "stdlib/*.obl")
+foreach(OBL_FILE IN LISTS STD_OBL_SOURCES)
+    get_filename_component(FNAME_WE "${OBL_FILE}" NAME_WE)
+    set(OUT_OBJ "${ARTIFACTS_DIR}/${FNAME_WE}.o")
+    set(OUT_JSON "${SYS_DIR}/${FNAME_WE}.json")
+
+    add_custom_command(
+            OUTPUT "${OUT_OBJ}" "${OUT_JSON}"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${ARTIFACTS_DIR}"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${SYS_DIR}"
+
+            COMMAND $<TARGET_FILE:obould> "${OBL_FILE}" -o "${OUT_OBJ}"
+
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${ARTIFACTS_DIR}/${FNAME_WE}.json" "${OUT_JSON}"
+
+            DEPENDS obould "${OBL_FILE}"
+            COMMENT "Compiling Obould module: ${FNAME_WE}.obl"
+    )
+    list(APPEND LIB_ARTIFACTS "${OUT_JSON}")
+    list(APPEND STD_OBL_OBJS "${OUT_OBJ}")
+endforeach()
+
+add_library(obould_std STATIC ${STD_C_SOURCES} ${STD_OBL_OBJS})
+set(OB_STD_LIB "${LIB_DIR}/libobould_std.a")
+add_custom_command(
+        OUTPUT "${LIB_DIR}/libobould_std.a"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${LIB_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:obould_std>" "${OB_STD_LIB}"
+        DEPENDS obould_std
+)
+list(APPEND LIB_ARTIFACTS "${OB_STD_LIB}")
+
+add_custom_target(libs ALL DEPENDS ${LIB_ARTIFACTS})
 
 # ==========================================
 
