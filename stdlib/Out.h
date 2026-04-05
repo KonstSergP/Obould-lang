@@ -16,5 +16,6 @@ void ob_3Out_WriteReal(double x, int64_t digits);
 void ob_3Out_WriteLn(void);
 void ob_3Out_WriteSpace(void);
 void ob_3Out_WriteChar(char ch);
+void ob_Out(void);
 
 #endif /* OUT_H */

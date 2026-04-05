@@ -1,0 +1,68 @@
+{
+    "declarations": {
+        "constants": [],
+        "variables": [
+            {
+                "name": "Done",
+                "type": "bool"
+            },
+            {
+                "name": "Truncated",
+                "type": "bool"
+            }
+        ],
+        "types": []
+    },
+    "imports": [],
+    "moduleName": "In",
+    "procedures": [
+        {
+            "name": "ReadInt",
+            "parameters": [],
+            "returnType": "i64"
+        },
+        {
+            "name": "ReadReal",
+            "parameters": [],
+            "returnType": "f64"
+        },
+        {
+            "name": "ReadChar",
+            "parameters": [],
+            "returnType": "char"
+        },
+        {
+            "name": "ReadByte",
+            "parameters": [],
+            "returnType": "byte"
+        },
+        {
+            "name": "ReadString",
+            "parameters": [
+                {
+                    "name": "s",
+                    "reference": false,
+                    "type": {
+                        "kind": "open array",
+                        "elementType": "char"
+                    }
+                }
+            ],
+            "returnType": "i64"
+        },
+        {
+            "name": "ReadLine",
+            "parameters": [
+                {
+                    "name": "s",
+                    "reference": false,
+                    "type": {
+                        "kind": "open array",
+                        "elementType": "char"
+                    }
+                }
+            ],
+            "returnType": "i64"
+        }
+    ]
+}

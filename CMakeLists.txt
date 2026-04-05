@@ -88,18 +88,6 @@ endforeach()
 
 # ==========================================
 
-file(GLOB MANUAL_TESTS CONFIGURE_DEPENDS "tests/manual/*.cpp")
-
-foreach (test_source ${MANUAL_TESTS})
-    get_filename_component(test_name ${test_source} NAME_WE)
-    add_executable(${test_name} ${test_source})
-    target_include_directories(${test_name} PUBLIC src)
-    target_link_libraries(${test_name} PRIVATE obould_lib ${llvm_libs} nlohmann_json::nlohmann_json argparse)
-    message(STATUS "Added manual test: ${test_name}")
-endforeach ()
-
-# ==========================================
-
 include(CTest)
 
 file(GLOB_RECURSE UNIT_TEST_SOURCES CONFIGURE_DEPENDS "tests/unit/*.cpp")

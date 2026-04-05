@@ -1,0 +1,65 @@
+module InputDemo
+
+import In, Out;
+
+fn init() -> void
+var {
+    s: char[32];
+    n: i64;
+    r: f64;
+    c: char;
+    len: i64;
+}
+{
+    Out.WriteString("Input order: <int> <real> <char> <word> <line>");
+    Out.WriteLn();
+
+    Out.WriteString("ReadInt: ");
+    n = In.ReadInt();
+    Out.WriteInt(n);
+    Out.WriteString(" Done=");
+    Out.WriteBool(In.Done);
+    Out.WriteString(" Truncated=");
+    Out.WriteBool(In.Truncated);
+    Out.WriteLn();
+
+    Out.WriteString("ReadReal: ");
+    r = In.ReadReal();
+    Out.WriteReal(r, 2);
+    Out.WriteString(" Done=");
+    Out.WriteBool(In.Done);
+    Out.WriteString(" Truncated=");
+    Out.WriteBool(In.Truncated);
+    Out.WriteLn();
+
+    Out.WriteString("ReadChar: ");
+    c = In.ReadChar();
+    Out.WriteChar(c);
+    Out.WriteString(" Done=");
+    Out.WriteBool(In.Done);
+    Out.WriteString(" Truncated=");
+    Out.WriteBool(In.Truncated);
+    Out.WriteLn();
+
+    Out.WriteString("ReadString: ");
+    len = In.ReadString(s);
+    Out.WriteString(s);
+    Out.WriteString(" len=");
+    Out.WriteInt(len);
+    Out.WriteString(" Done=");
+    Out.WriteBool(In.Done);
+    Out.WriteString(" Truncated=");
+    Out.WriteBool(In.Truncated);
+    Out.WriteLn();
+
+    Out.WriteString("ReadLine: ");
+    len = In.ReadLine(s);
+    Out.WriteString(s);
+    Out.WriteString(" len=");
+    Out.WriteInt(len);
+    Out.WriteString(" Done=");
+    Out.WriteBool(In.Done);
+    Out.WriteString(" Truncated=");
+    Out.WriteBool(In.Truncated);
+    Out.WriteLn();
+}
