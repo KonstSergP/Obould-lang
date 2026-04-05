@@ -1,0 +1,48 @@
+{
+    "declarations": {
+        "constants": [],
+        "variables": [],
+        "types": []
+    },
+    "imports": [],
+    "moduleName": "Random",
+    "procedures": [
+        {
+            "name": "Seed",
+            "parameters": [
+                {
+                    "name": "seed",
+                    "reference": false,
+                    "type": "i64"
+                }
+            ],
+            "returnType": "void"
+        },
+        {
+            "name": "Next",
+            "parameters": [],
+            "returnType": "i64"
+        },
+        {
+            "name": "NextInt",
+            "parameters": [
+                {
+                    "name": "n",
+                    "reference": false,
+                    "type": "i64"
+                }
+            ],
+            "returnType": "i64"
+        },
+        {
+            "name": "NextBool",
+            "parameters": [],
+            "returnType": "bool"
+        },
+        {
+            "name": "NextReal",
+            "parameters": [],
+            "returnType": "f64"
+        }
+    ]
+}

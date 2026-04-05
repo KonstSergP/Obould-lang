@@ -1,0 +1,38 @@
+module RandomTest
+
+import Out, Random;
+
+fn export Run() -> i64
+var {
+    a: i64;
+    b: i64;
+    c: i64;
+    d: i64;
+}
+{
+    Random.Seed(123456789);
+    a = Random.Next();
+    b = Random.Next();
+    c = Random.NextInt(10);
+    d = Random.NextInt(10);
+
+    Out.WriteInt(a);
+    Out.WriteLn();
+    Out.WriteInt(b);
+    Out.WriteLn();
+    Out.WriteInt(c);
+    Out.WriteLn();
+    Out.WriteInt(d);
+    Out.WriteLn();
+    Out.WriteBool(Random.NextBool());
+    Out.WriteLn();
+    Out.WriteReal(Random.NextReal(), 6);
+    Out.WriteLn();
+
+    return 0;
+}
+
+fn init() -> void
+{
+    Run();
+}
