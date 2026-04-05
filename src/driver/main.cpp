@@ -163,8 +163,9 @@ int main(int argc, char** argv)
 {
     argparse::ArgumentParser program("obould", "0.1");
 
-    program.add_argument("input_file")
-           .help("Obould source file");
+    program.add_argument("input_files")
+           .help("Obould source file and/or object files")
+           .nargs(argparse::nargs_pattern::any);
 
     program.add_argument("--output", "-o")
            .help("Output path (for --emit-c: directory path, files named by module)")
@@ -192,6 +193,10 @@ int main(int argc, char** argv)
 
     program.add_argument("--emit-c", "-c")
            .help("Emit C code")
+           .flag();
+
+    program.add_argument("--link")
+           .help("Link with standard libraries")
            .flag();
 
     auto& opt_group = program.add_mutually_exclusive_group();
@@ -233,9 +238,53 @@ int main(int argc, char** argv)
 
     auto optLevel = getOptLevel(program);
 
-    auto inputPath = program.get<std::string>("input_file");
+    auto inputFiles = program.get<std::vector<std::string>>("input_files");
+    if (inputFiles.empty()) {
+        std::cerr << "Error: input file is required." << "\n";
+        return 1;
+    }
+
     auto outputPath = program.get<std::string>("output");
     auto symPathsStrings = program.get<std::vector<std::string>>("sympath");
+    bool doLink = program.get<bool>("link");
+
+    if (doLink && mode != OutputMode::OBJ) {
+        std::cerr << "Error: --link is only supported when producing object code (no --emit-* flags)." << "\n";
+        return 1;
+    }
+
+    std::vector<std::string> oblFiles;
+    std::vector<std::string> objFiles;
+    for (const auto& file : inputFiles) {
+        auto ext = fs::path(file).extension().string();
+        if (ext == ".obl") {
+            oblFiles.push_back(file);
+        }
+        else if (ext == ".o") {
+            objFiles.push_back(file);
+        }
+        else {
+            std::cerr << "Error: unsupported input file '" << file << "'." << "\n";
+            return 1;
+        }
+    }
+
+    if (oblFiles.size() > 1) {
+        std::cerr << "Error: only one .obl input file is supported." << "\n";
+        return 1;
+    }
+
+    bool linkOnly = doLink && oblFiles.empty();
+    if (!doLink && !objFiles.empty()) {
+        std::cerr << "Error: object files are only supported with --link." << "\n";
+        return 1;
+    }
+    if (linkOnly && objFiles.empty()) {
+        std::cerr << "Error: --link requires at least one .o file when no .obl input is provided." << "\n";
+        return 1;
+    }
+
+    auto inputPath = oblFiles.empty() ? std::string{} : oblFiles.front();
 
     std::vector<fs::path> searchDirs;
     if (fs::exists(systemDir)) {
@@ -257,6 +306,47 @@ int main(int argc, char** argv)
     }
     else {
         outDir = fs::absolute(defaultLocalDir);
+    }
+
+    if (linkOnly) {
+        fs::path libDir = compilerPath.parent_path() / "lib";
+        fs::path stdlibPath = libDir / "libobould_std.a";
+        fs::path gcPath = libDir / "libgc.a";
+
+        if (!fs::exists(stdlibPath)) {
+            throw std::runtime_error("Cannot find standard library: " + stdlibPath.string());
+        }
+        if (!fs::exists(gcPath)) {
+            throw std::runtime_error("Cannot find GC library: " + gcPath.string());
+        }
+
+        fs::path binPath = outputPath.empty() ? fs::path("a.out") : fs::path(outputPath);
+
+        auto shellQuote = [](const std::string& s)
+        {
+            std::string out = "\"";
+            for (char ch : s) {
+                if (ch == '\"' || ch == '\\') out.push_back('\\');
+                out.push_back(ch);
+            }
+            out.push_back('\"');
+            return out;
+        };
+
+        std::ostringstream cmd;
+        cmd << "cc -o " << shellQuote(binPath.string());
+        for (const auto& obj : objFiles) {
+            cmd << " " << shellQuote(obj);
+        }
+        cmd << " " << shellQuote(stdlibPath.string());
+        cmd << " " << shellQuote(gcPath.string());
+
+        int rc = std::system(cmd.str().c_str());
+        if (rc != 0) {
+            std::cerr << "Linking failed." << "\n";
+            return 1;
+        }
+        return 0;
     }
 
     try {
@@ -321,11 +411,11 @@ int main(int argc, char** argv)
                 module->accept(cgen);
             }
             else {
-                std::filesystem::path outDir(outputPath);
+                fs::path outDir(outputPath);
                 ensureDirExists(outDir);
 
-                std::filesystem::path headerPath = outDir / (module->name + ".h");
-                std::filesystem::path sourcePath = outDir / (module->name + ".c");
+                fs::path headerPath = outDir / (module->name + ".h");
+                fs::path sourcePath = outDir / (module->name + ".c");
 
                 // Generate header file
                 {
@@ -373,20 +463,75 @@ int main(int argc, char** argv)
 
             optimizeModule(*llvmModule, optLevel);
 
-            std::filesystem::path outPath;
+            fs::path objPath;
+            fs::path binPath;
             if (!outputPath.empty()) {
-                outPath = outputPath;
+                fs::path outAbs = fs::absolute(outputPath);
+                if (doLink && outAbs.extension() == ".o") {
+                    objPath = outAbs;
+                    binPath = outAbs;
+                    binPath.replace_extension("");
+                }
+                else if (doLink) {
+                    binPath = outAbs;
+                    objPath = outAbs;
+                    objPath += ".o";
+                }
+                else {
+                    objPath = outAbs;
+                }
             }
             else {
-                auto stem = std::filesystem::path(inputPath).stem().string();
-                outPath = outDir / (stem + ".o");
+                auto stem = fs::path(inputPath).stem().string();
+                objPath = outDir / (stem + ".o");
+                if (doLink) {
+                    binPath = outDir / stem;
+                }
             }
 
-            auto outDir = outPath.parent_path();
-            if (!outDir.empty()) {
-                ensureDirExists(outDir);
+            auto objDir = objPath.parent_path();
+            if (!objDir.empty()) {
+                ensureDirExists(objDir);
             }
-            emitObjectFile(*llvmModule, outPath);
+            emitObjectFile(*llvmModule, objPath);
+
+            if (doLink) {
+                fs::path libDir = compilerPath.parent_path() / "lib";
+                fs::path stdlibPath = libDir / "libobould_std.a";
+                fs::path gcPath = libDir / "libgc.a";
+
+                if (!fs::exists(stdlibPath)) {
+                    throw std::runtime_error("Cannot find standard library: " + stdlibPath.string());
+                }
+                if (!fs::exists(gcPath)) {
+                    throw std::runtime_error("Cannot find GC library: " + gcPath.string());
+                }
+
+                auto shellQuote = [](const std::string& s)
+                {
+                    std::string out = "\"";
+                    for (char ch : s) {
+                        if (ch == '\"' || ch == '\\') out.push_back('\\');
+                        out.push_back(ch);
+                    }
+                    out.push_back('\"');
+                    return out;
+                };
+
+                std::ostringstream cmd;
+                cmd << "cc -o " << shellQuote(binPath.string());
+                cmd << " " << shellQuote(objPath.string());
+                for (const auto& obj : objFiles) {
+                    cmd << " " << shellQuote(obj);
+                }
+                cmd << " " << shellQuote(stdlibPath.string());
+                cmd << " " << shellQuote(gcPath.string());
+
+                int rc = std::system(cmd.str().c_str());
+                if (rc != 0) {
+                    throw std::runtime_error("Linking failed.");
+                }
+            }
         }
         else if (mode == OutputMode::LLVM_IR) {
             obould::SemanticAnalyzer sema;
