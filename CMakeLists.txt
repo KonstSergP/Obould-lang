@@ -82,7 +82,7 @@ list(APPEND LIB_ARTIFACTS "${GC_LIB}")
 
 
 file(GLOB STD_HEADERS CONFIGURE_DEPENDS "stdlib/*.json" "stdlib/*.h")
-foreach(HEADER IN LISTS STD_HEADERS)
+foreach (HEADER IN LISTS STD_HEADERS)
     get_filename_component(FNAME "${HEADER}" NAME)
     add_custom_command(
             OUTPUT "${SYS_DIR}/${FNAME}"
@@ -91,15 +91,15 @@ foreach(HEADER IN LISTS STD_HEADERS)
             DEPENDS "${HEADER}"
     )
     list(APPEND LIB_ARTIFACTS "${SYS_DIR}/${FNAME}")
-endforeach()
+endforeach ()
 
 
 file(GLOB_RECURSE STD_C_SOURCES CONFIGURE_DEPENDS "stdlib/*.c")
 
 set(STD_OBL_OBJS "")
 
-file(GLOB STD_OBL_SOURCES CONFIGURE_DEPENDS "stdlib/*.obl")
-foreach(OBL_FILE IN LISTS STD_OBL_SOURCES)
+file(GLOB_RECURSE STD_OBL_SOURCES CONFIGURE_DEPENDS "stdlib/*.obl")
+foreach (OBL_FILE IN LISTS STD_OBL_SOURCES)
     get_filename_component(FNAME_WE "${OBL_FILE}" NAME_WE)
     set(OUT_OBJ "${ARTIFACTS_DIR}/${FNAME_WE}.o")
     set(OUT_JSON "${SYS_DIR}/${FNAME_WE}.json")
@@ -118,7 +118,7 @@ foreach(OBL_FILE IN LISTS STD_OBL_SOURCES)
     )
     list(APPEND LIB_ARTIFACTS "${OUT_JSON}")
     list(APPEND STD_OBL_OBJS "${OUT_OBJ}")
-endforeach()
+endforeach ()
 
 add_library(obould_std STATIC ${STD_C_SOURCES} ${STD_OBL_OBJS})
 set(OB_STD_LIB "${LIB_DIR}/libobould_std.a")
@@ -134,12 +134,11 @@ add_custom_target(libs ALL DEPENDS ${LIB_ARTIFACTS})
 
 # ==========================================
 
-include(CTest)
-
-file(GLOB_RECURSE UNIT_TEST_SOURCES CONFIGURE_DEPENDS "tests/unit/*.cpp")
-option(O_TESTS "Build unit tests (requires Catch2)" OFF)
+option(O_TESTS "Build tests" OFF)
 
 if (O_TESTS)
+    include(CTest)
+
     FetchContent_Declare(
             Catch2
             GIT_REPOSITORY https://github.com/catchorg/Catch2.git
@@ -148,20 +147,29 @@ if (O_TESTS)
     FetchContent_MakeAvailable(Catch2)
     include(Catch)
 
-    if (UNIT_TEST_SOURCES)
-        add_executable(unit_tests ${UNIT_TEST_SOURCES})
-        target_link_libraries(unit_tests PRIVATE obould_lib Catch2::Catch2WithMain ${llvm_libs} nlohmann_json::nlohmann_json)
-        catch_discover_tests(unit_tests)
-    endif ()
-
     file(GLOB_RECURSE BLACKBOX_CCODEGEN_SOURCES CONFIGURE_DEPENDS "tests/blackbox/ccodegen/*.cpp")
     if (BLACKBOX_CCODEGEN_SOURCES)
         add_executable(blackbox_ccodegen_tests ${BLACKBOX_CCODEGEN_SOURCES})
         target_compile_definitions(blackbox_ccodegen_tests PRIVATE
-            OBOULD_BUILD_DIR="${CMAKE_BINARY_DIR}"
-            OBOULD_STDLIB_DIR="${CMAKE_SOURCE_DIR}/stdlib"
+                OBOULD_BUILD_DIR="${CMAKE_BINARY_DIR}"
+                OBOULD_STDLIB_DIR="${CMAKE_SOURCE_DIR}/stdlib"
         )
         target_link_libraries(blackbox_ccodegen_tests PRIVATE Catch2::Catch2WithMain)
         catch_discover_tests(blackbox_ccodegen_tests TEST_PREFIX "blackbox/")
+    endif ()
+
+
+    file(GLOB CASES_SOURCES CONFIGURE_DEPENDS "tests/cases/*.obl")
+    if (CASES_SOURCES)
+        foreach (TEST_FILE IN LISTS CASES_SOURCES)
+            get_filename_component(TEST_NAME "${TEST_FILE}" NAME_WE)
+            add_test(
+                    NAME "${TEST_NAME}"
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/tests/run_case.sh"
+                    "$<TARGET_FILE:obould>"
+                    "${TEST_FILE}"
+            )
+            set_tests_properties(${TEST_NAME} PROPERTIES DEPENDS obould_std)
+        endforeach ()
     endif ()
 endif ()

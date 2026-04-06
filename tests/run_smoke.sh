@@ -9,7 +9,7 @@ cmake --build "$ROOT_DIR/build" -j
 
 
 shopt -s nullglob
-TESTS=("$ROOT_DIR/tests/sources"/test_*.obl)
+TESTS=("$ROOT_DIR/tests/smoke"/test_*.obl)
 
 for test in "${TESTS[@]}"; do
   [[ -f "$test" ]] || continue
