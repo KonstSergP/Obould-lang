@@ -129,7 +129,6 @@ void CCodegenVisitor::visit(Nil& node)
 
 void CCodegenVisitor::visit(BinaryExpression& node)
 {
-    // Handle Is operator specially for RTTI
     if (node.op == BinaryExpression::Op::Is) {
         os_ << "isInstanceOf(((StructDescriptor*)";
         suppressDeref_ = true;
@@ -238,15 +237,18 @@ void CCodegenVisitor::visit(MemberAccessExpression& node)
 {
     node.object->accept(*this);
 
-    // Check if object is a type guard (produces pointer) - use -> instead of .
+    // Use -> for pointer types (implicit dereference) and type guards
+    bool useArrow = false;
     if (auto* call = dynamic_cast<ProcedureCall*>(node.object.get())) {
         if (call->isTypeGuard) {
-            os_ << "->" << node.memberName;
-            return;
+            useArrow = true;
         }
     }
+    if (node.object->resolvedType && node.object->resolvedType->kind == TypeKind::Pointer) {
+        useArrow = true;
+    }
 
-    os_ << "." << node.memberName;
+    os_ << (useArrow ? "->" : ".") << node.memberName;
 }
 
 void CCodegenVisitor::visit(DereferenceExpression& node)
@@ -297,6 +299,88 @@ void CCodegenVisitor::visit(ProcedureCall& node)
         return;
     }
 
+    if (node.procedureName->resolvedType &&
+        node.procedureName->resolvedType->builtin != BuiltinKind::None) {
+        auto builtin = node.procedureName->resolvedType->builtin;
+        switch (builtin) {
+        case BuiltinKind::LEN:
+        {
+            if (node.args.empty()) break;
+            auto& arg = node.args[0];
+            auto argType = arg->resolvedType;
+            
+            if (argType && argType->isOpenArray) {
+                Expression* cur = arg.get();
+                int depth = 0;
+                while (auto* acc = dynamic_cast<ArrayAccessExpression*>(cur)) {
+                    depth++;
+                    cur = acc->array.get();
+                }
+                if (auto* ident = dynamic_cast<IdentifierExpression*>(cur)) {
+                    auto oaIt = openArrayParams_.find(ident->name);
+                    if (oaIt != openArrayParams_.end() && depth < (int)oaIt->second.size()) {
+                        os_ << oaIt->second[depth];
+                        return;
+                    }
+                }
+            }
+            
+            if (argType && (argType->kind == TypeKind::Array || argType->kind == TypeKind::String)) {
+                if (argType->length > 0) {
+                    os_ << argType->length;
+                } else {
+                    std::string argStr = getExpressionString(*arg);
+                    os_ << "(sizeof(" << argStr << ") / sizeof(" << argStr << "[0]))";
+                }
+                return;
+            }
+            
+            // os_ << "0";
+            throw std::runtime_error("CCodegenVisitor: BuiltinKind::LEN reached in switch (should be handled above)");
+            return;
+        }
+        case BuiltinKind::NEW:
+        {
+            if (node.args.empty()) break;
+
+            auto& arg = node.args[0];
+            auto argType = arg->resolvedType;
+            if (argType && argType->kind == TypeKind::Pointer && argType->baseType) {
+                std::string argStr = getExpressionString(*arg);
+                auto& baseType = argType->baseType;
+                std::string typeName;
+                if (baseType->kind == TypeKind::Struct) {
+                    std::string owner = baseType->ownerModule.empty() ? moduleName_ : baseType->ownerModule;
+                    typeName = makePrefix(owner) + baseType->name;
+                } else {
+                    typeName = "void";
+                }
+                os_ << argStr << " = (" << typeName << "*)calloc(1, sizeof(" << typeName << "))";
+                return;
+            }
+            break;
+        }
+        case BuiltinKind::ASSERT:
+        {
+            if (node.args.empty()) break;
+            if (node.args.size() == 2) {
+                os_ << "assert((";
+                node.args[0]->accept(*this);
+                os_ << ") && ";
+                node.args[1]->accept(*this);
+                os_ << ")";
+            } else {
+                os_ << "assert(";
+                node.args[0]->accept(*this);
+                os_ << ")";
+            }
+            return;
+        }
+        default:
+            break;
+        }
+    }
+
     // Determine procedure name for looking up reference parameters
     std::string procName;
     if (auto* ident = dynamic_cast<IdentifierExpression*>(node.procedureName.get())) {
@@ -329,12 +413,10 @@ void CCodegenVisitor::visit(ProcedureCall& node)
     for (size_t i = 0; i < node.args.size(); ++i) {
         if (i > 0) os_ << ", ";
 
-        // Check if this argument position is a reference parameter
         bool isRefArg = (i < refParams.size()) && refParams[i];
 
         if (isRefArg) {
             // Check if argument is a reference parameter in current scope
-            // (if so, it's already a pointer - just pass it directly)
             if (auto* argIdent = dynamic_cast<IdentifierExpression*>(node.args[i].get())) {
                 if (referenceParams_.count(argIdent->name) > 0) {
                     // Already a pointer, pass directly without dereferencing
@@ -353,6 +435,35 @@ void CCodegenVisitor::visit(ProcedureCall& node)
             node.args[i]->accept(*this);
         }
     }
+
+    // Append hidden length args for open array parameters
+    auto oaCallIt = procedureOpenArrayParams_.find(procName);
+    if (oaCallIt != procedureOpenArrayParams_.end()) {
+        std::map<int, int> dimCount;
+        for (auto& [idx, name] : oaCallIt->second) {
+            os_ << ", ";
+            int dim = dimCount[idx]++;
+            if (idx < (int)node.args.size()) {
+                auto* argIdent = dynamic_cast<IdentifierExpression*>(node.args[idx].get());
+                auto oaIt2 = argIdent ? openArrayParams_.find(argIdent->name) : openArrayParams_.end();
+
+                if (oaIt2 != openArrayParams_.end() && dim < (int)oaIt2->second.size()) {
+                    os_ << oaIt2->second[dim];
+                } else {
+                    std::string argStr = getExpressionString(*node.args[idx]);
+                    std::string subscripts;
+
+                    for (int d = 0; d < dim; d++) subscripts += "[0]";
+
+                    os_ << "(sizeof(" << argStr << subscripts
+                        << ") / sizeof(" << argStr << subscripts << "[0]))";
+                }
+            } else {
+                os_ << "0";
+            }
+        }
+    }
+
     os_ << ")";
 }
 
@@ -421,7 +532,6 @@ void CCodegenVisitor::visit(IfStatement& node)
     os_ << "}";
 
     if (node.elseBranch) {
-        // Check if else branch is another if statement
         if (auto* elseIf = dynamic_cast<IfStatement*>(node.elseBranch.get())) {
             os_ << " else ";
             elseIf->accept(*this);
@@ -547,7 +657,6 @@ void CCodegenVisitor::visit(SwitchCase& node)
 void CCodegenVisitor::visit(CaseLabel& node)
 {
     if (node.endValue) {
-        // Range label - generate multiple case statements
         auto* startInt = dynamic_cast<IntegerLiteral*>(node.value.get());
         auto* endInt = dynamic_cast<IntegerLiteral*>(node.endValue.get());
         if (startInt && endInt) {
@@ -680,7 +789,7 @@ void CCodegenVisitor::visit(TypeDeclaration& node)
         emitIndent();
         os_ << "StructDescriptor* _desc;\n";
 
-        // Copy inherited fields from parent (flattening)
+        // Copy inherited fields from parent
         if (!parentName.empty()) {
             auto it = structFields_.find(parentName);
             if (it != structFields_.end()) {
@@ -694,7 +803,6 @@ void CCodegenVisitor::visit(TypeDeclaration& node)
 
         // Add own fields
         for (auto& field : structType->fields) {
-            // Get field type as string
             std::string fieldType = getTypeString(*field->type);
             allFields.push_back({field->name, fieldType});
 
@@ -798,9 +906,23 @@ void CCodegenVisitor::visit(ProcedureDeclaration& node)
 {
     // Clear and populate reference parameters for this function
     referenceParams_.clear();
+    openArrayParams_.clear();
     for (auto& param : node.parameters) {
         if (param->isReference) {
             referenceParams_.insert(param->name);
+        }
+        auto* oaType = dynamic_cast<OpenArrayType*>(param->type.get());
+        if (oaType) {
+            std::vector<std::string> lenNames;
+            lenNames.push_back(param->name + "_len");
+            int dim = 1;
+            auto* inner = dynamic_cast<OpenArrayType*>(oaType->elementType.get());
+            while (inner) {
+                dim++;
+                lenNames.push_back(param->name + "_len" + std::to_string(dim));
+                inner = dynamic_cast<OpenArrayType*>(inner->elementType.get());
+            }
+            openArrayParams_[param->name] = lenNames;
         }
     }
 
@@ -815,18 +937,25 @@ void CCodegenVisitor::visit(ProcedureDeclaration& node)
         os_ << "void";
     }
 
-    os_ << " " << makePrefix(moduleName_) << node.name << "(";
+    std::string procFullName = makePrefix(moduleName_) + node.name;
+    os_ << " " << procFullName << "(";
 
     // Parameters
     for (size_t i = 0; i < node.parameters.size(); ++i) {
         if (i > 0) os_ << ", ";
         node.parameters[i]->accept(*this);
     }
+    // Hidden length params for open arrays (appended at end)
+    auto oaIt = procedureOpenArrayParams_.find(procFullName);
+    if (oaIt != procedureOpenArrayParams_.end()) {
+        for (auto& [idx, name] : oaIt->second) {
+            os_ << ", int64_t " << name;
+        }
+    }
 
     os_ << ") {\n";
     increaseIndent();
 
-    // Initialize RTTI descriptors if needed (only in source mode)
     if (mode_ == COutputMode::SOURCE && !structTypes_.empty()) {
         emitIndent();
         os_ << "_init_descriptors();\n";
@@ -843,7 +972,6 @@ void CCodegenVisitor::visit(ProcedureDeclaration& node)
         if (node.declarations->constants) {
             for (auto& constant : node.declarations->constants->constants) {
                 emitIndent();
-                // Local constants as const variables
                 os_ << "const ";
                 constant->value->accept(*this);
                 os_ << ";\n";
@@ -867,7 +995,6 @@ void CCodegenVisitor::visit(ProcedureDeclaration& node)
     decreaseIndent();
     os_ << "}\n\n";
 
-    // Clear reference parameters after function body
     referenceParams_.clear();
 }
 
@@ -940,16 +1067,52 @@ void CCodegenVisitor::visit(Module& node)
         }
     }
 
-    // Collect procedure reference parameter info for call site handling
-    for (auto& proc : node.procedures) {
-        std::string fullName = makePrefix(moduleName_) + proc->name;
-        std::vector<bool> refParams;
-        for (auto& param : proc->parameters) {
-            refParams.push_back(param->isReference);
+    // Collect procedure parameter info for call site handling
+    auto collectProcParams = [this](const std::string& prefix,
+                                     const std::vector<std::unique_ptr<ProcedureDeclaration>>& procs,
+                                     bool storeShortName) {
+        for (auto& proc : procs) {
+            std::string fullName = prefix + proc->name;
+            std::vector<bool> refParams;
+            std::vector<std::pair<int, std::string>> openArrayParams;
+            for (size_t i = 0; i < proc->parameters.size(); ++i) {
+                refParams.push_back(proc->parameters[i]->isReference);
+                
+                auto* oaType = dynamic_cast<OpenArrayType*>(proc->parameters[i]->type.get());
+                if (oaType) {
+                    std::string baseName = proc->parameters[i]->name;
+                    int dim = 1;
+                    openArrayParams.push_back({(int)i, baseName + "_len"});
+                    auto* inner = dynamic_cast<OpenArrayType*>(oaType->elementType.get());
+                    while (inner) {
+                        dim++;
+                        openArrayParams.push_back({(int)i, baseName + "_len" + std::to_string(dim)});
+                        inner = dynamic_cast<OpenArrayType*>(inner->elementType.get());
+                    }
+                }
+            }
+            procedureRefParams_[fullName] = refParams;
+            if (!openArrayParams.empty()) {
+                procedureOpenArrayParams_[fullName] = openArrayParams;
+            }
+            if (storeShortName) {
+                procedureRefParams_[proc->name] = refParams;
+                if (!openArrayParams.empty()) {
+                    procedureOpenArrayParams_[proc->name] = openArrayParams;
+                }
+            }
         }
-        procedureRefParams_[fullName] = refParams;
-        // Also store without prefix for local calls before prefix resolution
-        procedureRefParams_[proc->name] = refParams;
+    };
+
+    // Local procedures
+    collectProcParams(makePrefix(moduleName_), node.procedures, true);
+
+    // Imported modules
+    for (auto& import : node.imports) {
+        if (import->module) {
+            std::string importPrefix = makePrefix(import->module->name);
+            collectProcParams(importPrefix, import->module->procedures, false);
+        }
     }
 
     if (mode_ == COutputMode::HEADER) {
@@ -1029,7 +1192,6 @@ void CCodegenVisitor::visit(Module& node)
                             os_ << "extern ";
                             std::string varName = makePrefix(moduleName_) + var->name;
                             if (auto* arrType = dynamic_cast<ArrayType*>(var->type.get())) {
-                                // Handle multi-dimensional arrays
                                 std::vector<Expression*> dimensions;
                                 Type* currentType = var->type.get();
                                 while (auto* arr = dynamic_cast<ArrayType*>(currentType)) {
@@ -1075,10 +1237,17 @@ void CCodegenVisitor::visit(Module& node)
                     } else {
                         os_ << "void";
                     }
-                    os_ << " " << makePrefix(moduleName_) << proc->name << "(";
+                    std::string pFullName = makePrefix(moduleName_) + proc->name;
+                    os_ << " " << pFullName << "(";
                     for (size_t i = 0; i < proc->parameters.size(); ++i) {
                         if (i > 0) os_ << ", ";
                         proc->parameters[i]->accept(*this);
+                    }
+                    auto oaIt2 = procedureOpenArrayParams_.find(pFullName);
+                    if (oaIt2 != procedureOpenArrayParams_.end()) {
+                        for (auto& [idx, name] : oaIt2->second) {
+                            os_ << ", int64_t " << name;
+                        }
                     }
                     os_ << ");\n";
                 }
@@ -1086,7 +1255,6 @@ void CCodegenVisitor::visit(Module& node)
             os_ << "\n";
         }
 
-        // End include guard
         os_ << "#endif /* " << guardName << " */\n";
 
     } else {
@@ -1117,7 +1285,8 @@ void CCodegenVisitor::visit(Module& node)
         // Include own header and required libraries
         os_ << "#include \"" << node.name << ".h\"\n";
         os_ << "#include <string.h>\n";
-        os_ << "#include <stdlib.h>\n\n";
+        os_ << "#include <stdlib.h>\n";
+        os_ << "#include <assert.h>\n\n";
 
         // RTTI helper functions
         if (!structTypes_.empty()) {
@@ -1182,13 +1351,11 @@ void CCodegenVisitor::visit(Module& node)
         if (node.declarations && node.declarations->variables) {
             os_ << "/* Global variables */\n";
             for (auto& var : node.declarations->variables->variables) {
-                // static for non-exported, no storage class for exported (defined here)
                 if (!var->isExported) {
                     os_ << "static ";
                 }
                 std::string varName = makePrefix(moduleName_) + var->name;
                 if (auto* arrType = dynamic_cast<ArrayType*>(var->type.get())) {
-                    // Handle multi-dimensional arrays
                     std::vector<Expression*> dimensions;
                     Type* currentType = var->type.get();
                     while (auto* arr = dynamic_cast<ArrayType*>(currentType)) {
@@ -1232,10 +1399,17 @@ void CCodegenVisitor::visit(Module& node)
                     } else {
                         os_ << "void";
                     }
-                    os_ << " " << makePrefix(moduleName_) << proc->name << "(";
+                    std::string spFullName = makePrefix(moduleName_) + proc->name;
+                    os_ << " " << spFullName << "(";
                     for (size_t i = 0; i < proc->parameters.size(); ++i) {
                         if (i > 0) os_ << ", ";
                         proc->parameters[i]->accept(*this);
+                    }
+                    auto oaIt3 = procedureOpenArrayParams_.find(spFullName);
+                    if (oaIt3 != procedureOpenArrayParams_.end()) {
+                        for (auto& [idx, name] : oaIt3->second) {
+                            os_ << ", int64_t " << name;
+                        }
                     }
                     os_ << ");\n";
                 }
@@ -1243,17 +1417,14 @@ void CCodegenVisitor::visit(Module& node)
             os_ << "\n";
         }
 
-        // Function implementations
         os_ << "/* Function implementations */\n";
         for (auto& proc : node.procedures) {
             proc->accept(*this);
-            // Check if this is the init() procedure
             if (proc->name == "init") {
                 hasInitProcedure_ = true;
             }
         }
 
-        // Generate main() function if this is the main module
         if (isMain_) {
             if (!hasInitProcedure_) {
                 throw std::runtime_error(

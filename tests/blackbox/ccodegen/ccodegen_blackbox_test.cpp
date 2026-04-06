@@ -1222,3 +1222,725 @@ var {
 )";
     REQUIRE(transpileCompileRun("InheritedFields", src, true) == "1204\n60\n");
 }
+
+TEST_CASE("Output string type support", "[ccodegen][output]")
+{
+    std::string src = R"(module OutputString
+import Out;
+fn init() -> void 
+var {
+    s: char[14];
+}
+{
+    s = "Hello, World!";
+    Out.WriteString(s);
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("OutputString", src, true) == "Hello, World!\n");
+}
+
+TEST_CASE("Open array — sum with len", "[ccodegen][openarray]")
+{
+    std::string src = R"(module OABasic
+import Out;
+fn sumArray(arr: i64[]) -> i64
+var {
+    s: i64;
+    i: i64;
+}
+{
+    s = 0;
+    for (i = 0, len(arr) - 1, 1) {
+        s = s + arr[i];
+    }
+    return s;
+}
+fn init() -> void
+var {
+    a: i64[5];
+}
+{
+    a[0] = 1;
+    a[1] = 2;
+    a[2] = 3;
+    a[3] = 4;
+    a[4] = 5;
+    Out.WriteInt(sumArray(a));
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("OABasic", src, true) == "15\n");
+}
+
+TEST_CASE("Open array — print all elements via len", "[ccodegen][openarray]")
+{
+    std::string src = R"(module OARead
+import Out;
+fn printArray(arr: i64[]) -> void
+var i: i64;
+{
+    for (i = 0, len(arr) - 1, 1) {
+        Out.WriteInt(arr[i]);
+        Out.WriteLn();
+    }
+}
+fn init() -> void
+var {
+    a: i64[3];
+}
+{
+    a[0] = 10;
+    a[1] = 20;
+    a[2] = 30;
+    printArray(a);
+}
+)";
+    REQUIRE(transpileCompileRun("OARead", src, true) == "10\n20\n30\n");
+}
+
+TEST_CASE("Open array — multiple open array params with len", "[ccodegen][openarray]")
+{
+    std::string src = R"(module OAMulti
+import Out;
+fn sumTwo(a: i64[], b: i64[]) -> i64
+var {
+    s: i64;
+    i: i64;
+}
+{
+    s = 0;
+    for (i = 0, len(a) - 1, 1) {
+        s = s + a[i];
+    }
+    for (i = 0, len(b) - 1, 1) {
+        s = s + b[i];
+    }
+    return s;
+}
+fn init() -> void
+var {
+    x: i64[3];
+    y: i64[2];
+}
+{
+    x[0] = 1;
+    x[1] = 2;
+    x[2] = 3;
+    y[0] = 10;
+    y[1] = 20;
+    Out.WriteInt(sumTwo(x, y));
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("OAMulti", src, true) == "36\n");
+}
+
+TEST_CASE("Open array — open array with value param and len", "[ccodegen][openarray]")
+{
+    std::string src = R"(module OAMixed
+import Out;
+fn scaleAndSum(arr: i64[], factor: i64) -> i64
+var {
+    s: i64;
+    i: i64;
+}
+{
+    s = 0;
+    for (i = 0, len(arr) - 1, 1) {
+        s = s + arr[i] * factor;
+    }
+    return s;
+}
+fn init() -> void
+var {
+    a: i64[3];
+}
+{
+    a[0] = 1;
+    a[1] = 2;
+    a[2] = 3;
+    Out.WriteInt(scaleAndSum(a, 10));
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("OAMixed", src, true) == "60\n");
+}
+
+TEST_CASE("Open array — exported function with len", "[ccodegen][openarray]")
+{
+    std::string src = R"(module OAExport
+import Out;
+fn export maxArr(arr: i64[]) -> i64
+var {
+    m: i64;
+    i: i64;
+}
+{
+    m = arr[0];
+    for (i = 1, len(arr) - 1, 1) {
+        if arr[i] > m {
+            m = arr[i];
+        }
+    }
+    return m;
+}
+fn init() -> void
+var {
+    a: i64[4];
+}
+{
+    a[0] = 3;
+    a[1] = 7;
+    a[2] = 2;
+    a[3] = 9;
+    Out.WriteInt(maxArr(a));
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("OAExport", src, true) == "9\n");
+}
+
+TEST_CASE("Open array — global array with len", "[ccodegen][openarray]")
+{
+    std::string src = R"(module OAGlobal
+import Out;
+var g: i64[4];
+fn printSum(arr: i64[]) -> void
+var {
+    s: i64;
+    i: i64;
+}
+{
+    s = 0;
+    for (i = 0, len(arr) - 1, 1) {
+        s = s + arr[i];
+    }
+    Out.WriteInt(s);
+    Out.WriteLn();
+}
+fn init() -> void {
+    g[0] = 100;
+    g[1] = 200;
+    g[2] = 300;
+    g[3] = 400;
+    printSum(g);
+}
+)";
+    REQUIRE(transpileCompileRun("OAGlobal", src, true) == "1000\n");
+}
+
+TEST_CASE("Open array — single element array", "[ccodegen][openarray]")
+{
+    std::string src = R"(module OASingle
+import Out;
+fn getFirst(arr: i64[]) -> i64 {
+    return arr[0];
+}
+fn init() -> void
+var {
+    a: i64[1];
+}
+{
+    a[0] = 42;
+    Out.WriteInt(getFirst(a));
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("OASingle", src, true) == "42\n");
+}
+
+TEST_CASE("Open array — different sizes to same function with len", "[ccodegen][openarray]")
+{
+    std::string src = R"(module OASizes
+import Out;
+fn sum(arr: i64[]) -> i64
+var {
+    s: i64;
+    i: i64;
+}
+{
+    s = 0;
+    for (i = 0, len(arr) - 1, 1) {
+        s = s + arr[i];
+    }
+    return s;
+}
+fn init() -> void
+var {
+    small: i64[2];
+    medium: i64[4];
+    big: i64[6];
+}
+{
+    small[0] = 1;
+    small[1] = 2;
+    medium[0] = 10;
+    medium[1] = 20;
+    medium[2] = 30;
+    medium[3] = 40;
+    big[0] = 1;
+    big[1] = 1;
+    big[2] = 1;
+    big[3] = 1;
+    big[4] = 1;
+    big[5] = 1;
+    Out.WriteInt(sum(small));
+    Out.WriteLn();
+    Out.WriteInt(sum(medium));
+    Out.WriteLn();
+    Out.WriteInt(sum(big));
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("OASizes", src, true) == "3\n100\n6\n");
+}
+
+TEST_CASE("Open array — search with len", "[ccodegen][openarray]")
+{
+    std::string src = R"(module OASearch
+import Out;
+fn linearSearch(arr: i64[], target: i64) -> i64
+var {
+    i: i64;
+    result: i64;
+}
+{
+    result = -1;
+    for (i = 0, len(arr) - 1, 1) {
+        if arr[i] == target {
+            result = i;
+        }
+    }
+    return result;
+}
+fn init() -> void
+var {
+    a: i64[5];
+}
+{
+    a[0] = 10;
+    a[1] = 20;
+    a[2] = 30;
+    a[3] = 40;
+    a[4] = 50;
+    Out.WriteInt(linearSearch(a, 30));
+    Out.WriteLn();
+    Out.WriteInt(linearSearch(a, 99));
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("OASearch", src, true) == "2\n-1\n");
+}
+
+TEST_CASE("Open array — pass-through to another open array function", "[ccodegen][openarray]")
+{
+    std::string src = R"(module OAPassThru
+import Out;
+fn sumArr(arr: i64[]) -> i64
+var {
+    s: i64;
+    i: i64;
+}
+{
+    s = 0;
+    for (i = 0, len(arr) - 1, 1) {
+        s = s + arr[i];
+    }
+    return s;
+}
+fn doubleSum(arr: i64[]) -> i64 {
+    return sumArr(arr) * 2;
+}
+fn init() -> void
+var {
+    a: i64[3];
+}
+{
+    a[0] = 5;
+    a[1] = 10;
+    a[2] = 15;
+    Out.WriteInt(doubleSum(a));
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("OAPassThru", src, true) == "60\n");
+}
+
+TEST_CASE("Open array — 2D all dimensions via len", "[ccodegen][openarray]")
+{
+    std::string src = R"(module OA2D
+import Out;
+fn printDims(m: i64[][]) -> void {
+    Out.WriteInt(len(m));
+    Out.WriteLn();
+    Out.WriteInt(len(m[0]));
+    Out.WriteLn();
+}
+fn init() -> void
+var {
+    m: i64[3][4];
+}
+{
+    printDims(m);
+}
+)";
+    REQUIRE(transpileCompileRun("OA2D", src, true) == "3\n4\n");
+}
+
+TEST_CASE("Open array — 3D all dimensions via len", "[ccodegen][openarray]")
+{
+    std::string src = R"(module OA3D
+import Out;
+fn printDims(m: i64[][][]) -> void {
+    Out.WriteInt(len(m));
+    Out.WriteLn();
+    Out.WriteInt(len(m[0]));
+    Out.WriteLn();
+    Out.WriteInt(len(m[0][0]));
+    Out.WriteLn();
+}
+fn init() -> void
+var {
+    m: i64[3][4][5];
+}
+{
+    printDims(m);
+}
+)";
+    REQUIRE(transpileCompileRun("OA3D", src, true) == "3\n4\n5\n");
+}
+
+TEST_CASE("Open array — 2D pass-through with len", "[ccodegen][openarray]")
+{
+    std::string src = R"(module OA2DPass
+import Out;
+fn innerLen(m: i64[][]) -> void {
+    Out.WriteInt(len(m));
+    Out.WriteLn();
+    Out.WriteInt(len(m[0]));
+    Out.WriteLn();
+}
+fn wrapper(m: i64[][]) -> void {
+    innerLen(m);
+}
+fn init() -> void
+var {
+    m: i64[5][3];
+}
+{
+    wrapper(m);
+}
+)";
+    REQUIRE(transpileCompileRun("OA2DPass", src, true) == "5\n3\n");
+}
+
+TEST_CASE("Open array — multi-module with len", "[ccodegen][openarray][multimodule]")
+{
+    ModuleSource arrLib = {"ArrLib", R"(module ArrLib
+
+import Out;
+
+fn export PrintArray(arr: i64[]) -> void
+var i: i64;
+{
+    for (i = 0, len(arr) - 1, 1) {
+        Out.WriteInt(arr[i]);
+        Out.WriteLn();
+    }
+}
+
+fn export PrintSum(arr: i64[]) -> void
+var {
+    s: i64;
+    i: i64;
+}
+{
+    s = 0;
+    for (i = 0, len(arr) - 1, 1) {
+        s = s + arr[i];
+    }
+    Out.WriteInt(s);
+    Out.WriteLn();
+}
+
+fn init() -> void {
+}
+)"};
+
+    ModuleSource main = {"OAMain", R"(module OAMain
+
+import ArrLib, Out;
+
+fn init() -> void
+var {
+    a: i64[5];
+}
+{
+    a[0] = 2;
+    a[1] = 4;
+    a[2] = 6;
+    a[3] = 8;
+    a[4] = 10;
+    ArrLib.PrintArray(a);
+    ArrLib.PrintSum(a);
+}
+)"};
+
+    REQUIRE(multiModuleRun({arrLib}, main) == "2\n4\n6\n8\n10\n30\n");
+}
+
+TEST_CASE("Builtin len — fixed array", "[ccodegen][builtin][len]")
+{
+    std::string src = R"(module LenFixed
+import Out;
+fn init() -> void
+var {
+    a: i64[5];
+    b: i64[10];
+}
+{
+    Out.WriteInt(len(a));
+    Out.WriteLn();
+    Out.WriteInt(len(b));
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("LenFixed", src, true) == "5\n10\n");
+}
+
+TEST_CASE("Builtin len — open array parameter", "[ccodegen][builtin][len]")
+{
+    std::string src = R"(module LenOpen
+import Out;
+fn printLen(arr: i64[]) -> void {
+    Out.WriteInt(len(arr));
+    Out.WriteLn();
+}
+fn init() -> void
+var {
+    a: i64[7];
+    b: i64[3];
+}
+{
+    printLen(a);
+    printLen(b);
+}
+)";
+    REQUIRE(transpileCompileRun("LenOpen", src, true) == "7\n3\n");
+}
+
+TEST_CASE("Builtin len — iterate open array with len", "[ccodegen][builtin][len]")
+{
+    std::string src = R"(module LenIter
+import Out;
+fn printAll(arr: i64[]) -> void
+var i: i64;
+{
+    for (i = 0, len(arr) - 1, 1) {
+        Out.WriteInt(arr[i]);
+        Out.WriteLn();
+    }
+}
+fn init() -> void
+var {
+    a: i64[4];
+}
+{
+    a[0] = 10;
+    a[1] = 20;
+    a[2] = 30;
+    a[3] = 40;
+    printAll(a);
+}
+)";
+    REQUIRE(transpileCompileRun("LenIter", src, true) == "10\n20\n30\n40\n");
+}
+
+TEST_CASE("Builtin len — char array (string)", "[ccodegen][builtin][len]")
+{
+    std::string src = R"(module LenStr
+import Out;
+fn init() -> void
+var {
+    s: char[6];
+}
+{
+    s = "Hello";
+    Out.WriteInt(len(s));
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("LenStr", src, true) == "6\n");
+}
+
+TEST_CASE("Builtin new — allocate and use struct pointer", "[ccodegen][builtin][new]")
+{
+    std::string src = R"(module NewBasic
+import Out;
+type {
+    Node: struct {
+        value: i64;
+    };
+}
+fn init() -> void
+var {
+    p: *Node;
+}
+{
+    new(p);
+    p.value = 42;
+    Out.WriteInt(p.value);
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("NewBasic", src, true) == "42\n");
+}
+
+TEST_CASE("Builtin new — multiple allocations", "[ccodegen][builtin][new]")
+{
+    std::string src = R"(module NewMulti
+import Out;
+type {
+    Pair: struct {
+        x, y: i64;
+    };
+}
+fn init() -> void
+var {
+    a: *Pair;
+    b: *Pair;
+}
+{
+    new(a);
+    new(b);
+    a.x = 1;
+    a.y = 2;
+    b.x = 10;
+    b.y = 20;
+    Out.WriteInt(a.x + a.y);
+    Out.WriteLn();
+    Out.WriteInt(b.x + b.y);
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("NewMulti", src, true) == "3\n30\n");
+}
+
+TEST_CASE("Builtin new — pointer to nil check", "[ccodegen][builtin][new]")
+{
+    std::string src = R"(module NewNil
+import Out;
+type {
+    Item: struct {
+        val: i64;
+    };
+}
+fn init() -> void
+var {
+    p: *Item;
+}
+{
+    new(p);
+    p.val = 99;
+    Out.WriteInt(p.val);
+    Out.WriteLn();
+    p = nil;
+    if p == nil {
+        Out.WriteInt(0);
+    } else {
+        Out.WriteInt(1);
+    }
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("NewNil", src, true) == "99\n0\n");
+}
+
+TEST_CASE("Builtin new — calloc zeroes fields", "[ccodegen][builtin][new]")
+{
+    std::string src = R"(module NewZero
+import Out;
+type {
+    Data: struct {
+        a, b, c: i64;
+    };
+}
+fn init() -> void
+var {
+    p: *Data;
+}
+{
+    new(p);
+    Out.WriteInt(p.a);
+    Out.WriteLn();
+    Out.WriteInt(p.b);
+    Out.WriteLn();
+    Out.WriteInt(p.c);
+    Out.WriteLn();
+    p.a = 100;
+    Out.WriteInt(p.a);
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("NewZero", src, true) == "0\n0\n0\n100\n");
+}
+
+TEST_CASE("Builtin assert — passing assertion", "[ccodegen][builtin][assert]")
+{
+    std::string src = R"(module AssertPass
+import Out;
+fn init() -> void
+var x: i64;
+{
+    x = 42;
+    assert(x == 42);
+    assert(x > 0);
+    assert(x < 100);
+    Out.WriteInt(x);
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("AssertPass", src, true) == "42\n");
+}
+
+TEST_CASE("Builtin assert — with boolean expression", "[ccodegen][builtin][assert]")
+{
+    std::string src = R"(module AssertBool
+import Out;
+fn init() -> void
+var {
+    a: i64;
+    b: i64;
+}
+{
+    a = 10;
+    b = 20;
+    assert(a + b == 30);
+    assert(a != b);
+    assert((a < b) && (b > 0));
+    Out.WriteInt(a + b);
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("AssertBool", src, true) == "30\n");
+}
+
+TEST_CASE("Builtin assert — with string message", "[ccodegen][builtin][assert]")
+{
+    std::string src = R"(module AssertMsg
+import Out;
+fn init() -> void
+var {
+    x: i64;
+}
+{
+    x = 10;
+    assert(x > 0, "x must be positive");
+    assert(x == 10, "x must equal 10");
+    Out.WriteInt(x);
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("AssertMsg", src, true) == "10\n");
+}
