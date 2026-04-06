@@ -245,6 +245,13 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
         else if (lType->kind == TypeKind::Char && rType->kind == TypeKind::String && rType->length == 1) {}
         else if (rType->kind == TypeKind::Char && lType->kind == TypeKind::String && lType->length == 1) {}
         else if (isStringLike(*lType) && isStringLike(*rType)) {}
+        else if (lType->kind == TypeKind::Bool && rType->kind == TypeKind::Bool) {
+            if (node.op == Op::Eq || node.op == Op::Neq) {}
+            else {
+                addError("Bools allow only equality comparisons");
+                correct = false;
+            }
+        }
         else if (((lType->kind == TypeKind::Pointer && rType->kind == TypeKind::Nil)
             || (lType->kind == TypeKind::Nil && rType->kind == TypeKind::Pointer)
             || (lType->kind == TypeKind::Pointer && rType->kind == TypeKind::Pointer))) {
