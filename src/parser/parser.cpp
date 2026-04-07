@@ -800,6 +800,8 @@ std::unique_ptr<Expression> Parser::parseTerm() {
 }
 
 std::unique_ptr<Expression> Parser::parseFactor() {
+    std::unique_ptr<Expression> expr;
+
     // Literals
     if (match(TokenType::INTEGER)) {
         const std::string& lexeme = previous().lexeme;
@@ -809,52 +811,45 @@ std::unique_ptr<Expression> Parser::parseFactor() {
         } else {
             value = std::strtoll(lexeme.c_str(), nullptr, 10);
         }
-        return std::make_unique<IntegerLiteral>(value);
+        expr = std::make_unique<IntegerLiteral>(value);
     }
-
-    if (match(TokenType::FLOAT)) {
+    else if (match(TokenType::FLOAT)) {
         double value = std::strtod(previous().lexeme.c_str(), nullptr);
-        return std::make_unique<RealLiteral>(value);
+        expr = std::make_unique<RealLiteral>(value);
     }
-
-    if (match(TokenType::STRING)) {
+    else if (match(TokenType::STRING)) {
         // Lexer already strips quotes, so use lexeme directly
         std::string value = previous().lexeme;
-        return std::make_unique<StringLiteral>(value);
+        expr = std::make_unique<StringLiteral>(value);
     }
-
-    if (match(TokenType::KW_TRUE)) {
-        return std::make_unique<BooleanLiteral>(true);
+    else if (match(TokenType::KW_TRUE)) {
+        expr = std::make_unique<BooleanLiteral>(true);
     }
-
-    if (match(TokenType::KW_FALSE)) {
-        return std::make_unique<BooleanLiteral>(false);
+    else if (match(TokenType::KW_FALSE)) {
+        expr = std::make_unique<BooleanLiteral>(false);
     }
-
-    if (match(TokenType::KW_NIL)) {
-        return std::make_unique<Nil>();
+    else if (match(TokenType::KW_NIL)) {
+        expr = std::make_unique<Nil>();
     }
-
     // Parenthesized expression
-    if (match(TokenType::LPAREN)) {
-        auto expr = parseExpression();
+    else if (match(TokenType::LPAREN)) {
+        expr = parseExpression();
         expect(TokenType::RPAREN, "Expected ')' after expression");
-        return expr;
     }
-
     // Unary not
-    if (match(TokenType::OP_NOT)) {
+    else if (match(TokenType::OP_NOT)) {
         auto operand = parseFactor();
-        return std::make_unique<UnaryExpression>(std::move(operand), UnaryExpression::Op::Not);
+        expr = std::make_unique<UnaryExpression>(std::move(operand), UnaryExpression::Op::Not);
+    }
+    else {
+        expr = parseDesignator();
     }
 
-    auto designator = parseDesignator();
-
-    if (check(TokenType::LPAREN)) {
-        return parseProcedureCall(std::move(designator));
+    while (check(TokenType::LPAREN)) {
+        expr = parseProcedureCall(std::move(expr));
     }
 
-    return designator;
+    return expr;
 }
 
 std::unique_ptr<Expression> Parser::parseDesignator() {

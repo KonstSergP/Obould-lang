@@ -1,0 +1,56 @@
+module CurryingTest
+
+import Out;
+
+type {
+    F1: (x: i64) -> i64;
+    F2: (x: i64) -> F1;
+    F3: (x: i64) -> (y: i64) -> (z: i64) -> i64;
+}
+
+var {
+    g1: i64;
+    g2: i64;
+    g3: i64;
+}
+
+fn AddWithBases(x: i64) -> i64
+{
+    return x + g1 + g2 + g3;
+}
+
+fn Make1(a: i64) -> F1
+{
+    g1 = a;
+    return AddWithBases;
+}
+
+fn Make2(b: i64) -> F2
+{
+    g2 = b;
+    return Make1;
+}
+
+fn Make3(c: i64) -> F3
+{
+    g3 = c;
+    return Make2;
+}
+
+fn export Run() -> i64
+var {
+    f3: F3;
+    res: i64;
+}
+{
+    f3 = Make3(3);
+    res = f3(5)(7)(11);
+    Out.WriteInt(res);
+    Out.WriteLn();
+    return 0;
+}
+
+fn init() -> void
+{
+    Run();
+}
