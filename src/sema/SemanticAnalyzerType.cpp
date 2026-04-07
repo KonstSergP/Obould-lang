@@ -157,4 +157,9 @@ void SemanticAnalyzer::visit(ProcedureType& node)
     }
     node.resolvedType = procInfo;
 }
+
+void SemanticAnalyzer::visit(IncompleteType& node)
+{
+    node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Incomplete);
+}
 }

@@ -499,10 +499,15 @@ void SemanticAnalyzer::visit(MemberAccessExpression& node)
 void SemanticAnalyzer::visit(DereferenceExpression& node)
 {
     node.ptr->accept(*this);
-    auto type = node.ptr->resolvedType;
+    auto& type = node.ptr->resolvedType;
 
     if (!type || type->kind != TypeKind::Pointer) {
         addError("Dereference operator requires a pointer");
+        node.resolvedType = getBuiltinType(TypeKind::Void);
+        return;
+    }
+    if (type->kind == TypeKind::Incomplete) {
+        addError("Cannot dereference a pointer to an incomplete type");
         node.resolvedType = getBuiltinType(TypeKind::Void);
         return;
     }

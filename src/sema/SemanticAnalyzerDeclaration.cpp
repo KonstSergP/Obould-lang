@@ -42,7 +42,7 @@ void SemanticAnalyzer::visit(TypeDeclaration& node)
             return;
         }
 
-        auto stubType = std::make_shared<TypeInfo>(TypeKind::StubType);
+        auto stubType = std::make_shared<TypeInfo>(TypeKind::Incomplete);
         stubType->name = node.name;
 
         Symbol sym;
@@ -81,7 +81,7 @@ void SemanticAnalyzer::visit(VariableDeclaration& node)
         validateType(node.type->resolvedType);
     }
 
-    auto type = node.type->resolvedType;
+    auto& type = node.type->resolvedType;
     if (!type || !isValidVariableType(type->kind)) {
         addError("Variable '" + node.name + "' has invalid type");
         return;

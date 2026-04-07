@@ -1,4 +1,6 @@
 #pragma once
+#include <llvm/IR/DerivedTypes.h>
+
 #include "ASTCore.h"
 #include "ASTDeclarations.h"
 #include "ASTExpressions.h"
@@ -47,6 +49,7 @@ public:
     virtual void visit(StructType& node) = 0;
     virtual void visit(PointerType& node) = 0;
     virtual void visit(ProcedureType& node) = 0;
+    virtual void visit(IncompleteType& node) = 0;
 
     // Declarations
     virtual void visit(ConstantDeclaration& node) = 0;

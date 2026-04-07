@@ -330,6 +330,10 @@ void ASTPrintVisitor::visit(ProcedureType& node)
     }
 }
 
+void ASTPrintVisitor::visit(IncompleteType& node)
+{
+    printNodeName("Incomplete");
+}
 
 // Declarations
 

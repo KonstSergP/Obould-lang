@@ -85,4 +85,12 @@ public:
     std::unique_ptr<IdentifierType> baseType;
     std::vector<std::unique_ptr<VariableDeclaration>> fields;
 };
+
+class IncompleteType : public Type
+{
+public:
+    IncompleteType() = default;
+
+    void accept(ASTVisitor& v) override;
+};
 }

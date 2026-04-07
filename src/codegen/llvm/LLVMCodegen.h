@@ -46,6 +46,7 @@ public:
     void visit(StructType& node) override;
     void visit(PointerType& node) override;
     void visit(ProcedureType& node) override;
+    void visit(IncompleteType& node) override;
 
     // Declarations
     void visit(ConstantDeclaration& node) override;

@@ -99,9 +99,12 @@ std::unique_ptr<Type> parseType(const json& j)
             std::string name = f["name"].get<std::string>();
             bool exported = f.value("isExported", false);
             auto type = parseType(f["type"]);
-            fields.push_back(std::make_unique<VariableDeclaration>(name, exported, std::shared_ptr<Type>(std::move(type))));
+            fields.push_back(std::make_unique<VariableDeclaration>(name, exported, std::shared_ptr(std::move(type))));
         }
         return std::make_unique<StructType>(std::move(base), std::move(fields));
+    }
+    if (kind == "incomplete") {
+        return std::make_unique<IncompleteType>();
     }
     return std::make_unique<IdentifierType>("", "unknown");
 }

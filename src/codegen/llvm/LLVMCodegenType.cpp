@@ -17,6 +17,7 @@ void LLVMCodegenVisitor::visit(ArrayType& node)
 void LLVMCodegenVisitor::visit(OpenArrayType& node) {}
 void LLVMCodegenVisitor::visit(PointerType& node) {}
 void LLVMCodegenVisitor::visit(ProcedureType& node) {}
+void LLVMCodegenVisitor::visit(IncompleteType& node) {}
 
 void LLVMCodegenVisitor::visit(StructType& node)
 {

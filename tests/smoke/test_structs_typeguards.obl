@@ -3,7 +3,7 @@ module TypeGuardTest
 import Out;
 
 type {
-    Shape: struct {
+    export Shape: struct {
         x, y: i64;
     };
 

@@ -20,7 +20,7 @@ enum class TypeKind
     Struct,
     Pointer,
     Procedure,
-    StubType
+    Incomplete
 };
 
 inline bool isIntegerType(TypeKind kind)

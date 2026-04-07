@@ -40,6 +40,7 @@ void OpenArrayType::accept(ASTVisitor& v) { v.visit(*this); }
 void StructType::accept(ASTVisitor& v) { v.visit(*this); }
 void PointerType::accept(ASTVisitor& v) { v.visit(*this); }
 void ProcedureType::accept(ASTVisitor& v) { v.visit(*this); }
+void IncompleteType::accept(ASTVisitor& v) { v.visit(*this); }
 
 // Declarations
 void ConstantDeclaration::accept(ASTVisitor& v) { v.visit(*this); }

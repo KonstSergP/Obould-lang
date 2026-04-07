@@ -17,10 +17,11 @@ void SemanticAnalyzer::visitBuiltinProcedure(ProcedureCall& node)
             addError("'new' expects 1 argument");
             return;
         }
-        if (node.args[0]->resolvedType->kind != TypeKind::Pointer) {
-            addError("'new' requires a pointer variable");
+        auto& arg = node.args[0];
+        if (arg->resolvedType->kind != TypeKind::Pointer || arg->resolvedType->baseType->kind != TypeKind::Struct) {
+            addError("'new' requires a pointer to struct");
         }
-        if (!node.args[0]->isLvalue) {
+        else if (!arg->isLvalue) {
             addError("'new' requires a variable (l-value)");
         }
         rootModule->properties.needsGC = true;

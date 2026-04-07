@@ -181,7 +181,9 @@ void SemanticAnalyzer::validateTypeInternal(const std::shared_ptr<TypeInfo>& typ
     };
 
     if (type->kind == TypeKind::Pointer) {
-        if (!type->baseType || type->baseType->kind != TypeKind::Struct) {
+        if (!type->baseType
+            || (type->baseType->kind != TypeKind::Struct
+                && type->baseType->kind != TypeKind::Incomplete)) { // Allow incomplete for pointers to C structs
             addError("Pointer base type must be a Struct in '" + type->name + "'");
         }
         validateTypeInternal(type->baseType, visiting);

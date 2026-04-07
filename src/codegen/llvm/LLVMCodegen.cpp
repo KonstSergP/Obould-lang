@@ -183,7 +183,7 @@ llvm::Constant* LLVMCodegenVisitor::createInitConstant(const std::shared_ptr<Typ
 
 llvm::GlobalVariable* LLVMCodegenVisitor::createStructDescriptor(const std::shared_ptr<TypeInfo>& type)
 {
-    std::string name = "struct_desc." + type->name;
+    std::string name = "struct_desc_" + type->name;
     int64_t depth = type->depth;
 
     auto* ptrType = builder->getPtrTy();
