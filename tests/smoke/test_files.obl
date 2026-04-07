@@ -1,0 +1,52 @@
+module FilesTest
+
+import Files, Out;
+
+fn export Run() -> i64
+var {
+    f: Files.File;
+    r: Files.FileRider;
+    b: byte;
+    count: i64;
+    first: byte;
+    last: byte;
+    hasFirst: bool;
+}
+{
+    count = 0;
+    first = 0;
+    last = 0;
+    hasFirst = false;
+    f = Files.Open("tests/smoke/files_data.bin", "rb");
+
+    if f != nil {
+        Files.Set(r, f, 0);
+        Files.ReadByte(r, b);
+        while !r.eof {
+            if !hasFirst {
+                first = b;
+                hasFirst = true;
+            }
+            last = b;
+            count = count + 1;
+            Files.ReadByte(r, b);
+        }
+        Files.Close(f);
+    } else {
+        count = -1;
+    }
+
+    Out.WriteInt(count);
+    Out.WriteSpace();
+    Out.WriteByte(first);
+    Out.WriteSpace();
+    Out.WriteByte(last);
+    Out.WriteLn();
+
+    return 0;
+}
+
+fn init() -> void
+{
+    Run();
+}

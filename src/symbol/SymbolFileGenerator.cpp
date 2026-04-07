@@ -109,7 +109,7 @@ void SymbolFileGenerator::visit(StructType& node)
 void SymbolFileGenerator::visit(PointerType& node)
 {
     json ptrJson = json::object();
-    ptrJson["kind"] = "open array";
+    ptrJson["kind"] = "pointer";
     node.type->accept(*this);
     ptrJson["targetType"] = json_;
     json_ = ptrJson;
@@ -126,6 +126,12 @@ void SymbolFileGenerator::visit(ProcedureType& node)
     node.returnType->accept(*this);
     procJson["returnType"] = json_;
     json_ = procJson;
+}
+
+void SymbolFileGenerator::visit(IncompleteType& node)
+{
+    json_ = json::object();
+    json_["kind"] = "incomplete";
 }
 
 

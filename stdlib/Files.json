@@ -1,0 +1,123 @@
+{
+    "declarations": {
+        "constants": [],
+        "variables": [],
+        "types": [
+            {
+                "name": "FileHandle",
+                "type": {
+                    "kind": "incomplete"
+                }
+            },
+            {
+                "name": "File",
+                "type": {
+                    "kind": "pointer",
+                    "targetType": "FileHandle"
+                }
+            },
+            {
+                "name": "FileRider",
+                "type": {
+                    "kind": "struct",
+                    "fields": [
+                        {
+                            "name": "eof",
+                            "type": "bool",
+                            "isExported": true
+                        },
+                        {
+                            "name": "res",
+                            "type": "byte",
+                            "isExported": true
+                        },
+                        {
+                            "name": "pos",
+                            "type": "i64",
+                            "isExported": false
+                        },
+                        {
+                            "name": "file",
+                            "type": "File",
+                            "isExported": false
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    "imports": [],
+    "moduleName": "Files",
+    "procedures": [
+        {
+            "name": "Open",
+            "parameters": [
+                {
+                    "name": "name",
+                    "reference": false,
+                    "type": {
+                        "kind": "open array",
+                        "elementType": "char"
+                    }
+                },
+                {
+                    "name": "mode",
+                    "reference": false,
+                    "type": {
+                        "kind": "open array",
+                        "elementType": "char"
+                    }
+                }
+            ],
+            "returnType": "File"
+        },
+        {
+            "name": "Close",
+            "parameters": [
+                {
+                    "name": "f",
+                    "reference": false,
+                    "type": "File"
+                }
+            ],
+            "returnType": "void"
+        },
+        {
+            "name": "Set",
+            "parameters": [
+                {
+                    "name": "r",
+                    "reference": true,
+                    "type": "FileRider"
+                },
+                {
+                    "name": "f",
+                    "reference": false,
+                    "type": "File"
+                },
+                {
+                    "name": "pos",
+                    "reference": false,
+                    "type": "i64"
+                }
+            ],
+            "returnType": "void"
+        },
+        {
+            "name": "ReadByte",
+            "parameters": [
+                {
+                    "name": "r",
+                    "reference": true,
+                    "type": "FileRider"
+                },
+                {
+                    "name": "b",
+                    "reference": true,
+                    "type": "byte"
+                }
+            ],
+            "returnType": "void"
+        }
+    ]
+}

@@ -73,12 +73,12 @@ std::unique_ptr<Type> parseType(const json& j)
         return std::make_unique<ArrayType>(std::move(elem), std::move(lenExpr));
     }
     if (kind == "open array") {
-        if (j.contains("targetType")) {
-            auto target = parseType(j["targetType"]);
-            return std::make_unique<PointerType>(std::move(target));
-        }
         auto elem = parseType(j["elementType"]);
         return std::make_unique<OpenArrayType>(std::move(elem));
+    }
+    if (kind == "pointer") {
+        auto target = parseType(j["targetType"]);
+        return std::make_unique<PointerType>(std::move(target));
     }
     if (kind == "struct") {
         std::unique_ptr<IdentifierType> base;
