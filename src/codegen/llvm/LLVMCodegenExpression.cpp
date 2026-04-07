@@ -223,17 +223,18 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
         return;
     }
 
+    if (lhs->getType()->isIntegerTy() && rhs->getType()->isIntegerTy()
+        && lhs->getType() != rhs->getType()) {
+        auto lhsBits = lhs->getType()->getIntegerBitWidth();
+        auto rhsBits = rhs->getType()->getIntegerBitWidth();
+        auto commonBits = lhsBits > rhsBits ? lhsBits : rhsBits;
+        auto* commonTy = builder->getIntNTy(commonBits);
+        lhs = builder->CreateZExtOrTrunc(lhs, commonTy);
+        rhs = builder->CreateZExtOrTrunc(rhs, commonTy);
+    }
+
     bool isInt = lhs->getType()->isIntegerTy();
     bool isReal = lhs->getType()->isFloatingPointTy();
-
-    if (isIntegerType(node.resolvedType->kind)) {
-        if (node.left->resolvedType->kind == TypeKind::i64 && right->resolvedType->kind == TypeKind::Byte) {
-            rhs = builder->CreateZExt(rhs, builder->getInt64Ty());
-        }
-        else if (node.left->resolvedType->kind == TypeKind::Byte && right->resolvedType->kind == TypeKind::i64) {
-            lhs = builder->CreateZExt(lhs, builder->getInt64Ty());
-        }
-    }
 
     switch (node.op) {
     case Op::Add:

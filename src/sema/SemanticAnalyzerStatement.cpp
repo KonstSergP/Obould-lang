@@ -88,12 +88,15 @@ void SemanticAnalyzer::visit(ProcedureCall& node)
             const auto& paramInfo = params[i];
 
             bool correctArgType;
-            if (paramInfo.isReference)
+            if (paramInfo.isReference) {
                 correctArgType = (paramInfo.type.get() == argType.get())
-                    || (paramInfo.type->kind == TypeKind::Struct && paramInfo.type->isBaseTypeOf(argType));
-            else
+                    || (paramInfo.type->kind == TypeKind::Struct && paramInfo.type->isBaseTypeOf(argType))
+                    || paramInfo.type->isArrayConvertibleFrom(argType);
+            }
+            else {
                 correctArgType = paramInfo.type->isAssignableFrom(argType)
                     || paramInfo.type->isArrayConvertibleFrom(argType);
+            }
 
             if (!correctArgType) {
                 addError("Argument " + std::to_string(i + 1) + " type mismatch");

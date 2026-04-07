@@ -118,6 +118,124 @@
                 }
             ],
             "returnType": "void"
+        },
+        {
+            "name": "WriteByte",
+            "parameters": [
+                {
+                    "name": "r",
+                    "reference": true,
+                    "type": "FileRider"
+                },
+                {
+                    "name": "b",
+                    "reference": false,
+                    "type": "byte"
+                }
+            ],
+            "returnType": "void"
+        },
+        {
+            "name": "ReadInt64",
+            "parameters": [
+                {
+                    "name": "r",
+                    "reference": true,
+                    "type": "FileRider"
+                },
+                {
+                    "name": "i",
+                    "reference": true,
+                    "type": "i64"
+                }
+            ],
+            "returnType": "void"
+        },
+        {
+            "name": "WriteInt64",
+            "parameters": [
+                {
+                    "name": "r",
+                    "reference": true,
+                    "type": "FileRider"
+                },
+                {
+                    "name": "i",
+                    "reference": false,
+                    "type": "i64"
+                }
+            ],
+            "returnType": "void"
+        },
+        {
+            "name": "ReadReal64",
+            "parameters": [
+                {
+                    "name": "r",
+                    "reference": true,
+                    "type": "FileRider"
+                },
+                {
+                    "name": "f",
+                    "reference": true,
+                    "type": "f64"
+                }
+            ],
+            "returnType": "void"
+        },
+        {
+            "name": "WriteReal64",
+            "parameters": [
+                {
+                    "name": "r",
+                    "reference": true,
+                    "type": "FileRider"
+                },
+                {
+                    "name": "f",
+                    "reference": false,
+                    "type": "f64"
+                }
+            ],
+            "returnType": "void"
+        },
+        {
+            "name": "ReadString",
+            "parameters": [
+                {
+                    "name": "r",
+                    "reference": true,
+                    "type": "FileRider"
+                },
+                {
+                    "name": "s",
+                    "reference": true,
+                    "type": {
+                        "kind": "open array",
+                        "elementType": "char"
+                    }
+                }
+            ],
+            "returnType": "void"
+        },
+        {
+            "name": "WriteString",
+            "parameters": [
+                {
+                    "name": "r",
+                    "reference": true,
+                    "type": "FileRider"
+                },
+                {
+                    "name": "f",
+                    "reference": false,
+                    "type": {
+                        "kind": "open array",
+                        "elementType": "char"
+                    }
+                }
+            ],
+            "returnType": "void"
         }
     ]
 }

@@ -35,6 +35,13 @@ File Open(const char* name, const char* mode, int64_t name_len, int64_t mode_len
 void Close(File f) OB_SYMBOL("5Files_Close");
 void Set(FileRider* r, File f, int64_t pos) OB_SYMBOL("5Files_Set");
 void ReadByte(FileRider* r, uint8_t* b) OB_SYMBOL("5Files_ReadByte");
+void WriteByte(FileRider* r, uint8_t b) OB_SYMBOL("5Files_WriteByte");
+void ReadInt64(FileRider* r, int64_t* i) OB_SYMBOL("5Files_ReadInt64");
+void WriteInt64(FileRider* r, int64_t i) OB_SYMBOL("5Files_WriteInt64");
+void ReadReal64(FileRider* r, double* f) OB_SYMBOL("5Files_ReadReal64");
+void WriteReal64(FileRider* r, double f) OB_SYMBOL("5Files_WriteReal64");
+void ReadString(FileRider* r, char* s, int64_t s_len) OB_SYMBOL("5Files_ReadString");
+void WriteString(FileRider* r, const char* s, int64_t s_len) OB_SYMBOL("5Files_WriteString");
 void Files(void) OB_SYMBOL("Files");
 
 
@@ -52,7 +59,7 @@ static void FileRiderInit(FileRider* r)
     r->file = NULL;
 }
 
-static char* copy_c_string(const char* s, int64_t s_len)
+static char* to_c_string(const char* s, int64_t s_len)
 {
     if (s_len < 0) s_len = 0;
     size_t max = (size_t)s_len;
@@ -79,8 +86,8 @@ static char* copy_c_string(const char* s, int64_t s_len)
 
 File Open(const char* name, const char* mode, int64_t name_len, int64_t mode_len)
 {
-    char* name_c = copy_c_string(name, name_len);
-    char* mode_c = copy_c_string(mode, mode_len);
+    char* name_c = to_c_string(name, name_len);
+    char* mode_c = to_c_string(mode, mode_len);
 
     if (!name_c || !mode_c) {
         free(name_c);
@@ -139,11 +146,21 @@ void Set(FileRider* r, File f, int64_t pos)
     }
 }
 
+static bool SyncRiderPosition(FileRider* r)
+{
+    if (!r->file || !r->file->stream) return false;
+    if (ftell(r->file->stream) != r->pos) {
+        if (fseek(r->file->stream, r->pos, SEEK_SET) != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void ReadByte(FileRider* r, uint8_t* b)
 {
     if (!r) return;
-
-    if (!r->file || !r->file->stream) {
+    if (!SyncRiderPosition(r)) {
         r->eof = true;
         r->res = 2;
         return;
@@ -151,12 +168,7 @@ void ReadByte(FileRider* r, uint8_t* b)
 
     int c = fgetc(r->file->stream);
     if (c == EOF) {
-        if (feof(r->file->stream)) {
-            r->res = 1;
-        }
-        else {
-            r->res = 2;
-        }
+        r->res = feof(r->file->stream) ? 1 : 2;
         r->eof = true;
         return;
     }
@@ -165,6 +177,89 @@ void ReadByte(FileRider* r, uint8_t* b)
     r->pos += 1;
     r->eof = false;
     r->res = 0;
+}
+
+void WriteByte(FileRider* r, uint8_t b)
+{
+    if (!r) return;
+    if (r->pos < 0) r->pos = 0;
+
+    if (!SyncRiderPosition(r)) {
+        r->res = 2;
+        return;
+    }
+
+    if (fputc(b, r->file->stream) != EOF) {
+        r->pos++;
+        r->eof = false;
+        r->res = 0;
+    }
+    else {
+        r->res = 2;
+    }
+}
+
+void ReadInt64(FileRider* r, int64_t* i)
+{
+    uint8_t b[8];
+    for (int k = 0; k < 8; k++) {
+        ReadByte(r, &b[k]);
+    }
+    memcpy(i, b, 8);
+}
+
+void WriteInt64(FileRider* r, int64_t i)
+{
+    uint8_t b[8];
+    memcpy(b, &i, 8);
+    for (int k = 0; k < 8; k++) {
+        WriteByte(r, b[k]);
+    }
+}
+
+void ReadReal64(FileRider* r, double* f)
+{
+    uint8_t b[8];
+    for (int k = 0; k < 8; k++) {
+        ReadByte(r, &b[k]);
+    }
+    memcpy(f, b, 8);
+}
+
+void WriteReal64(FileRider* r, double f)
+{
+    uint8_t b[8];
+    memcpy(b, &f, 8);
+    for (int k = 0; k < 8; k++) {
+        WriteByte(r, b[k]);
+    }
+}
+
+void ReadString(FileRider* r, char* s, int64_t s_len)
+{
+    int i = 0;
+    uint8_t ch = 0;
+
+    ReadByte(r, &ch);
+    while (ch != 0) {
+        if (i < s_len - 1) {
+            s[i++] = (char)ch;
+        }
+        ReadByte(r, &ch);
+    }
+    s[i] = '\0';
+}
+
+void WriteString(FileRider* r, const char* s, int64_t s_len)
+{
+    int i = 0;
+    char ch;
+    do {
+        ch = s[i];
+        WriteByte(r, (uint8_t)ch);
+        i++;
+    }
+    while (ch != '\0' && i < s_len);
 }
 
 void Files(void) {}
