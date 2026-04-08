@@ -1944,3 +1944,81 @@ var {
 )";
     REQUIRE(transpileCompileRun("AssertMsg", src, true) == "10\n");
 }
+
+TEST_CASE("Forward decl — type alias before struct definition", "[ccodegen][fwddecl]")
+{
+    std::string src = R"(module FwdAlias
+import Out;
+type {
+    BaseAlias: Base;
+    Base: struct {
+        x: i64;
+    };
+}
+fn init() -> void
+var {
+    b: Base;
+}
+{
+    b.x = 42;
+    Out.WriteInt(b.x);
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("FwdAlias", src, true) == "42\n");
+}
+
+TEST_CASE("Forward decl — pointer to later-declared struct", "[ccodegen][fwddecl]")
+{
+    std::string src = R"(module FwdPtr
+import Out;
+type {
+    Container: struct {
+        item: *Item;
+    };
+    Item: struct {
+        value: i64;
+    };
+}
+fn init() -> void
+var {
+    c: Container;
+    it: Item;
+}
+{
+    it.value = 77;
+    c.item = nil;
+    Out.WriteInt(it.value);
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("FwdPtr", src, true) == "77\n");
+}
+
+TEST_CASE("Forward decl — struct with inheritance using alias", "[ccodegen][fwddecl]")
+{
+    std::string src = R"(module FwdInherit
+import Out;
+type {
+    Animal: struct {
+        legs: i64;
+    };
+    Dog: struct (Animal) {
+        bark: i64;
+    };
+}
+fn init() -> void
+var {
+    d: Dog;
+}
+{
+    d.legs = 4;
+    d.bark = 1;
+    Out.WriteInt(d.legs);
+    Out.WriteLn();
+    Out.WriteInt(d.bark);
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("FwdInherit", src, true) == "4\n1\n");
+}

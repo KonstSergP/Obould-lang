@@ -767,8 +767,6 @@ void CCodegenVisitor::visit(TypeDeclaration& node)
     std::string fullName = makePrefix(moduleName_) + node.name;
     currentTypedefName_ = fullName;
 
-    os_ << "typedef ";
-
     if (auto* structType = dynamic_cast<StructType*>(node.type.get())) {
         // Track struct for RTTI
         std::string parentName;
@@ -835,9 +833,10 @@ void CCodegenVisitor::visit(TypeDeclaration& node)
 
         decreaseIndent();
         emitIndent();
-        os_ << "} " << fullName << ";\n";
+        os_ << "};\n";
     } else if (auto* procType = dynamic_cast<ProcedureType*>(node.type.get())) {
         // Procedure type: typedef ReturnType (*TypeName)(params);
+        os_ << "typedef ";
         procType->returnType->accept(*this);
         os_ << " (*" << fullName << ")(";
         for (size_t i = 0; i < procType->parameters.size(); ++i) {
@@ -849,6 +848,7 @@ void CCodegenVisitor::visit(TypeDeclaration& node)
         }
         os_ << ");\n";
     } else {
+        os_ << "typedef ";
         node.type->accept(*this);
         os_ << " " << fullName << ";\n";
     }
@@ -1158,10 +1158,22 @@ void CCodegenVisitor::visit(Module& node)
             }
 
             // Types (all type definitions go in header)
-            // Clear struct tracking before visiting types
             structTypes_.clear();
             structFields_.clear();
             if (node.declarations->types) {
+                bool hasStructs = false;
+                for (auto& typeDecl : node.declarations->types->types) {
+                    if (dynamic_cast<StructType*>(typeDecl->type.get())) {
+                        if (!hasStructs) {
+                            os_ << "/* Forward declarations */\n";
+                            hasStructs = true;
+                        }
+                        std::string fullName = makePrefix(moduleName_) + typeDecl->name;
+                        os_ << "typedef struct " << fullName << " " << fullName << ";\n";
+                    }
+                }
+                if (hasStructs) os_ << "\n";
+
                 os_ << "/* Types */\n";
                 node.declarations->types->accept(*this);
                 os_ << "\n";
