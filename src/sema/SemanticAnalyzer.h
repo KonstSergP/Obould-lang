@@ -80,7 +80,7 @@ private:
     void validateTypeInternal(const std::shared_ptr<TypeInfo>& type, std::set<TypeInfo*>& visiting);
 
 
-    enum class AnalyzeStages { Default, CreateType, FillType, ValidateType };
+    enum class AnalyzeStages { Default, CreateType, FillType, ResolveAliases, ValidateType };
 
     AnalyzeStages analyzeStage = AnalyzeStages::Default;
     std::shared_ptr<TypeInfo> switchSelectorType;

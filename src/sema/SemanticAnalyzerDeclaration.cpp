@@ -2,6 +2,7 @@
 #include "SymbolTable.h"
 #include "TypeInfo.h"
 #include "ast/ASTDeclarations.h"
+#include "ast/ASTTypes.h"
 
 
 namespace obould
@@ -67,6 +68,14 @@ void SemanticAnalyzer::visit(TypeDeclaration& node)
         realType = symType;
         symType->name = node.name;
     }
+    else if (analyzeStage == AnalyzeStages::ResolveAliases) {
+        auto* sym = symbolTables[currentModuleName].lookupSymbolLocal(node.name);
+        if (!sym) return;
+        if (sym->type->kind == TypeKind::Incomplete) {
+            node.type->accept(*this);
+            *sym->type = *node.type->resolvedType;
+        }
+    }
     else if (analyzeStage == AnalyzeStages::ValidateType) {
         auto* sym = symbolTables[currentModuleName].lookupSymbolLocal(node.name);
         if (!sym) return;
@@ -118,6 +127,10 @@ void SemanticAnalyzer::visit(TypeDeclarations& node)
         decl->accept(*this);
     }
     analyzeStage = AnalyzeStages::FillType;
+    for (const auto& decl : node.types) {
+        decl->accept(*this);
+    }
+    analyzeStage = AnalyzeStages::ResolveAliases;
     for (const auto& decl : node.types) {
         decl->accept(*this);
     }

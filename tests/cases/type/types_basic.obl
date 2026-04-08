@@ -1,0 +1,178 @@
+module TypesBasic
+
+const {
+    LenA = 3;
+    LenB = 2;
+    LenC = 4;
+}
+
+type {
+    TI64: i64;
+    TF64: f64;
+    TBool: bool;
+    TChar: char;
+    TByte: byte;
+
+    BaseT: Base;
+    MidT: Mid;
+    TopT: Top;
+
+    Base: struct {
+        a: i64;
+    };
+
+    Mid: struct (BaseT) {
+        b: i64;
+    };
+
+    Top: struct (MidT) {
+        c: i64;
+    };
+
+    ArrI: i64[LenA];
+    ArrB: byte[LenB];
+    Arr2D: ArrI[LenB];
+
+    PBase: *Base;
+    PMid: *Mid;
+    PTop: *Top;
+}
+
+fn init() -> void
+type {
+    LInt: i64;
+    LReal: f64;
+    LArrChar: char[LenC];
+    LArr2DChar: LArrChar[LenB];
+    LPMid: *Mid;
+}
+var {
+    i: TI64;
+    r: TF64;
+    b: TBool;
+    c: TChar;
+    by: TByte;
+
+    base: Base;
+    mid: Mid;
+    top: Top;
+
+    arr_i: ArrI;
+    arr_b: ArrB;
+    arr2d: Arr2D;
+    row0: ArrI;
+    row1: ArrI;
+
+    p_base: PBase;
+    p_mid: PMid;
+    p_top: PTop;
+
+
+    li: LInt;
+    lr: LReal;
+    lb: TBool;
+    lc: TChar;
+    lby: TByte;
+
+    larr: LArrChar;
+    larr2d: LArr2DChar;
+    lrow0: LArrChar;
+    lrow1: LArrChar;
+    lp_mid: LPMid;
+
+}
+{
+    i = 10;
+    r = 1.5;
+    b = true;
+    c = "A";
+    by = 7;
+    assert(i == 10, "i");
+    assert(r == 1.5, "r");
+    assert(b, "b");
+    assert(c == "A", "c");
+    assert(by == 7, "by");
+
+    li = 20;
+    lr = 2.5;
+    lb = false;
+    lc = "B";
+    lby = 8;
+    assert(li == 20, "li");
+    assert(lr == 2.5, "lr");
+    assert(!lb, "lb");
+    assert(lc == "B", "lc");
+    assert(lby == 8, "lby");
+
+    base.a = 1;
+    mid.a = 2;
+    mid.b = 3;
+    top.a = 4;
+    top.b = 5;
+    top.c = 6;
+    assert(base.a == 1, "base.a");
+    assert((mid.a == 2) && (mid.b == 3), "mid");
+    assert((top.a == 4) && (top.b == 5) && (top.c == 6), "top");
+
+
+
+    p_base = nil;
+    p_mid = nil;
+    p_top = nil;
+    new(p_base);
+    new(p_mid);
+    new(p_top);
+    p_base.a = 100;
+    p_mid.a = 200;
+    p_mid.b = 201;
+    p_top.a = 300;
+    p_top.b = 301;
+    p_top.c = 302;
+    assert((p_base != nil) && (p_base.a == 100), "p_base");
+    assert((p_mid != nil) && (p_mid.a == 200) && (p_mid.b == 201), "p_mid");
+    assert((p_top != nil) && (p_top.a == 300) && (p_top.b == 301) && (p_top.c == 302), "p_top");
+
+    lp_mid = nil;
+    new(lp_mid);
+    lp_mid.a = 210;
+    lp_mid.b = 211;
+    assert((lp_mid != nil) && (lp_mid.a == 210) && (lp_mid.b == 211), "lp_mid");
+
+
+    arr_i[0] = 1;
+    arr_i[1] = 2;
+    arr_i[2] = 3;
+    arr_b[0] = 4;
+    arr_b[1] = 5;
+    row0[0] = 11;
+    row0[1] = 12;
+    row0[2] = 13;
+    row1[0] = 21;
+    row1[1] = 22;
+    row1[2] = 23;
+    arr2d[0] = row0;
+    arr2d[1] = row1;
+    assert((arr_i[0] == 1) && (arr_i[2] == 3), "arr_i");
+    assert((arr_b[0] == 4) && (arr_b[1] == 5), "arr_b");
+    assert(len(arr2d) == LenB, "arr2d.len");
+    assert(len(arr2d[0]) == LenA, "arr2d.rowlen");
+
+    larr[0] = "T";
+    larr[1] = "e";
+    larr[2] = "s";
+    larr[3] = "t";
+    lrow0[0] = "X";
+    lrow0[1] = "a";
+    lrow0[2] = "b";
+    lrow0[3] = "c";
+    lrow1[0] = "d";
+    lrow1[1] = "e";
+    lrow1[2] = "f";
+    lrow1[3] = "Y";
+    larr2d[0] = lrow0;
+    larr2d[1] = lrow1;
+    assert((larr[0] == "T") && (larr[3] == "t"), "larr");
+    assert(len(larr2d) == LenB, "larr2d.len");
+    assert(len(larr2d[0]) == LenC, "larr2d.rowlen");
+
+}
