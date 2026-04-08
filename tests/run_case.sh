@@ -1,8 +1,23 @@
 #!/usr/bin/env bash
 
 
-COMPILER=$1
-TEST_FILE=$2
+COMPILER=${1:-}
+TEST_FILE=${2:-}
+
+if [[ -z "$COMPILER" || -z "$TEST_FILE" ]]; then
+    echo "Usage: $0 <compiler> <test_file>"
+    exit 2
+fi
+
+if [[ ! -x "$COMPILER" ]]; then
+    echo "FAIL: Compiler not found or not executable: $COMPILER"
+    exit 2
+fi
+
+if [[ ! -f "$TEST_FILE" ]]; then
+    echo "FAIL: Test file not found: $TEST_FILE"
+    exit 2
+fi
 
 TEST_NAME=$(basename "$TEST_FILE" .obl)
 TMP_DIR="/tmp/obould_tests"

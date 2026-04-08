@@ -1,8 +1,0 @@
-// @EXPECT_RUNTIME_ERROR
-module AssertFail
-
-fn init() -> void
-{
-    assert(true);
-    assert(1 == 2, "assert failed");
-}

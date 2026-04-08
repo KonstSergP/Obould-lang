@@ -1,6 +1,7 @@
 #include "LLVMCodegen.h"
 #include "sema/TypeInfo.h"
 #include <llvm/IR/Module.h>
+#include <llvm/Support/ErrorHandling.h>
 
 
 namespace obould
@@ -14,8 +15,13 @@ void LLVMCodegenVisitor::visitBuiltinProcedure(ProcedureCall& node)
     {
         node.args[0]->accept(*this);
         auto argType = node.args[0]->resolvedType;
-        auto* lenVal = lengths[argType.get()];
-        if (lenVal) {
+        llvm::Value* lenVal = nullptr;
+        if (argType->isOpenArray) {
+            auto it = lengths.find(argType.get());
+            if (it == lengths.end() || !it->second) {
+                llvm::report_fatal_error("Missing length for open array in LEN");
+            }
+            lenVal = it->second;
             if (lenVal->getType()->isPointerTy())
                 lenVal = builder->CreateLoad(builder->getInt64Ty(), lenVal, "arr.len");
         }
@@ -23,7 +29,7 @@ void LLVMCodegenVisitor::visitBuiltinProcedure(ProcedureCall& node)
             lenVal = builder->getInt64(argType->length);
         }
         else {
-            lenVal = builder->getInt64(0);
+            llvm::report_fatal_error("LEN expects array or string");
         }
         lastValue = builder->CreateZExtOrTrunc(lenVal, builder->getInt64Ty());
     }
@@ -136,6 +142,12 @@ void LLVMCodegenVisitor::visit(ProcedureCall& node)
             argExpr->accept(*this);
 
             if (!params[i].isReference
+                && params[i].type->kind == TypeKind::Char
+                && argExpr->resolvedType->kind == TypeKind::String
+                && argExpr->resolvedType->length == 1) {
+                lastValue = builder->CreateLoad(builder->getInt8Ty(), lastValue);
+            }
+            if (!params[i].isReference
                 && isIntegerType(argExpr->resolvedType->kind)
                 && isIntegerType(params[i].type->kind)) {
                 lastValue = builder->CreateZExtOrTrunc(lastValue, toLLVMType(params[i].type));
@@ -145,12 +157,15 @@ void LLVMCodegenVisitor::visit(ProcedureCall& node)
             auto factType = argExpr->resolvedType;
             auto formalType = params[i].type;
             while (formalType->isOpenArray) {
-                auto* lenVal = lengths[factType.get()];
-                if (lenVal->getType()->isPointerTy()) {
-                    lenVal = builder->CreateLoad(builder->getInt64Ty(), lenVal);
+                llvm::Value* lenVal = nullptr;
+                if (factType->isOpenArray) {
+                    lenVal = builder->CreateLoad(builder->getInt64Ty(), lengths[factType.get()]);
                 }
-                if (factType->kind == TypeKind::String) {
-                    lenVal = builder->CreateAdd(lenVal, builder->getInt64(1), "str.len0");
+                else if (factType->kind == TypeKind::Array) {
+                    lenVal = builder->getInt64(factType->length);
+                }
+                else if (factType->kind == TypeKind::String) {
+                    lenVal = builder->getInt64(factType->length + 1);
                 }
                 hiddenParams.push_back(lenVal);
 

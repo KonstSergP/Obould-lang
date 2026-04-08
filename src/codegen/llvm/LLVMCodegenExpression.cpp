@@ -1,6 +1,7 @@
 #include "LLVMCodegen.h"
 #include "sema/TypeInfo.h"
 #include <llvm/IR/Module.h>
+#include <llvm/Support/ErrorHandling.h>
 
 
 namespace obould
@@ -140,13 +141,13 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
     }
 
     if (isStringLike(lType) && isStringLike(rType)) {
-        auto getArrayLength = [&](const std::shared_ptr<TypeInfo>& t)
+        auto getArrayLength = [&](const std::shared_ptr<TypeInfo>& t) -> llvm::Value*
         {
-            auto* lenVal = lengths[t.get()];
-            if (lenVal->getType()->isPointerTy()) {
-                lenVal = builder->CreateLoad(builder->getInt64Ty(), lenVal, "arr.len");
+            if (t->isOpenArray) {
+                auto* lenVal = builder->CreateLoad(builder->getInt64Ty(), lengths[t.get()], "arr.len");
+                return builder->CreateZExtOrTrunc(lenVal, builder->getInt64Ty());
             }
-            return builder->CreateZExtOrTrunc(lenVal, builder->getInt64Ty());
+            return builder->getInt64(t->length);
         };
 
         auto getEffectiveLength = [&](llvm::Value* dataPtr, const std::shared_ptr<TypeInfo>& t) -> llvm::Value*

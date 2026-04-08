@@ -68,10 +68,7 @@ void SymbolFileGenerator::visit(ArrayType& node)
 {
     json arrJson = json::object();
     arrJson["kind"] = "array";
-    std::visit([&arrJson](const auto& v)
-    {
-        arrJson["length"] = v;
-    }, *node.length->constantValue);
+    arrJson["length"] = std::get<int64_t>(*node.length->constantValue);
     node.elementType->accept(*this);
     arrJson["elementType"] = json_;
     json_ = arrJson;

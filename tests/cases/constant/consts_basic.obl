@@ -1,0 +1,172 @@
+module ConstsTest
+
+const {
+    IntA = 1;
+    IntB = 100;
+    IntC = (IntA + 7) * 3 - 4;
+    IntD = (IntB div 3) * 3 + (IntB mod 3);
+
+    RealA = 1.5;
+    RealB = -2.25;
+    RealC = (RealA + 2.5) * 3.0 / 2.0;
+    RealD = (RealB - 1.25) / 2.0;
+
+    BoolA = true;
+    BoolB = false;
+    BoolC = (IntA + 1 == 2) && true;
+    BoolD = (IntB > 0) || false;
+
+    CharA = "A";
+    CharB = "Z";
+    CharC = CharA;
+    CharD = CharB;
+
+    StrA = "Hello";
+    StrB = "World";
+    StrC = StrA;
+    StrD = StrB;
+
+    ByteA = 0;
+    ByteB = 255;
+    ByteC = (ByteB - 200) + 10;
+    ByteD = ByteA + 5 * 3;
+}
+
+type {
+    Node: struct {
+        value: i64;
+        next: *Node;
+    };
+}
+
+fn TakeInt(x: i64) -> i64 { return x; }
+fn TakeReal(x: f64) -> f64 { return x; }
+fn TakeBool(x: bool) -> bool { return x; }
+fn TakeChar(x: char) -> char { return x; }
+fn TakeByte(x: byte) -> byte { return x; }
+fn TakeStr(s: char[]) -> i64 { return len(s); }
+fn IsNil(p: *Node) -> bool { return p == nil; }
+
+fn init() -> void
+const {
+    LIntA = 2;
+    LIntB = LIntA * 4 + 1;
+
+    LRealA = 0.25;
+    LRealB = LRealA * 8.0;
+
+    LBoolA = true;
+    LBoolB = (LIntA == 2) && !false;
+
+    LCharA = "b";
+    LCharB = "y";
+
+    LStrA = "Hi";
+    LStrB = "Bye";
+
+    LByteA = 10;
+    LByteB = LByteA * 2 + 5;
+}
+var {
+    i1, i2: i64;
+    r1, r2: f64;
+    b1, b2: bool;
+    c1, c2: char;
+    by1, by2: byte;
+    s1: char[6];
+    p: *Node;
+}
+{
+    assert(LIntA == 2, "LIntA");
+    assert(LIntB == 9, "LIntB");
+    assert(LRealA == 0.25, "LRealA");
+    assert(LRealB == 2.0, "LRealB");
+    assert(LBoolA, "LBoolA");
+    assert(LBoolB, "LBoolB");
+    assert(LCharA == "b", "LCharA");
+    assert(LCharB == "y", "LCharB");
+    assert(LStrA == "Hi", "LStrA");
+    assert(LStrB == "Bye", "LStrB");
+    assert(LByteA == 10, "LByteA");
+    assert(LByteB == 25, "LByteB");
+
+    assert(IntA == 1, "IntA");
+    assert(IntB == 100, "IntB");
+    assert(IntC == 20, "IntC");
+    assert(IntD == 100, "IntD");
+
+    assert(RealA == 1.5, "RealA");
+    assert(RealB == -2.25, "RealB");
+    assert(RealC == 6.0, "RealC");
+    assert(RealD == -1.75, "RealD");
+
+    assert(BoolA, "BoolA");
+    assert(!BoolB, "BoolB");
+    assert(BoolC, "BoolC");
+    assert(BoolD, "BoolD");
+
+    assert(CharA == "A", "CharA");
+    assert(CharB == "Z", "CharB");
+    assert(CharC == "A", "CharC");
+    assert(CharD == "Z", "CharD");
+
+    assert(StrA == "Hello", "StrA");
+    assert(StrB == "World", "StrB");
+    assert(StrC == "Hello", "StrC");
+    assert(StrD == "World", "StrD");
+
+    assert(ByteA == 0, "ByteA");
+    assert(ByteB == 255, "ByteB");
+    assert(ByteC == 65, "ByteC");
+    assert(ByteD == 15, "ByteD");
+
+    assert(IsNil(nil), "nil literal");
+
+
+    i1 = IntA;
+    i2 = IntC;
+    r1 = RealA;
+    r2 = RealD;
+    b1 = BoolA;
+    b2 = BoolC;
+    c1 = CharA;
+    c2 = CharC;
+    by1 = ByteB;
+    by2 = ByteC;
+    s1 = StrA;
+    p = nil;
+    assert(i1 == 1, "i1");
+    assert(i2 == 20, "i2");
+    assert(r1 == 1.5, "r1");
+    assert(r2 == -1.75, "r2");
+    assert(b1, "b1");
+    assert(b2, "b2");
+    assert(c1 == "A", "c1");
+    assert(c2 == "A", "c2");
+    assert(by1 == 255, "by1");
+    assert(by2 == 65, "by2");
+    assert(s1 == "Hello", "s1");
+    assert(p == nil, "p");
+
+    i1 = LIntB;
+    r1 = LRealB;
+    b1 = LBoolB;
+    c1 = LCharB;
+    by1 = LByteB;
+    s1 = LStrA;
+    assert(i1 == 9, "i1 local");
+    assert(r1 == 2.0, "r1 local");
+    assert(b1, "b1 local");
+    assert(c1 == "y", "c1 local");
+    assert(by1 == 25, "by1 local");
+    assert(s1 == "Hi", "s1 local");
+
+
+    assert(TakeInt(IntD) == 100, "TakeInt");
+    assert(TakeReal(RealC) == 6.0, "TakeReal");
+    assert(TakeBool(BoolC), "TakeBool");
+    assert(TakeChar(CharB) == "Z", "TakeChar");
+    assert(TakeByte(ByteD) == 15, "TakeByte");
+    assert(TakeStr(StrA) == 6, "TakeStr");
+    assert(IsNil(nil), "IsNil");
+}

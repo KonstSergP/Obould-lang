@@ -159,7 +159,7 @@ if (O_TESTS)
     endif ()
 
 
-    file(GLOB CASES_SOURCES CONFIGURE_DEPENDS "tests/cases/*.obl")
+    file(GLOB_RECURSE CASES_SOURCES CONFIGURE_DEPENDS "tests/cases/*.obl")
     if (CASES_SOURCES)
         foreach (TEST_FILE IN LISTS CASES_SOURCES)
             get_filename_component(TEST_NAME "${TEST_FILE}" NAME_WE)

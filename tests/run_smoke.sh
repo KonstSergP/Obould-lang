@@ -8,10 +8,7 @@ OBDIR="$ROOT_DIR/.obould"
 cmake --build "$ROOT_DIR/build" -j
 
 
-shopt -s nullglob
-TESTS=("$ROOT_DIR/tests/smoke"/test_*.obl)
-
-for test in "${TESTS[@]}"; do
+find tests/smoke -type f -name "test_*.obl" | while read -r test; do
   [[ -f "$test" ]] || continue
   name=$(basename "$test" .obl)
   echo "==> $name"
