@@ -385,9 +385,17 @@ void CCodegenVisitor::visit(ProcedureCall& node)
     std::string procName;
     if (auto* ident = dynamic_cast<IdentifierExpression*>(node.procedureName.get())) {
         if (ident->moduleName.empty()) {
-            // Local function call - add current module prefix
-            os_ << makePrefix(moduleName_) << ident->name;
-            procName = ident->name;
+            // Check if this is a known procedure or a procedure-typed variable
+            bool isKnownProc = procedureRefParams_.count(ident->name) > 0
+                            || procedureRefParams_.count(makePrefix(moduleName_) + ident->name) > 0;
+            if (isKnownProc) {
+                os_ << makePrefix(moduleName_) << ident->name;
+                procName = ident->name;
+            } else {
+                // Procedure-typed variable — emit via normal identifier visitor
+                node.procedureName->accept(*this);
+                procName = ident->name;
+            }
         } else {
             // External function call
             os_ << makePrefix(ident->moduleName) << ident->name;
