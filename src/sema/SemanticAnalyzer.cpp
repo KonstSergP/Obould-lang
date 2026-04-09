@@ -223,9 +223,6 @@ void SemanticAnalyzer::validateTypeInternal(const std::shared_ptr<TypeInfo>& typ
                 addError("Parameter '" + param.name + "' of procedure '" + type->name + "' has invalid type");
                 continue;
             }
-            if (param.type->kind == TypeKind::Array && !param.type->isOpenArray) {
-                addError("Parameter '" + param.name + "' of procedure '" + type->name + "' must be an open array");
-            }
             validateTypeInternal(param.type, visiting);
         }
     }

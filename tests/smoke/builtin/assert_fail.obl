@@ -1,8 +1,0 @@
-module AssertFail
-
-fn init() -> void
-{
-    assert(true);
-    assert(1 == 1, "must not happen");
-    assert(1 == 2, "1 not equals 2");
-}

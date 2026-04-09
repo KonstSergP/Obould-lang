@@ -40,7 +40,7 @@ llvm::FunctionType* LLVMCodegenVisitor::createFunctionType(const std::shared_ptr
         auto paramType = param.type;
         if (param.isReference || paramType->kind == TypeKind::Array || paramType->kind == TypeKind::Struct) {
             paramTypes.push_back(builder->getPtrTy());
-            while (paramType->kind == TypeKind::Array) {
+            while (paramType->isOpenArray) {
                 hiddenParams.push_back(builder->getInt64Ty());
                 paramType = paramType->baseType;
             }

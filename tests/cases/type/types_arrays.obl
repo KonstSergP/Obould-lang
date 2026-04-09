@@ -1,0 +1,161 @@
+module TypesArrays
+
+const {
+    Size = 4;
+    Rows = 3;
+}
+
+type {
+    IntArr: i64[Size];
+    CharBuf: char[8];
+
+    IntArrAlias: IntArr;
+
+    Matrix: IntArr[Rows];
+
+    Point: struct {
+        x, y: i64;
+    };
+
+    Pixel: struct (Point) {
+        color: i64;
+    };
+
+    PointArr: Point[Size];
+
+    PPoint: *Point;
+    PPixel: *Pixel;
+    PointPtrArr: PPoint[Size];
+
+    BinaryOp: (a: i64, b: i64) -> i64;
+    OpArr: BinaryOp[2];
+
+    Container: struct {
+        data: IntArr;
+        count: i64;
+    };
+
+    Buf: struct {
+        values: i64[8];
+        len: i64;
+    };
+
+    PBuf: *Buf;
+}
+
+fn add(a: i64, b: i64) -> i64 { return a + b; }
+fn sub(a: i64, b: i64) -> i64 { return a - b; }
+
+fn sumArr(arr: i64[]) -> i64
+var {
+    s: i64;
+    i: i64;
+}
+{
+    s = 0;
+    for (i = 0, len(arr) - 1, 1) {
+        s = s + arr[i];
+    }
+    return s;
+}
+
+fn sumFixed(arr: IntArr) -> i64
+var {
+    s: i64;
+    i: i64;
+}
+{
+    s = len(arr);
+    for (i = 0, Size - 1, 1) {
+        s = s + arr[i];
+    }
+    return s;
+}
+
+fn init() -> void
+var {
+    arr1: IntArr;
+    arr2: IntArrAlias;
+
+    mat: Matrix;
+    r0: IntArr;
+    r1: IntArr;
+
+    pts: PointArr;
+
+    pptrs: PointPtrArr;
+    ppix: PPixel;
+
+    ops: OpArr;
+
+    cont: Container;
+    bp: PBuf;
+}
+{
+    arr1[0] = 10;
+    arr1[3] = 40;
+    assert(arr1[0] == 10, "arr1[0]");
+    assert(arr1[3] == 40, "arr1[3]");
+
+    arr2[0] = 100;
+    arr2[3] = 400;
+    assert(arr2[0] == 100, "arr2[0]");
+    assert(len(arr2) == Size, "arr2 len");
+
+    r0[0] = 1; r0[1] = 2; r0[2] = 3; r0[3] = 4;
+    r1[0] = 5; r1[1] = 6; r1[2] = 7; r1[3] = 8;
+    mat[0] = r0;
+    mat[1] = r1;
+    assert(mat[0][0] == 1, "mat[0][0]");
+    assert(mat[1][3] == 8, "mat[1][3]");
+
+    pts[0].x = 1;
+    pts[0].y = 2;
+    pts[3].x = 30;
+    pts[3].y = 40;
+    assert(pts[0].x == 1, "pts[0].x");
+    assert(pts[3].y == 40, "pts[3].y");
+
+    pptrs[0] = nil;
+    new(pptrs[0]);
+    pptrs[0].x = 100;
+    pptrs[0].y = 200;
+    assert(pptrs[0].x == 100, "pptrs[0].x");
+
+    ppix = nil;
+    new(ppix);
+    ppix.x = 10;
+    ppix.y = 20;
+    ppix.color = 0xFF00;
+
+    pptrs[1] = ppix;
+    assert(pptrs[1].x == 10, "pptrs[1].x via base");
+
+    ops[0] = add;
+    ops[1] = sub;
+    assert(ops[0](3, 4) == 7, "ops[0]");
+    assert(ops[1](10, 3) == 7, "ops[1]");
+
+    cont.data[0] = 42;
+    cont.data[3] = 99;
+    cont.count = 2;
+    assert(cont.data[0] == 42, "cont.data[0]");
+    assert(cont.data[3] == 99, "cont.data[3]");
+
+    bp = nil;
+    new(bp);
+    bp.values[0] = 1;
+    bp.values[7] = 8;
+    bp.len = 8;
+    assert(bp.values[0] == 1, "bp.values[0]");
+    assert(bp.values[7] == 8, "bp.values[7]");
+
+    arr1[0] = 1; arr1[1] = 2; arr1[2] = 3; arr1[3] = 4;
+    assert(sumArr(arr1) == 10, "sumArr");
+
+    arr2[0] = 10; arr2[1] = 20; arr2[2] = 30; arr2[3] = 40;
+    assert(sumArr(arr2) == 100, "sumArrAlias");
+
+    arr1[0] = 10; arr1[1] = 20; arr1[2] = 30; arr1[3] = 40;
+    assert(sumFixed(arr1) == 104, "sumFixed");
+}
