@@ -432,9 +432,10 @@ void LLVMCodegenVisitor::visit(IdentifierExpression& node)
 void LLVMCodegenVisitor::visit(ArrayAccessExpression& node)
 {
     bool oldLvalue = lvalue;
-    lvalue = false;
+    lvalue = true;
     node.array->accept(*this);
     auto* arr = lastValue;
+    lvalue = false;
     node.index->accept(*this);
     auto* index = lastValue;
     lvalue = oldLvalue;

@@ -1,0 +1,143 @@
+module VarsBasic
+
+const {
+    Size1D = 4;
+    Size2D = 3;
+    Size3D = 2;
+}
+
+type {
+    Point: struct {
+        x, y: i64;
+    };
+
+    Pixel: struct (Point) {
+        color: i64;
+    };
+
+    Box: struct {
+        origin: Point;
+        size: Point;
+    };
+
+    Node: struct {
+        value: i64;
+        next: *Node;
+    };
+
+    RowI: i64[Size1D];
+    MatrixI: RowI[Size2D];
+}
+
+var {
+    g_int: i64;
+    g_point: Point;
+    g_arr1d: RowI;
+    g_matrix: MatrixI;
+    g_pnode: *Node;
+}
+
+fn init() -> void
+var {
+    i: i64;
+    r: f64;
+    b: bool;
+    c: char;
+    by: byte;
+
+    arr1d: RowI;
+    matrix: MatrixI;
+    arr2d_raw: i64[Size2D][Size1D];
+    arr3d_raw: i64[2][3][4];
+    chars: char[8];
+
+    r0: RowI;
+    r1: RowI;
+
+    point: Point;
+    pixel: Pixel;
+    box: Box;
+
+    pnode: *Node;
+    ppoint: *Point;
+}
+{
+    i = 42;
+    r = 3.14;
+    b = true;
+    c = "Z";
+    by = 128;
+    assert(i == 42, "i");
+    assert(r == 3.14, "r");
+    assert(b, "b");
+    assert(c == "Z", "c");
+    assert(by == 128, "by");
+
+    arr1d[0] = 10;
+    arr1d[3] = 40;
+    assert(len(arr1d) == Size1D, "arr1d len");
+
+    r0[0] = 1; r0[1] = 2; r0[2] = 3; r0[3] = 4;
+    r1[0] = 5; r1[1] = 6; r1[2] = 7; r1[3] = 8;
+    matrix[0] = r0;
+    matrix[1] = r1;
+    assert(len(matrix) == Size2D, "matrix rows");
+    assert(len(matrix[0]) == Size1D, "matrix cols");
+
+    arr2d_raw[0][0] = 100;
+    arr2d_raw[0][1] = 200;
+    arr2d_raw[2][3] = 300;
+    assert(arr2d_raw[0][0] == 100, "arr2d_raw[0][0]");
+    assert(arr2d_raw[0][1] == 200, "arr2d_raw[0][1]");
+    assert(arr2d_raw[2][3] == 300, "arr2d_raw[2][3]");
+
+    arr3d_raw[0][0][0] = 111;
+    arr3d_raw[1][2][3] = 123;
+    assert(arr3d_raw[0][0][0] == 111, "arr3d_raw[0][0][0]");
+    assert(arr3d_raw[1][2][3] == 123, "arr3d_raw[1][2][3]");
+    assert(len(arr3d_raw) == 2, "arr3d_raw depth");
+    assert(len(arr3d_raw[0]) == 3, "arr3d_raw rows");
+    assert(len(arr3d_raw[0][0]) == 4, "arr3d_raw cols");
+
+    chars[0] = "H";
+    chars[4] = "o";
+    assert(chars[0] == "H", "chars[0]");
+    assert(len(chars) == 8, "chars len");
+
+    point.x = 10;
+    point.y = 20;
+    assert(point.x == 10, "point.x");
+    assert(point.y == 20, "point.y");
+
+    pixel.x = 1;
+    pixel.y = 2;
+    pixel.color = 0xFF0000;
+    assert(pixel.x == 1, "pixel.x");
+    assert(pixel.color == 16711680, "pixel.color");
+
+    box.origin.x = 0;
+    box.origin.y = 0;
+    box.size.x = 100;
+    box.size.y = 50;
+    assert(box.origin.x == 0, "box.origin.x");
+    assert(box.size.x == 100, "box.size.x");
+
+    pnode = nil;
+    assert(pnode == nil, "pnode nil");
+
+    new(pnode);
+    pnode.value = 777;
+    new(pnode.next);
+    pnode.next.value = 888;
+    pnode.next.next = nil;
+    assert(pnode.value == 777, "pnode.value");
+    assert(pnode.next.value == 888, "pnode.next.value");
+    assert(pnode.next.next == nil, "pnode.next.next nil");
+
+    ppoint = nil;
+    new(ppoint);
+    ppoint.x = 55;
+    ppoint.y = 66;
+    assert(ppoint.x == 55, "ppoint.x");
+    assert(ppoint.y == 66, "ppoint.y");
+}
