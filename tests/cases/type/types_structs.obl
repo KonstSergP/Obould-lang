@@ -1,0 +1,168 @@
+module TypesStructs
+
+type {
+    Shape: struct {
+        id: i64;
+    };
+
+    ColoredShape: struct (Shape) {
+        color: i64;
+    };
+
+    FilledShape: struct (ColoredShape) {
+        filled: bool;
+    };
+
+    Rect: struct {
+        pos: Point;
+        size: Point;
+    };
+
+    Point: struct {
+        x, y: i64;
+    };
+
+    Vec: struct {
+        x: f64;
+        y: f64;
+    };
+
+    PShape: *Shape;
+    PColored: *ColoredShape;
+    PFilled: *FilledShape;
+
+    ShapeArr: PShape[4];
+
+    Container: struct {
+        origin: Point;
+        rect: Rect;
+    };
+}
+
+fn modifyByRef(s: &Shape) -> void { s.id = 999; }
+fn readByValue(s: Shape) -> i64 { return s.id; }
+fn getColored(c: ColoredShape) -> i64 { return c.color; }
+
+fn sumVec(v: Vec) -> f64 { return v.x + v.y; }
+fn addPoints(a: Point, b: Point, r: &Point) -> void
+{
+    r.x = a.x + b.x;
+    r.y = a.y + b.y;
+}
+
+fn init() -> void
+var {
+    p: Point;
+    pArr: Point[3];
+
+    s: Shape;
+    cs: ColoredShape;
+    fs: FilledShape;
+
+    pShape: PShape;
+    pColored: PColored;
+    pFilled: PFilled;
+
+    sa: ShapeArr;
+
+    c: Container;
+
+    v: Vec;
+    r: Rect;
+    a: Point;
+    b: Point;
+    res: Point;
+}
+{
+    p.x = 10;
+    p.y = 20;
+    assert(p.x == 10, "p.x");
+    assert(p.y == 20, "p.y");
+
+    pArr[0].x = 1;
+    pArr[0].y = 2;
+    pArr[2].x = 30;
+    pArr[2].y = 40;
+    assert(pArr[0].x == 1, "pArr[0].x");
+    assert(pArr[2].y == 40, "pArr[2].y");
+
+    s.id = 1;
+    assert(s.id == 1, "s.id");
+
+    cs.id = 10;
+    cs.color = 0xFF00;
+    assert(cs.id == 10, "cs.id");
+    assert(cs.color == 65280, "cs.color");
+
+    fs.id = 100;
+    fs.color = 0x00FF;
+    fs.filled = true;
+    assert(fs.id == 100, "fs.id");
+    assert(fs.color == 255, "fs.color");
+    assert(fs.filled, "fs.filled");
+
+    pShape = nil;
+    new(pShape);
+    pShape.id = 42;
+    assert(pShape.id == 42, "pShape.id");
+
+    pColored = nil;
+    new(pColored);
+    pColored.id = 77;
+    pColored.color = 0xAABB;
+
+    pFilled = nil;
+    new(pFilled);
+    pFilled.id = 88;
+    pFilled.color = 0xCCDD;
+    pFilled.filled = false;
+    pColored = pFilled;
+    assert(pColored.id == 88, "pColored via base");
+    assert(pColored is FilledShape, "pFilled in pColored");
+
+    sa[0] = nil;
+    new(sa[0]);
+    sa[0].id = 111;
+    sa[1] = nil;
+    new(sa[1]);
+    sa[1].id = 222;
+    assert(sa[0].id == 111, "sa[0].id");
+    assert(sa[1].id == 222, "sa[1].id");
+
+    r.pos.x = 5;
+    r.pos.y = 10;
+    r.size.x = 100;
+    r.size.y = 200;
+    assert(r.pos.x == 5, "r.pos.x");
+    assert(r.size.y == 200, "r.size.y");
+
+    c.origin.x = 1;
+    c.origin.y = 2;
+    c.rect.pos.x = 10;
+    c.rect.size.x = 50;
+    assert(c.origin.x == 1, "c.origin.x");
+    assert(c.rect.size.x == 50, "c.rect.size.x");
+
+    pFilled = nil;
+    new(pFilled);
+    pFilled.id = 500;
+    pFilled.color = 0x1234;
+    pFilled.filled = true;
+    assert(pFilled.id == 500, "pfilled.id");
+
+    modifyByRef(s);
+    assert(s.id == 999, "modifyByRef");
+
+    s.id = 50;
+    assert(readByValue(s) == 50, "readByValue");
+
+    v.x = 1.5;
+    v.y = 2.5;
+    assert(sumVec(v) == 4.0, "sumVec");
+
+    a.x = 1; a.y = 2;
+    b.x = 3; b.y = 4;
+    addPoints(a, b, res);
+    assert(res.x == 4, "res.x");
+    assert(res.y == 6, "res.y");
+}
