@@ -91,6 +91,9 @@ void SymbolFileGenerator::visit(StructType& node)
         node.baseType->accept(*this);
         structJson["baseType"] = json_;
     }
+    if (!node.tag.empty()) {
+        structJson["tag"] = node.tag;
+    }
     structJson["fields"] = json::array();
     for (auto& f : node.fields) {
         json fieldJson = json::object();

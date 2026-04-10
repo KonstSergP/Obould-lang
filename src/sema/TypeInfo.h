@@ -3,7 +3,6 @@
 #include <string>
 #include <vector>
 
-
 namespace obould
 {
 enum class TypeKind
@@ -109,6 +108,7 @@ struct TypeInfo
     // Struct
     int64_t depth = -1;
     std::vector<FieldInfo> fields;
+    std::string tag;
 
     // Procedure
     std::shared_ptr<TypeInfo> returnType;

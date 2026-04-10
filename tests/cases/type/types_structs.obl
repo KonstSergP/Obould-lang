@@ -43,11 +43,17 @@ type {
         rect: Rect;
     };
 
-    Box: struct {
+    export Box: struct {
         frame: struct (Shape) {
             w, h: i64;
         };
     };
+}
+
+var {
+    export pAnon: *struct (Shape) { val: i64; };
+    export box: Box;
+    export pairs: struct { export a, export b: i64; }[3];
 }
 
 fn modifyByRef(s: &Shape) -> void { s.id = 999; }
@@ -84,10 +90,6 @@ var {
     a: Point;
     b: Point;
     res: Point;
-
-    pAnon: *struct (Shape) { val: i64; };
-    box: Box;
-    pairs: struct { a, b: i64; }[3];
 }
 {
     p.x = 10;

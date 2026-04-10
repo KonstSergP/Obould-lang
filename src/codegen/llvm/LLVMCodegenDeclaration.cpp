@@ -15,7 +15,9 @@ void LLVMCodegenVisitor::visit(TypeDeclaration& node)
 
 void LLVMCodegenVisitor::visit(VariableDeclaration& node)
 {
+    exportedType = node.isExported;
     node.type->accept(*this);
+    exportedType = false;
     auto& info = node.type->resolvedType;
     auto* ty = toLLVMType(info);
     auto* initValue = createInitConstant(info);

@@ -121,6 +121,11 @@ void SemanticAnalyzer::visit(StructType& node)
         structInfo->fields.push_back(field);
     }
 
+    auto tag = !node.tag.empty() ? node.tag : std::to_string(reinterpret_cast<long>(structInfo.get()));
+    structInfo->tag = tag;
+    structInfo->name = tag;
+    node.tag = tag;
+
     node.resolvedType = structInfo;
 }
 

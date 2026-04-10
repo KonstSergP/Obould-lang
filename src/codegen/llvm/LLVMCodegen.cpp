@@ -1,8 +1,5 @@
 #include <iostream>
 #include "LLVMCodegen.h"
-
-#include <deque>
-
 #include "sema/TypeInfo.h"
 
 
@@ -91,7 +88,7 @@ llvm::Type* LLVMCodegenVisitor::toLLVMType(const std::shared_ptr<TypeInfo>& type
             return it->second;
         }
 
-        auto* structTy = llvm::StructType::create(context, "struct." + typeInfo->name);
+        auto* structTy = llvm::StructType::create(context, "struct_" + typeInfo->name);
         structTypes[typeInfo.get()] = structTy;
 
         std::vector<TypeInfo*> chain;

@@ -59,6 +59,10 @@ void SemanticAnalyzer::visit(TypeDeclaration& node)
     else if (analyzeStage == AnalyzeStages::FillType) {
         node.type->accept(*this);
 
+        if (auto* st = dynamic_cast<StructType*>(node.type.get())) {
+            st->tag.clear();
+        }
+
         auto* sym = symbolTables[currentModuleName].lookupSymbolLocal(node.name);
         if (!sym) return;
         auto& realType = node.type->resolvedType;

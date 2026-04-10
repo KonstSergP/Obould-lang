@@ -76,14 +76,17 @@ public:
 class StructType : public Type
 {
 public:
-    StructType(std::unique_ptr<IdentifierType> baseType, std::vector<std::unique_ptr<VariableDeclaration>> fields)
+    StructType(std::unique_ptr<IdentifierType> baseType, std::vector<std::unique_ptr<VariableDeclaration>> fields,
+               std::string tag = {})
         : baseType(std::move(baseType)),
-          fields(std::move(fields)) {}
+          fields(std::move(fields)),
+          tag(std::move(tag)) {}
 
     void accept(ASTVisitor& v) override;
 
     std::unique_ptr<IdentifierType> baseType;
     std::vector<std::unique_ptr<VariableDeclaration>> fields;
+    std::string tag;
 };
 
 class IncompleteType : public Type

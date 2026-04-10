@@ -9,7 +9,7 @@ class SymbolFileGenerator : public ASTVisitor
 {
 public:
     explicit SymbolFileGenerator();
-    nlohmann::json getSymbolFileJson() const;
+    [[nodiscard]] nlohmann::json getSymbolFileJson() const;
     void saveToFile(const std::string& filepath) const;
 
     // Expressions
