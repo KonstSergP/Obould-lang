@@ -1,5 +1,3 @@
-#include <llvm/Support/MathExtras.h>
-
 #include "SemanticAnalyzer.h"
 #include "TypeInfo.h"
 
@@ -288,8 +286,8 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
             correct = false;
             break;
         }
-        if (!baseType->isBaseTypeOf(rType)) {
-            addError("'IS' target type must be an extension of the variable type");
+        if (!rType->isBaseTypeOf(baseType) && !baseType->isBaseTypeOf(rType)) {
+            addError("'IS' target type must be related to the variable type");
             correct = false;
         }
         break;

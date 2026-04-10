@@ -5,6 +5,11 @@
 namespace obould
 {
 void LLVMCodegenVisitor::visit(IdentifierType& node) {}
+void LLVMCodegenVisitor::visit(OpenArrayType& node) {}
+void LLVMCodegenVisitor::visit(ProcedureType& node) {}
+void LLVMCodegenVisitor::visit(IncompleteType& node) {}
+
+void LLVMCodegenVisitor::visit(PointerType& node) { node.type->accept(*this); }
 
 void LLVMCodegenVisitor::visit(ArrayType& node)
 {
@@ -14,16 +19,15 @@ void LLVMCodegenVisitor::visit(ArrayType& node)
     node.elementType->accept(*this);
 }
 
-void LLVMCodegenVisitor::visit(OpenArrayType& node) {}
-void LLVMCodegenVisitor::visit(PointerType& node) {}
-void LLVMCodegenVisitor::visit(ProcedureType& node) {}
-void LLVMCodegenVisitor::visit(IncompleteType& node) {}
-
 void LLVMCodegenVisitor::visit(StructType& node)
 {
-    auto type = node.resolvedType;
+    auto& type = node.resolvedType;
     if (descriptors.find(type.get()) == descriptors.end()) {
         descriptors[type.get()] = createStructDescriptor(type);
+    }
+
+    for (const auto& fieldDecl : node.fields) {
+        fieldDecl->type->accept(*this);
     }
 }
 }

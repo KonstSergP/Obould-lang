@@ -401,19 +401,20 @@ std::unique_ptr<Type> Parser::parseReturnType() {
 // ============================================================================
 
 std::unique_ptr<Type> Parser::parseType() {
+    std::unique_ptr<Type> type;
+
     if (match(TokenType::OP_STAR)) {
-        return parsePointerType();
+        type = parsePointerType();
     }
-
-    if (check(TokenType::KW_STRUCT)) {
-        return parseStructType();
+    else if (check(TokenType::KW_STRUCT)) {
+        type = parseStructType();
     }
-
-    if (check(TokenType::LPAREN)) {
-        return parseProcedureType();
+    else if (check(TokenType::LPAREN)) {
+        type = parseProcedureType();
     }
-
-    std::unique_ptr<Type> type = parseIdentifierType();
+    else {
+        type = parseIdentifierType();
+    }
 
     std::vector<std::unique_ptr<Expression>> dimensions;
     std::vector<bool> isOpenArray;

@@ -13,6 +13,10 @@ type {
         filled: bool;
     };
 
+    AnimatedShape: struct (FilledShape) {
+        speed: i64;
+    };
+
     Rect: struct {
         pos: Point;
         size: Point;
@@ -30,12 +34,19 @@ type {
     PShape: *Shape;
     PColored: *ColoredShape;
     PFilled: *FilledShape;
+    PAnimated: *AnimatedShape;
 
     ShapeArr: PShape[4];
 
     Container: struct {
         origin: Point;
         rect: Rect;
+    };
+
+    Box: struct {
+        frame: struct (Shape) {
+            w, h: i64;
+        };
     };
 }
 
@@ -62,6 +73,7 @@ var {
     pShape: PShape;
     pColored: PColored;
     pFilled: PFilled;
+    pAnimated: PAnimated;
 
     sa: ShapeArr;
 
@@ -72,6 +84,10 @@ var {
     a: Point;
     b: Point;
     res: Point;
+
+    pAnon: *struct (Shape) { val: i64; };
+    box: Box;
+    pairs: struct { a, b: i64; }[3];
 }
 {
     p.x = 10;
@@ -106,19 +122,20 @@ var {
     pShape.id = 42;
     assert(pShape.id == 42, "pShape.id");
 
-    pColored = nil;
-    new(pColored);
-    pColored.id = 77;
-    pColored.color = 0xAABB;
 
-    pFilled = nil;
-    new(pFilled);
-    pFilled.id = 88;
-    pFilled.color = 0xCCDD;
-    pFilled.filled = false;
-    pColored = pFilled;
-    assert(pColored.id == 88, "pColored via base");
-    assert(pColored is FilledShape, "pFilled in pColored");
+    pAnimated = nil;
+    new(pAnimated);
+    pAnimated.id = 900;
+    pAnimated.color = 0x5678;
+    pAnimated.filled = true;
+    pAnimated.speed = 100;
+
+    pColored = pAnimated;
+    assert(pColored is Shape, "pAnimated via Shape");
+    assert(pColored is ColoredShape, "pAnimated via ColoredShape");
+    assert(pColored is FilledShape, "pAnimated via FilledShape");
+    assert(pColored is AnimatedShape, "pAnimated via AnimatedShape");
+    assert(pColored.id == 900, "pColored.id from anim");
 
     sa[0] = nil;
     new(sa[0]);
@@ -165,4 +182,26 @@ var {
     addPoints(a, b, res);
     assert(res.x == 4, "res.x");
     assert(res.y == 6, "res.y");
+
+    pAnon = nil;
+    new(pAnon);
+    pAnon.id = 400;
+    pAnon.val = 777;
+    assert(pAnon.id == 400, "pAnon.id");
+    assert(pAnon.val == 777, "pAnon.val");
+    assert(pAnon is Shape, "pAnon is Shape");
+
+    box.frame.id = 33;
+    box.frame.w = 100;
+    box.frame.h = 200;
+    assert(box.frame.id == 33, "box.frame.id");
+    assert(box.frame.w == 100, "box.frame.w");
+    assert(box.frame.h == 200, "box.frame.h");
+
+    pairs[0].a = 1;
+    pairs[0].b = 2;
+    pairs[2].a = 5;
+    pairs[2].b = 6;
+    assert(pairs[0].a == 1, "pairs[0].a");
+    assert(pairs[2].b == 6, "pairs[2].b");
 }
