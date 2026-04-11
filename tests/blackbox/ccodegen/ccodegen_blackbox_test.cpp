@@ -1944,3 +1944,382 @@ var {
 )";
     REQUIRE(transpileCompileRun("AssertMsg", src, true) == "10\n");
 }
+
+TEST_CASE("Forward decl — type alias before struct definition", "[ccodegen][fwddecl]")
+{
+    std::string src = R"(module FwdAlias
+import Out;
+type {
+    BaseAlias: Base;
+    Base: struct {
+        x: i64;
+    };
+}
+fn init() -> void
+var {
+    b: Base;
+}
+{
+    b.x = 42;
+    Out.WriteInt(b.x);
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("FwdAlias", src, true) == "42\n");
+}
+
+TEST_CASE("Forward decl — pointer to later-declared struct", "[ccodegen][fwddecl]")
+{
+    std::string src = R"(module FwdPtr
+import Out;
+type {
+    Container: struct {
+        item: *Item;
+    };
+    Item: struct {
+        value: i64;
+    };
+}
+fn init() -> void
+var {
+    c: Container;
+    it: Item;
+}
+{
+    it.value = 77;
+    c.item = nil;
+    Out.WriteInt(it.value);
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("FwdPtr", src, true) == "77\n");
+}
+
+TEST_CASE("Forward decl — struct with inheritance using alias", "[ccodegen][fwddecl]")
+{
+    std::string src = R"(module FwdInherit
+import Out;
+type {
+    Animal: struct {
+        legs: i64;
+    };
+    Dog: struct (Animal) {
+        bark: i64;
+    };
+}
+fn init() -> void
+var {
+    d: Dog;
+}
+{
+    d.legs = 4;
+    d.bark = 1;
+    Out.WriteInt(d.legs);
+    Out.WriteLn();
+    Out.WriteInt(d.bark);
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("FwdInherit", src, true) == "4\n1\n");
+}
+
+TEST_CASE("Linked list — build and traverse", "[ccodegen][linkedlist]")
+{
+    std::string src = R"(module LList
+import Out;
+type {
+    Node: struct {
+        value: i64;
+        next: *Node;
+    };
+}
+fn init() -> void
+var {
+    head: *Node;
+    cur: *Node;
+    i: i64;
+    sum: i64;
+}
+{
+    head = nil;
+    for (i = 1, 5, 1) {
+        new(cur);
+        cur.value = i * 10;
+        cur.next = head;
+        head = cur;
+    }
+    sum = 0;
+    cur = head;
+    while cur != nil {
+        sum = sum + cur.value;
+        cur = cur.next;
+    }
+    Out.WriteInt(sum);
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("LList", src, true) == "150\n");
+}
+
+TEST_CASE("Linked list — count and last element", "[ccodegen][linkedlist]")
+{
+    std::string src = R"(module LListOps
+import Out;
+type {
+    Node: struct {
+        value: i64;
+        next: *Node;
+    };
+}
+fn count(head: *Node) -> i64
+var {
+    n: i64;
+    cur: *Node;
+}
+{
+    n = 0;
+    cur = head;
+    while cur != nil {
+        n = n + 1;
+        cur = cur.next;
+    }
+    return n;
+}
+fn last(head: *Node) -> i64
+var {
+    cur: *Node;
+    result: i64;
+}
+{
+    cur = head;
+    result = 0;
+    while cur != nil {
+        result = cur.value;
+        cur = cur.next;
+    }
+    return result;
+}
+fn init() -> void
+var {
+    head: *Node;
+    cur: *Node;
+    i: i64;
+}
+{
+    head = nil;
+    for (i = 1, 4, 1) {
+        new(cur);
+        cur.value = i;
+        cur.next = head;
+        head = cur;
+    }
+    Out.WriteInt(count(head));
+    Out.WriteLn();
+    Out.WriteInt(last(head));
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("LListOps", src, true) == "4\n1\n");
+}
+
+TEST_CASE("Function type — basic call through variable", "[ccodegen][functype]")
+{
+    std::string src = R"(module FnBasic
+import Out;
+type {
+    IntFn: (x: i64) -> i64;
+}
+fn double(x: i64) -> i64 {
+    return x * 2;
+}
+fn init() -> void
+var {
+    f: IntFn;
+}
+{
+    f = double;
+    Out.WriteInt(f(5));
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("FnBasic", src, true) == "10\n");
+}
+
+TEST_CASE("Function type — swap function at runtime", "[ccodegen][functype]")
+{
+    std::string src = R"(module FnSwap
+import Out;
+type {
+    Op: (a, b: i64) -> i64;
+}
+fn add(a, b: i64) -> i64 {
+    return a + b;
+}
+fn mul(a, b: i64) -> i64 {
+    return a * b;
+}
+fn apply(op: Op, x, y: i64) -> i64 {
+    return op(x, y);
+}
+fn init() -> void
+var {
+    f: Op;
+}
+{
+    f = add;
+    Out.WriteInt(apply(f, 3, 4));
+    Out.WriteLn();
+    f = mul;
+    Out.WriteInt(apply(f, 3, 4));
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("FnSwap", src, true) == "7\n12\n");
+}
+
+TEST_CASE("Function type — function returning function", "[ccodegen][functype]")
+{
+    std::string src = R"(module FnRet
+import Out;
+type {
+    IntToInt: (x: i64) -> i64;
+    Factory: () -> IntToInt;
+}
+fn double(x: i64) -> i64 {
+    return x * 2;
+}
+fn triple(x: i64) -> i64 {
+    return x * 3;
+}
+fn getDoubler() -> IntToInt {
+    return double;
+}
+fn getTripler() -> IntToInt {
+    return triple;
+}
+fn init() -> void
+var {
+    maker: Factory;
+    f: IntToInt;
+}
+{
+    maker = getDoubler;
+    f = maker();
+    Out.WriteInt(f(5));
+    Out.WriteLn();
+    maker = getTripler;
+    f = maker();
+    Out.WriteInt(f(5));
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("FnRet", src, true) == "10\n15\n");
+}
+
+TEST_CASE("Function type — three levels of nesting", "[ccodegen][functype]")
+{
+    std::string src = R"(module FnDeep
+import Out;
+type {
+    Fn0: () -> i64;
+    Fn1: () -> Fn0;
+    Fn2: () -> Fn1;
+}
+fn getValue() -> i64 {
+    return 42;
+}
+fn makeLevel1() -> Fn0 {
+    return getValue;
+}
+fn makeLevel2() -> Fn1 {
+    return makeLevel1;
+}
+fn init() -> void
+var {
+    l2: Fn2;
+    l1: Fn1;
+    l0: Fn0;
+}
+{
+    l2 = makeLevel2;
+    l1 = l2();
+    l0 = l1();
+    Out.WriteInt(l0());
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("FnDeep", src, true) == "42\n");
+}
+
+TEST_CASE("Function type — parameterized factory", "[ccodegen][functype]")
+{
+    std::string src = R"(module FnFactory
+import Out;
+type {
+    IntToInt: (x: i64) -> i64;
+}
+fn add10(x: i64) -> i64 {
+    return x + 10;
+}
+fn mul5(x: i64) -> i64 {
+    return x * 5;
+}
+fn pick(which: i64) -> IntToInt
+var result: IntToInt;
+{
+    if which == 0 {
+        result = add10;
+    } else {
+        result = mul5;
+    }
+    return result;
+}
+fn init() -> void
+var {
+    f: IntToInt;
+}
+{
+    f = pick(0);
+    Out.WriteInt(f(3));
+    Out.WriteLn();
+    f = pick(1);
+    Out.WriteInt(f(3));
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("FnFactory", src, true) == "13\n15\n");
+}
+
+TEST_CASE("Function type — array of function pointers", "[ccodegen][functype]")
+{
+    std::string src = R"(module FnArray
+import Out;
+type {
+    UnaryOp: (x: i64) -> i64;
+}
+fn negate(x: i64) -> i64 {
+    return -x;
+}
+fn double(x: i64) -> i64 {
+    return x * 2;
+}
+fn square(x: i64) -> i64 {
+    return x * x;
+}
+fn init() -> void
+var {
+    ops: UnaryOp[3];
+    i: i64;
+}
+{
+    ops[0] = negate;
+    ops[1] = double;
+    ops[2] = square;
+    for (i = 0, 2, 1) {
+        Out.WriteInt(ops[i](5));
+        Out.WriteLn();
+    }
+}
+)";
+    REQUIRE(transpileCompileRun("FnArray", src, true) == "-5\n10\n25\n");
+}
