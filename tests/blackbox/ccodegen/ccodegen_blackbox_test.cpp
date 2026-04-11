@@ -9,6 +9,8 @@ namespace fs = std::filesystem;
 
 static fs::path obould_bin;
 static fs::path stdlib_dir;
+static fs::path gc_include_dir;
+static fs::path gc_lib_dir;
 
 static fs::path getObould()
 {
@@ -25,6 +27,20 @@ static fs::path getStdlibDir()
     stdlib_dir = fs::path(OBOULD_STDLIB_DIR);
     REQUIRE(fs::exists(stdlib_dir / "Out.c"));
     return stdlib_dir;
+}
+
+static fs::path getGcIncludeDir()
+{
+    if (!gc_include_dir.empty()) return gc_include_dir;
+    gc_include_dir = fs::path(OBOULD_GC_INCLUDE_DIR);
+    return gc_include_dir;
+}
+
+static fs::path getGcLibDir()
+{
+    if (!gc_lib_dir.empty()) return gc_lib_dir;
+    gc_lib_dir = fs::path(OBOULD_GC_LIB_DIR);
+    return gc_lib_dir;
 }
 
 static std::string transpileCompileRun(const std::string& moduleName,
@@ -68,11 +84,13 @@ static std::string transpileCompileRun(const std::string& moduleName,
 
     // Compile
     auto binPath = tmpDir / moduleName;
-    std::string compileCmd = "cc -Wno-incompatible-pointer-types -o " +
-        binPath.string() + " " + cPath.string();
+    std::string compileCmd = "cc -Wno-incompatible-pointer-types"
+        " -I" + getGcIncludeDir().string() +
+        " -o " + binPath.string() + " " + cPath.string();
     if (needsOut) {
         compileCmd += " " + (tmpDir / "Out.c").string();
     }
+    compileCmd += " " + (getGcLibDir() / "libgc.a").string();
     compileCmd += " 2>&1";
     REQUIRE(std::system(compileCmd.c_str()) == 0);
 
@@ -141,10 +159,13 @@ static std::string multiModuleRun(const std::vector<ModuleSource>& libs,
     cFiles.push_back(tmpDir / (main.name + ".c"));
 
     auto binPath = tmpDir / main.name;
-    std::string compileCmd = "cc -Wno-incompatible-pointer-types -o " + binPath.string();
+    std::string compileCmd = "cc -Wno-incompatible-pointer-types"
+        " -I" + getGcIncludeDir().string() +
+        " -o " + binPath.string();
     for (auto& cf : cFiles) {
         compileCmd += " " + cf.string();
     }
+    compileCmd += " " + (getGcLibDir() / "libgc.a").string();
     compileCmd += " 2>&1";
     REQUIRE(std::system(compileCmd.c_str()) == 0);
 
