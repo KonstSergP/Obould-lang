@@ -211,6 +211,9 @@ int main(int argc, char** argv)
            .help("Directories to search for imported symbol files (can be used multiple times)")
            .append();
 
+    program.add_argument("--obj")
+           .help("Object files to link (.o)")
+           .append();
 
     try {
         program.parse_args(argc, argv);
@@ -239,6 +242,7 @@ int main(int argc, char** argv)
     auto optLevel = getOptLevel(program);
 
     auto inputFiles = program.get<std::vector<std::string>>("input_files");
+    auto objFilesFromFlag = program.get<std::vector<std::string>>("obj");
     if (inputFiles.empty()) {
         std::cerr << "Error: input file is required." << "\n";
         return 1;
@@ -254,7 +258,7 @@ int main(int argc, char** argv)
     }
 
     std::vector<std::string> oblFiles;
-    std::vector<std::string> objFiles;
+    std::vector objFiles(objFilesFromFlag.begin(), objFilesFromFlag.end());
     for (const auto& file : inputFiles) {
         auto ext = fs::path(file).extension().string();
         if (ext == ".obl") {
