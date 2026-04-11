@@ -111,7 +111,7 @@ cc -o out/my_program out/MyProgram.c out/Out.c
 # 1. Создать выходную директорию
 mkdir -p out
 
-# 2. Скопировать стандартную библиотеку
+# 2. Скопировать стандартную библиотеку на примере модуля Out
 cp stdlib/Out.h stdlib/Out.c stdlib/Out.json out/
 mkdir -p out/.obould
 cp stdlib/Out.json out/.obould/
