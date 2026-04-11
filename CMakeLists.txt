@@ -153,6 +153,8 @@ if (O_TESTS)
         target_compile_definitions(blackbox_ccodegen_tests PRIVATE
                 OBOULD_BUILD_DIR="${CMAKE_BINARY_DIR}"
                 OBOULD_STDLIB_DIR="${CMAKE_SOURCE_DIR}/stdlib"
+                OBOULD_GC_INCLUDE_DIR="${bdwgc_SOURCE_DIR}/include"
+                OBOULD_GC_LIB_DIR="${CMAKE_BINARY_DIR}/lib"
         )
         target_link_libraries(blackbox_ccodegen_tests PRIVATE Catch2::Catch2WithMain)
         catch_discover_tests(blackbox_ccodegen_tests TEST_PREFIX "blackbox/")
