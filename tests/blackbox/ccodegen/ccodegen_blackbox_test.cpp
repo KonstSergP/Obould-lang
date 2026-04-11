@@ -44,8 +44,9 @@ static fs::path getGcLibDir()
 }
 
 static std::string transpileCompileRun(const std::string& moduleName,
-                                       const std::string& source,
-                                       bool needsOut = false)
+                                         const std::string& source,
+                                         const std::vector<std::string>& stdlibs,
+                                         const std::string& stdinData = "")
 {
     auto tmpDir = fs::temp_directory_path() / ("obould_bb_" + moduleName + "_" +
         std::to_string(std::hash<std::string>{}(source)));
@@ -58,18 +59,19 @@ static std::string transpileCompileRun(const std::string& moduleName,
         f << source;
     }
 
-    if (needsOut) {
-        fs::copy_file(getStdlibDir() / "Out.h", tmpDir / "Out.h",
-                       fs::copy_options::overwrite_existing);
-        fs::copy_file(getStdlibDir() / "Out.c", tmpDir / "Out.c",
-                       fs::copy_options::overwrite_existing);
-        auto symDir = tmpDir / ".obould";
+    auto symDir = tmpDir / ".obould";
+    if (!stdlibs.empty()) {
         fs::create_directories(symDir);
-        fs::copy_file(getStdlibDir() / "Out.json", symDir / "Out.json",
+    }
+    for (auto& lib : stdlibs) {
+        fs::copy_file(getStdlibDir() / (lib + ".h"), tmpDir / (lib + ".h"),
+                       fs::copy_options::overwrite_existing);
+        fs::copy_file(getStdlibDir() / (lib + ".c"), tmpDir / (lib + ".c"),
+                       fs::copy_options::overwrite_existing);
+        fs::copy_file(getStdlibDir() / (lib + ".json"), symDir / (lib + ".json"),
                        fs::copy_options::overwrite_existing);
     }
 
-    // Transpile: obould <file> --emit-c -o <dir> --main
     std::string transpileCmd = "cd " + tmpDir.string() + " && " +
         getObould().string() +
         " " + oblPath.string() +
@@ -82,20 +84,26 @@ static std::string transpileCompileRun(const std::string& moduleName,
     REQUIRE(fs::exists(hPath));
     REQUIRE(fs::exists(cPath));
 
-    // Compile
     auto binPath = tmpDir / moduleName;
     std::string compileCmd = "cc -Wno-incompatible-pointer-types"
         " -I" + getGcIncludeDir().string() +
         " -o " + binPath.string() + " " + cPath.string();
-    if (needsOut) {
-        compileCmd += " " + (tmpDir / "Out.c").string();
+    for (auto& lib : stdlibs) {
+        compileCmd += " " + (tmpDir / (lib + ".c")).string();
     }
     compileCmd += " " + (getGcLibDir() / "libgc.a").string();
     compileCmd += " 2>&1";
     REQUIRE(std::system(compileCmd.c_str()) == 0);
 
     auto outPath = tmpDir / "stdout.txt";
-    std::string runCmd = binPath.string() + " > " + outPath.string() + " 2>&1";
+    std::string runCmd;
+    if (!stdinData.empty()) {
+        auto inPath = tmpDir / "stdin.txt";
+        { std::ofstream inf(inPath); inf << stdinData; }
+        runCmd = binPath.string() + " < " + inPath.string() + " > " + outPath.string() + " 2>&1";
+    } else {
+        runCmd = binPath.string() + " > " + outPath.string() + " 2>&1";
+    }
     int rc = std::system(runCmd.c_str());
     REQUIRE(rc == 0);
 
@@ -190,7 +198,7 @@ fn init() -> void {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("Hello", src, true) == "42\n");
+    REQUIRE(transpileCompileRun("Hello", src, {"Out"}) == "42\n");
 }
 
 TEST_CASE("Arithmetic expressions", "[ccodegen][expr]")
@@ -208,7 +216,7 @@ fn init() -> void {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("Arith", src, true) == "14\n10\n2\n7\n");
+    REQUIRE(transpileCompileRun("Arith", src, {"Out"}) == "14\n10\n2\n7\n");
 }
 
 TEST_CASE("Unary operators", "[ccodegen][expr]")
@@ -225,7 +233,7 @@ var x: i64;
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("Unary", src, true) == "-5\n5\n");
+    REQUIRE(transpileCompileRun("Unary", src, {"Out"}) == "-5\n5\n");
 }
 
 TEST_CASE("Local variables and assignment", "[ccodegen][var]")
@@ -246,7 +254,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("Vars", src, true) == "30\n");
+    REQUIRE(transpileCompileRun("Vars", src, {"Out"}) == "30\n");
 }
 
 TEST_CASE("Constants", "[ccodegen][const]")
@@ -262,7 +270,7 @@ fn init() -> void {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("Consts", src, true) == "300\n");
+    REQUIRE(transpileCompileRun("Consts", src, {"Out"}) == "300\n");
 }
 
 TEST_CASE("Global variables", "[ccodegen][var]")
@@ -276,7 +284,7 @@ fn init() -> void {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("Globals", src, true) == "99\n");
+    REQUIRE(transpileCompileRun("Globals", src, {"Out"}) == "99\n");
 }
 
 TEST_CASE("If-else", "[ccodegen][control]")
@@ -299,7 +307,7 @@ fn init() -> void {
     printSign(-3);
 }
 )";
-    REQUIRE(transpileCompileRun("IfElse", src, true) == "1\n0\n-1\n");
+    REQUIRE(transpileCompileRun("IfElse", src, {"Out"}) == "1\n0\n-1\n");
 }
 
 TEST_CASE("While loop", "[ccodegen][control]")
@@ -317,7 +325,7 @@ var i: i64;
     }
 }
 )";
-    REQUIRE(transpileCompileRun("WhileLoop", src, true) == "0\n1\n2\n3\n4\n");
+    REQUIRE(transpileCompileRun("WhileLoop", src, {"Out"}) == "0\n1\n2\n3\n4\n");
 }
 
 TEST_CASE("Do-while loop", "[ccodegen][control]")
@@ -335,7 +343,7 @@ var i: i64;
     } while i <= 16;
 }
 )";
-    REQUIRE(transpileCompileRun("DoWhile", src, true) == "1\n2\n4\n8\n16\n");
+    REQUIRE(transpileCompileRun("DoWhile", src, {"Out"}) == "1\n2\n4\n8\n16\n");
 }
 
 TEST_CASE("For loop", "[ccodegen][control]")
@@ -356,7 +364,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("ForLoop", src, true) == "55\n");
+    REQUIRE(transpileCompileRun("ForLoop", src, {"Out"}) == "55\n");
 }
 
 TEST_CASE("For loop with step", "[ccodegen][control]")
@@ -372,7 +380,7 @@ var i: i64;
     }
 }
 )";
-    REQUIRE(transpileCompileRun("ForStep", src, true) == "0\n5\n10\n15\n20\n");
+    REQUIRE(transpileCompileRun("ForStep", src, {"Out"}) == "0\n5\n10\n15\n20\n");
 }
 
 TEST_CASE("Switch statement", "[ccodegen][control]")
@@ -396,7 +404,7 @@ fn init() -> void {
     classify(3);
 }
 )";
-    REQUIRE(transpileCompileRun("Switch", src, true) == "10\n20\n30\n");
+    REQUIRE(transpileCompileRun("Switch", src, {"Out"}) == "10\n20\n30\n");
 }
 
 TEST_CASE("Switch with range", "[ccodegen][control]")
@@ -416,7 +424,7 @@ var x: i64;
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("SwitchRange", src, true) == "2\n");
+    REQUIRE(transpileCompileRun("SwitchRange", src, {"Out"}) == "2\n");
 }
 
 TEST_CASE("Function call and return value", "[ccodegen][proc]")
@@ -431,7 +439,7 @@ fn init() -> void {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("FuncCall", src, true) == "10\n");
+    REQUIRE(transpileCompileRun("FuncCall", src, {"Out"}) == "10\n");
 }
 
 TEST_CASE("Multiple functions with local vars", "[ccodegen][proc]")
@@ -454,7 +462,7 @@ fn init() -> void {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("MultiFn", src, true) == "25\n27\n");
+    REQUIRE(transpileCompileRun("MultiFn", src, {"Out"}) == "25\n27\n");
 }
 
 TEST_CASE("Recursion — factorial", "[ccodegen][proc]")
@@ -476,7 +484,7 @@ fn init() -> void {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("Fact", src, true) == "3628800\n");
+    REQUIRE(transpileCompileRun("Fact", src, {"Out"}) == "3628800\n");
 }
 
 TEST_CASE("Recursion — fibonacci", "[ccodegen][proc]")
@@ -498,7 +506,7 @@ fn init() -> void {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("Fib", src, true) == "55\n");
+    REQUIRE(transpileCompileRun("Fib", src, {"Out"}) == "55\n");
 }
 
 TEST_CASE("Reference parameters", "[ccodegen][ref]")
@@ -527,7 +535,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("RefParam", src, true) == "20\n10\n");
+    REQUIRE(transpileCompileRun("RefParam", src, {"Out"}) == "20\n10\n");
 }
 
 TEST_CASE("Reference parameter pass-through", "[ccodegen][ref]")
@@ -550,7 +558,7 @@ var n: i64;
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("RefPass", src, true) == "2\n");
+    REQUIRE(transpileCompileRun("RefPass", src, {"Out"}) == "2\n");
 }
 
 TEST_CASE("Array — basic indexing", "[ccodegen][array]")
@@ -572,7 +580,7 @@ var {
     }
 }
 )";
-    REQUIRE(transpileCompileRun("ArrBasic", src, true) == "0\n1\n4\n9\n16\n");
+    REQUIRE(transpileCompileRun("ArrBasic", src, {"Out"}) == "0\n1\n4\n9\n16\n");
 }
 
 TEST_CASE("Array — sum elements", "[ccodegen][array]")
@@ -599,7 +607,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("ArrSum", src, true) == "15\n");
+    REQUIRE(transpileCompileRun("ArrSum", src, {"Out"}) == "15\n");
 }
 
 TEST_CASE("Boolean expressions", "[ccodegen][expr]")
@@ -637,7 +645,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("BoolExpr", src, true) == "1\n1\n1\n");
+    REQUIRE(transpileCompileRun("BoolExpr", src, {"Out"}) == "1\n1\n1\n");
 }
 
 TEST_CASE("Nested control flow", "[ccodegen][control]")
@@ -663,7 +671,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("Nested", src, true) == "5\n");
+    REQUIRE(transpileCompileRun("Nested", src, {"Out"}) == "5\n");
 }
 
 TEST_CASE("Global variable modified by function", "[ccodegen][var]")
@@ -683,7 +691,7 @@ fn init() -> void {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("GlobFn", src, true) == "3\n");
+    REQUIRE(transpileCompileRun("GlobFn", src, {"Out"}) == "3\n");
 }
 
 TEST_CASE("Multiple constants and globals together", "[ccodegen][var]")
@@ -701,7 +709,7 @@ fn init() -> void {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("ConstGlob", src, true) == "130\n");
+    REQUIRE(transpileCompileRun("ConstGlob", src, {"Out"}) == "130\n");
 }
 
 TEST_CASE("Integer division (div)", "[ccodegen][expr]")
@@ -715,7 +723,7 @@ fn init() -> void {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("IntDiv", src, true) == "3\n33\n");
+    REQUIRE(transpileCompileRun("IntDiv", src, {"Out"}) == "3\n33\n");
 }
 
 TEST_CASE("Complex expression with parentheses", "[ccodegen][expr]")
@@ -729,7 +737,7 @@ fn init() -> void {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("ComplexExpr", src, true) == "25\n5\n");
+    REQUIRE(transpileCompileRun("ComplexExpr", src, {"Out"}) == "25\n5\n");
 }
 
 TEST_CASE("Exported function", "[ccodegen][proc]")
@@ -744,7 +752,7 @@ fn init() -> void {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("ExportFn", src, true) == "50\n");
+    REQUIRE(transpileCompileRun("ExportFn", src, {"Out"}) == "50\n");
 }
 
 TEST_CASE("Abs via if-else (no early return)", "[ccodegen][proc]")
@@ -768,7 +776,7 @@ fn init() -> void {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("AbsFn", src, true) == "42\n17\n");
+    REQUIRE(transpileCompileRun("AbsFn", src, {"Out"}) == "42\n17\n");
 }
 
 TEST_CASE("While-elif", "[ccodegen][control]")
@@ -794,7 +802,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("WhileElif", src, true) == "3\n3\n");
+    REQUIRE(transpileCompileRun("WhileElif", src, {"Out"}) == "3\n3\n");
 }
 
 TEST_CASE("Bubble sort with arrays and refs", "[ccodegen][integration]")
@@ -835,7 +843,7 @@ var {
     }
 }
 )";
-    REQUIRE(transpileCompileRun("BubbleSort", src, true) == "1\n2\n3\n4\n5\n");
+    REQUIRE(transpileCompileRun("BubbleSort", src, {"Out"}) == "1\n2\n3\n4\n5\n");
 }
 
 TEST_CASE("GCD — Euclidean algorithm", "[ccodegen][integration]")
@@ -863,7 +871,7 @@ fn init() -> void {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("GCD", src, true) == "6\n25\n");
+    REQUIRE(transpileCompileRun("GCD", src, {"Out"}) == "6\n25\n");
 }
 
 TEST_CASE("For counter visible after loop", "[ccodegen][control]")
@@ -888,7 +896,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("ForAfter", src, true) == "68\n13\n");
+    REQUIRE(transpileCompileRun("ForAfter", src, {"Out"}) == "68\n13\n");
 }
 
 TEST_CASE("Multi-module — import custom library", "[ccodegen][multimodule]")
@@ -1050,7 +1058,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("StructFields", src, true) == "30\n6\n");
+    REQUIRE(transpileCompileRun("StructFields", src, {"Out"}) == "30\n6\n");
 }
 
 TEST_CASE("RTTI — is operator", "[ccodegen][rtti]")
@@ -1104,7 +1112,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("IsOp", src, true) == "1\n2\n0\n");
+    REQUIRE(transpileCompileRun("IsOp", src, {"Out"}) == "1\n2\n0\n");
 }
 
 TEST_CASE("RTTI — type guard with field access", "[ccodegen][rtti]")
@@ -1149,7 +1157,7 @@ var {
     Describe(c);
 }
 )";
-    REQUIRE(transpileCompileRun("TypeGuardAccess", src, true) == "490\n41\n");
+    REQUIRE(transpileCompileRun("TypeGuardAccess", src, {"Out"}) == "490\n41\n");
 }
 
 TEST_CASE("RTTI — three-level inheritance chain", "[ccodegen][rtti]")
@@ -1203,7 +1211,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("ThreeLevel", src, true) == "1\n2\n3\n");
+    REQUIRE(transpileCompileRun("ThreeLevel", src, {"Out"}) == "1\n2\n3\n");
 }
 
 TEST_CASE("RTTI — type guard reading inherited fields", "[ccodegen][rtti]")
@@ -1241,7 +1249,7 @@ var {
     PrintSpeed(v);
 }
 )";
-    REQUIRE(transpileCompileRun("InheritedFields", src, true) == "1204\n60\n");
+    REQUIRE(transpileCompileRun("InheritedFields", src, {"Out"}) == "1204\n60\n");
 }
 
 TEST_CASE("Output string type support", "[ccodegen][output]")
@@ -1258,7 +1266,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("OutputString", src, true) == "Hello, World!\n");
+    REQUIRE(transpileCompileRun("OutputString", src, {"Out"}) == "Hello, World!\n");
 }
 
 TEST_CASE("Open array — sum with len", "[ccodegen][openarray]")
@@ -1291,7 +1299,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("OABasic", src, true) == "15\n");
+    REQUIRE(transpileCompileRun("OABasic", src, {"Out"}) == "15\n");
 }
 
 TEST_CASE("Open array — print all elements via len", "[ccodegen][openarray]")
@@ -1317,7 +1325,7 @@ var {
     printArray(a);
 }
 )";
-    REQUIRE(transpileCompileRun("OARead", src, true) == "10\n20\n30\n");
+    REQUIRE(transpileCompileRun("OARead", src, {"Out"}) == "10\n20\n30\n");
 }
 
 TEST_CASE("Open array — multiple open array params with len", "[ccodegen][openarray]")
@@ -1354,7 +1362,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("OAMulti", src, true) == "36\n");
+    REQUIRE(transpileCompileRun("OAMulti", src, {"Out"}) == "36\n");
 }
 
 TEST_CASE("Open array — open array with value param and len", "[ccodegen][openarray]")
@@ -1385,7 +1393,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("OAMixed", src, true) == "60\n");
+    REQUIRE(transpileCompileRun("OAMixed", src, {"Out"}) == "60\n");
 }
 
 TEST_CASE("Open array — exported function with len", "[ccodegen][openarray]")
@@ -1419,7 +1427,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("OAExport", src, true) == "9\n");
+    REQUIRE(transpileCompileRun("OAExport", src, {"Out"}) == "9\n");
 }
 
 TEST_CASE("Open array — global array with len", "[ccodegen][openarray]")
@@ -1448,7 +1456,7 @@ fn init() -> void {
     printSum(g);
 }
 )";
-    REQUIRE(transpileCompileRun("OAGlobal", src, true) == "1000\n");
+    REQUIRE(transpileCompileRun("OAGlobal", src, {"Out"}) == "1000\n");
 }
 
 TEST_CASE("Open array — single element array", "[ccodegen][openarray]")
@@ -1468,7 +1476,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("OASingle", src, true) == "42\n");
+    REQUIRE(transpileCompileRun("OASingle", src, {"Out"}) == "42\n");
 }
 
 TEST_CASE("Open array — different sizes to same function with len", "[ccodegen][openarray]")
@@ -1514,7 +1522,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("OASizes", src, true) == "3\n100\n6\n");
+    REQUIRE(transpileCompileRun("OASizes", src, {"Out"}) == "3\n100\n6\n");
 }
 
 TEST_CASE("Open array — search with len", "[ccodegen][openarray]")
@@ -1551,7 +1559,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("OASearch", src, true) == "2\n-1\n");
+    REQUIRE(transpileCompileRun("OASearch", src, {"Out"}) == "2\n-1\n");
 }
 
 TEST_CASE("Open array — pass-through to another open array function", "[ccodegen][openarray]")
@@ -1585,7 +1593,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("OAPassThru", src, true) == "60\n");
+    REQUIRE(transpileCompileRun("OAPassThru", src, {"Out"}) == "60\n");
 }
 
 TEST_CASE("Open array — 2D all dimensions via len", "[ccodegen][openarray]")
@@ -1606,7 +1614,7 @@ var {
     printDims(m);
 }
 )";
-    REQUIRE(transpileCompileRun("OA2D", src, true) == "3\n4\n");
+    REQUIRE(transpileCompileRun("OA2D", src, {"Out"}) == "3\n4\n");
 }
 
 TEST_CASE("Open array — 3D all dimensions via len", "[ccodegen][openarray]")
@@ -1629,7 +1637,7 @@ var {
     printDims(m);
 }
 )";
-    REQUIRE(transpileCompileRun("OA3D", src, true) == "3\n4\n5\n");
+    REQUIRE(transpileCompileRun("OA3D", src, {"Out"}) == "3\n4\n5\n");
 }
 
 TEST_CASE("Open array — 2D pass-through with len", "[ccodegen][openarray]")
@@ -1653,7 +1661,7 @@ var {
     wrapper(m);
 }
 )";
-    REQUIRE(transpileCompileRun("OA2DPass", src, true) == "5\n3\n");
+    REQUIRE(transpileCompileRun("OA2DPass", src, {"Out"}) == "5\n3\n");
 }
 
 TEST_CASE("Open array — multi-module with len", "[ccodegen][openarray][multimodule]")
@@ -1727,7 +1735,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("LenFixed", src, true) == "5\n10\n");
+    REQUIRE(transpileCompileRun("LenFixed", src, {"Out"}) == "5\n10\n");
 }
 
 TEST_CASE("Builtin len — open array parameter", "[ccodegen][builtin][len]")
@@ -1748,7 +1756,7 @@ var {
     printLen(b);
 }
 )";
-    REQUIRE(transpileCompileRun("LenOpen", src, true) == "7\n3\n");
+    REQUIRE(transpileCompileRun("LenOpen", src, {"Out"}) == "7\n3\n");
 }
 
 TEST_CASE("Builtin len — iterate open array with len", "[ccodegen][builtin][len]")
@@ -1775,7 +1783,7 @@ var {
     printAll(a);
 }
 )";
-    REQUIRE(transpileCompileRun("LenIter", src, true) == "10\n20\n30\n40\n");
+    REQUIRE(transpileCompileRun("LenIter", src, {"Out"}) == "10\n20\n30\n40\n");
 }
 
 TEST_CASE("Builtin len — char array (string)", "[ccodegen][builtin][len]")
@@ -1792,7 +1800,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("LenStr", src, true) == "6\n");
+    REQUIRE(transpileCompileRun("LenStr", src, {"Out"}) == "6\n");
 }
 
 TEST_CASE("Builtin new — allocate and use struct pointer", "[ccodegen][builtin][new]")
@@ -1815,7 +1823,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("NewBasic", src, true) == "42\n");
+    REQUIRE(transpileCompileRun("NewBasic", src, {"Out"}) == "42\n");
 }
 
 TEST_CASE("Builtin new — multiple allocations", "[ccodegen][builtin][new]")
@@ -1845,7 +1853,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("NewMulti", src, true) == "3\n30\n");
+    REQUIRE(transpileCompileRun("NewMulti", src, {"Out"}) == "3\n30\n");
 }
 
 TEST_CASE("Builtin new — pointer to nil check", "[ccodegen][builtin][new]")
@@ -1875,7 +1883,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("NewNil", src, true) == "99\n0\n");
+    REQUIRE(transpileCompileRun("NewNil", src, {"Out"}) == "99\n0\n");
 }
 
 TEST_CASE("Builtin new — calloc zeroes fields", "[ccodegen][builtin][new]")
@@ -1904,7 +1912,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("NewZero", src, true) == "0\n0\n0\n100\n");
+    REQUIRE(transpileCompileRun("NewZero", src, {"Out"}) == "0\n0\n0\n100\n");
 }
 
 TEST_CASE("Builtin assert — passing assertion", "[ccodegen][builtin][assert]")
@@ -1922,7 +1930,7 @@ var x: i64;
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("AssertPass", src, true) == "42\n");
+    REQUIRE(transpileCompileRun("AssertPass", src, {"Out"}) == "42\n");
 }
 
 TEST_CASE("Builtin assert — with boolean expression", "[ccodegen][builtin][assert]")
@@ -1944,7 +1952,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("AssertBool", src, true) == "30\n");
+    REQUIRE(transpileCompileRun("AssertBool", src, {"Out"}) == "30\n");
 }
 
 TEST_CASE("Builtin assert — with string message", "[ccodegen][builtin][assert]")
@@ -1963,7 +1971,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("AssertMsg", src, true) == "10\n");
+    REQUIRE(transpileCompileRun("AssertMsg", src, {"Out"}) == "10\n");
 }
 
 TEST_CASE("Forward decl — type alias before struct definition", "[ccodegen][fwddecl]")
@@ -1986,7 +1994,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("FwdAlias", src, true) == "42\n");
+    REQUIRE(transpileCompileRun("FwdAlias", src, {"Out"}) == "42\n");
 }
 
 TEST_CASE("Forward decl — pointer to later-declared struct", "[ccodegen][fwddecl]")
@@ -2013,7 +2021,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("FwdPtr", src, true) == "77\n");
+    REQUIRE(transpileCompileRun("FwdPtr", src, {"Out"}) == "77\n");
 }
 
 TEST_CASE("Forward decl — struct with inheritance using alias", "[ccodegen][fwddecl]")
@@ -2041,7 +2049,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("FwdInherit", src, true) == "4\n1\n");
+    REQUIRE(transpileCompileRun("FwdInherit", src, {"Out"}) == "4\n1\n");
 }
 
 TEST_CASE("Linked list — build and traverse", "[ccodegen][linkedlist]")
@@ -2079,7 +2087,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("LList", src, true) == "150\n");
+    REQUIRE(transpileCompileRun("LList", src, {"Out"}) == "150\n");
 }
 
 TEST_CASE("Linked list — count and last element", "[ccodegen][linkedlist]")
@@ -2140,7 +2148,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("LListOps", src, true) == "4\n1\n");
+    REQUIRE(transpileCompileRun("LListOps", src, {"Out"}) == "4\n1\n");
 }
 
 TEST_CASE("Function type — basic call through variable", "[ccodegen][functype]")
@@ -2163,7 +2171,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("FnBasic", src, true) == "10\n");
+    REQUIRE(transpileCompileRun("FnBasic", src, {"Out"}) == "10\n");
 }
 
 TEST_CASE("Function type — swap function at runtime", "[ccodegen][functype]")
@@ -2195,7 +2203,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("FnSwap", src, true) == "7\n12\n");
+    REQUIRE(transpileCompileRun("FnSwap", src, {"Out"}) == "7\n12\n");
 }
 
 TEST_CASE("Function type — function returning function", "[ccodegen][functype]")
@@ -2234,7 +2242,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("FnRet", src, true) == "10\n15\n");
+    REQUIRE(transpileCompileRun("FnRet", src, {"Out"}) == "10\n15\n");
 }
 
 TEST_CASE("Function type — three levels of nesting", "[ccodegen][functype]")
@@ -2269,7 +2277,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("FnDeep", src, true) == "42\n");
+    REQUIRE(transpileCompileRun("FnDeep", src, {"Out"}) == "42\n");
 }
 
 TEST_CASE("Function type — parameterized factory", "[ccodegen][functype]")
@@ -2308,7 +2316,7 @@ var {
     Out.WriteLn();
 }
 )";
-    REQUIRE(transpileCompileRun("FnFactory", src, true) == "13\n15\n");
+    REQUIRE(transpileCompileRun("FnFactory", src, {"Out"}) == "13\n15\n");
 }
 
 TEST_CASE("Function type — array of function pointers", "[ccodegen][functype]")
@@ -2342,5 +2350,218 @@ var {
     }
 }
 )";
-    REQUIRE(transpileCompileRun("FnArray", src, true) == "-5\n10\n25\n");
+    REQUIRE(transpileCompileRun("FnArray", src, {"Out"}) == "-5\n10\n25\n");
+}
+
+TEST_CASE("Random — Seed and NextInt deterministic", "[ccodegen][stdlib][random]")
+{
+    std::string src = R"(module RndTest
+import Random, Out;
+fn init() -> void
+var i: i64;
+{
+    Random.Seed(42);
+    for (i = 0, 4, 1) {
+        Out.WriteInt(Random.NextInt(100));
+        Out.WriteLn();
+    }
+}
+)";
+    REQUIRE(transpileCompileRun("RndTest", src, {"Out", "Random"}) == "6\n45\n29\n82\n25\n");
+}
+
+TEST_CASE("Random — NextBool deterministic", "[ccodegen][stdlib][random]")
+{
+    std::string src = R"(module RndBool
+import Random, Out;
+fn init() -> void
+var i: i64;
+{
+    Random.Seed(42);
+    for (i = 0, 3, 1) {
+        if Random.NextBool() {
+            Out.WriteInt(1);
+        } else {
+            Out.WriteInt(0);
+        }
+        Out.WriteLn();
+    }
+}
+)";
+    REQUIRE(transpileCompileRun("RndBool", src, {"Out", "Random"}) == "0\n0\n1\n1\n");
+}
+
+TEST_CASE("Random — same seed reproduces sequence", "[ccodegen][stdlib][random]")
+{
+    std::string src = R"(module RndRepro
+import Random, Out;
+fn init() -> void
+var {
+    a: i64;
+    b: i64;
+}
+{
+    Random.Seed(123);
+    a = Random.NextInt(1000);
+    Random.Seed(123);
+    b = Random.NextInt(1000);
+    if a == b {
+        Out.WriteInt(1);
+    } else {
+        Out.WriteInt(0);
+    }
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("RndRepro", src, {"Out", "Random"}) == "1\n");
+}
+
+TEST_CASE("In — ReadInt from stdin", "[ccodegen][stdlib][in]")
+{
+    std::string src = R"(module InInt
+import In, Out;
+fn init() -> void
+var {
+    a: i64;
+    b: i64;
+}
+{
+    a = In.ReadInt();
+    b = In.ReadInt();
+    Out.WriteInt(a + b);
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("InInt", src, {"Out", "In"}, "10 20\n") == "30\n");
+}
+
+TEST_CASE("In — ReadLine from stdin", "[ccodegen][stdlib][in]")
+{
+    std::string src = R"(module InLine
+import In, Out;
+fn init() -> void
+var {
+    buf: char[64];
+}
+{
+    In.ReadLine(buf);
+    Out.WriteString(buf);
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("InLine", src, {"Out", "In"}, "Hello World\n") == "Hello World\n");
+}
+
+TEST_CASE("In — ReadChar from stdin", "[ccodegen][stdlib][in]")
+{
+    std::string src = R"(module InChar
+import In, Out;
+fn init() -> void
+var {
+    c: char;
+}
+{
+    c = In.ReadChar();
+    Out.WriteChar(c);
+    c = In.ReadChar();
+    Out.WriteChar(c);
+    c = In.ReadChar();
+    Out.WriteChar(c);
+    Out.WriteLn();
+}
+)";
+    REQUIRE(transpileCompileRun("InChar", src, {"Out", "In"}, "ABC") == "ABC\n");
+}
+
+TEST_CASE("Files — write and read back integers", "[ccodegen][stdlib][files]")
+{
+    std::string src = R"(module FilesInt
+import Files, Out;
+fn init() -> void
+var {
+    f: Files.File;
+    r: Files.FileRider;
+    val: i64;
+}
+{
+    f = Files.Open("_test_int.bin", "wb");
+    Files.Set(r, f, 0);
+    Files.WriteInt64(r, 42);
+    Files.WriteInt64(r, 100);
+    Files.Close(f);
+
+    f = Files.Open("_test_int.bin", "rb");
+    Files.Set(r, f, 0);
+    Files.ReadInt64(r, val);
+    Out.WriteInt(val);
+    Out.WriteLn();
+    Files.ReadInt64(r, val);
+    Out.WriteInt(val);
+    Out.WriteLn();
+    Files.Close(f);
+}
+)";
+    REQUIRE(transpileCompileRun("FilesInt", src, {"Out", "Files"}) == "42\n100\n");
+}
+
+TEST_CASE("Files — write and read back bytes", "[ccodegen][stdlib][files]")
+{
+    std::string src = R"(module FilesByte
+import Files, Out;
+fn init() -> void
+var {
+    f: Files.File;
+    r: Files.FileRider;
+    b: byte;
+}
+{
+    f = Files.Open("_test_byte.bin", "wb");
+    Files.Set(r, f, 0);
+    Files.WriteByte(r, 65);
+    Files.WriteByte(r, 66);
+    Files.WriteByte(r, 67);
+    Files.Close(f);
+
+    f = Files.Open("_test_byte.bin", "rb");
+    Files.Set(r, f, 0);
+    Files.ReadByte(r, b);
+    Out.WriteInt(b);
+    Out.WriteLn();
+    Files.ReadByte(r, b);
+    Out.WriteInt(b);
+    Out.WriteLn();
+    Files.ReadByte(r, b);
+    Out.WriteInt(b);
+    Out.WriteLn();
+    Files.Close(f);
+}
+)";
+    REQUIRE(transpileCompileRun("FilesByte", src, {"Out", "Files"}) == "65\n66\n67\n");
+}
+
+TEST_CASE("Files — write and read back string", "[ccodegen][stdlib][files]")
+{
+    std::string src = R"(module FilesStr
+import Files, Out;
+fn init() -> void
+var {
+    f: Files.File;
+    r: Files.FileRider;
+    buf: char[64];
+}
+{
+    f = Files.Open("_test_str.bin", "wb");
+    Files.Set(r, f, 0);
+    Files.WriteString(r, "Hello");
+    Files.Close(f);
+
+    f = Files.Open("_test_str.bin", "rb");
+    Files.Set(r, f, 0);
+    Files.ReadString(r, buf);
+    Out.WriteString(buf);
+    Out.WriteLn();
+    Files.Close(f);
+}
+)";
+    REQUIRE(transpileCompileRun("FilesStr", src, {"Out", "Files"}) == "Hello\n");
 }
