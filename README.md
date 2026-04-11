@@ -1,71 +1,76 @@
 # Obould-lang
 
-Этот репозиторий содержит курсовой проект студентов 3 курса ПИ Петрова Константина и Чубенко Семёна -  компилятор языка
-программирования Обольд, состоящий из лексера, парсера, абстрактного синтаксического дерева, семантического анализа, а также генерации кода через LLVM IR и через язык Си.
-Обольд — статически типизированный модульный язык, повторяющий семантику языка Оберон-07, но имеющий C-подобный синтаксис. Основная идея проекта связана с проверкой восприятия данного языка современными программистами.
+Компилятор языка программирования Обольд — курсовой проект студентов 3-го курса ПИ Петрова Константина и Чубенко Семёна.
+
+Обольд — статически типизированный модульный язык, повторяющий семантику языка Оберон-07, но имеющий C-подобный синтаксис.
 
 ### [Описание языка](docs/spec/obould.pdf)
 
 ## Требования
 
 - CMake 3.14+
-- Компилятор с поддержкой C++17
 - LLVM 15+
+- Компилятор с поддержкой C++17
 
 ## Сборка
 
 ```bash
-cmake -S . -B build
-cmake --build build -j
+cmake -S . -B build && cmake --build build -j
 ```
 
-Если путь до llvm другой:
+Если LLVM установлен нестандартно:
 
 ```bash
-cmake -DLLVM_DIR="/home/user/путь/к/llvm-x/lib/cmake/llvm" -S . -B build
-cmake --build build -j
+cmake -DLLVM_DIR="/path/to/llvm-x/lib/cmake/llvm" -S . -B build && cmake --build build -j
 ```
 
+## Быстрый старт
 
-## Запуск
+Скомпилировать `.obl` файл в исполняемый и запустить:
 
 ```bash
-./build/obould --help
+./build/obould my_program.obl -m --link -o my_program
+./my_program
 ```
 
-Вывести токены:
+Флаг `-m`/`--main` — главный модуль (с функцией `init`).
+
+## Многомодульный проект
+
+Если программа состоит из нескольких модулей, нужно собрать каждый модуль отдельно, затем скомпоновать.
 
 ```bash
-./build/obould -t tests/sources/comprehensive_test.obl
+./build/obould Lib.obl -o out/Lib.o
+./build/obould Main.obl --main --link -S out --obj out/Lib.o -o app
+./app
 ```
 
-Построить и вывести AST:
+## Другие режимы
 
 ```bash
-./build/obould -a tests/sources/comprehensive_test.obl
+./build/obould --help           # справка
+./build/obould prog.obl -t      # вывести токены
+./build/obould prog.obl -a      # вывести AST
+./build/obould prog.obl -l      # вывести LLVM IR
 ```
 
-Сгенерировать и вывести LLVM IR:
+## Тесты
 
 ```bash
-./build/obould -l tests/sources/comprehensive_test.obl
+# Сборка с тестами
+cmake -DO_TESTS=ON -S . -B build && cmake --build build -j
+ctest --test-dir build
 ```
 
-Сгенерировать объектный файл
+## Транспиляция в Си
 
 ```bash
-./build/obould tests/sources/comprehensive_test.obl
+./build/obould prog.obl -c -o out/ --main   # .h / .c с main()
+cc -o prog out/Prog.c out/Out.c && ./prog   # компиляция и запуск
 ```
 
-Компиляция и запуск демонстрационных программ
+Компилятор может генерировать пару `.h` / `.c` вместо машинного кода.
 
-```bash
-./tests/run_tests.sh
-```
-
-## Транспилятор в Си
-
-Компилятор может транспилировать исходники Обольда в пару `.h` / `.c` файлов.
 
 ### Генерация C-кода
 
@@ -126,30 +131,4 @@ cc -o main Main.c MathLib.c Out.c
 
 # 7. Запустить
 ./main
-```
-
-### Именование символов
-
-Транспилятор использует манглирование имён формата `ob_{длина_модуля}{Модуль}_{Имя}`. Например, для модуля `Out` функция `WriteLn` получает имя `ob_3Out_WriteLn`.
-
-## Тесты
-
-### Сборка тестов
-
-```bash
-cmake -DO_TESTS=ON -S . -B build
-cmake --build build
-```
-
-### Варианты запуск тестов
-
-```bash
-# 1. Все тесты через ctest
-ctest --test-dir build
-
-# 2. Только blackbox-тесты транспилятора
-ctest --test-dir build -R blackbox
-
-# 3. Напрямую
-./build/blackbox_ccodegen_tests
 ```
