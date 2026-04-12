@@ -8,7 +8,7 @@ bool TypeInfo::isBaseTypeOf(const std::shared_ptr<TypeInfo>& other) const
     if (!other) return false;
     auto current = other.get();
     while (current) {
-        if (this == current) {
+        if (id != 0 && id == current->id) {
             return true;
         }
         current = current->baseType.get();
@@ -20,7 +20,7 @@ bool TypeInfo::isAssignableFrom(const std::shared_ptr<TypeInfo>& other) const
 {
     if (!other) return false;
 
-    if (this == other.get()) {
+    if (id != 0 && id == other->id) {
         return true;
     }
 
@@ -63,13 +63,13 @@ bool TypeInfo::isAssignableFrom(const std::shared_ptr<TypeInfo>& other) const
     case TypeKind::Array:
         if (isOpenArray) {
             if (other->kind == TypeKind::Array) {
-                return baseType.get() == other->baseType.get();
+                return baseType->id == other->baseType->id;
             }
         }
         return false;
 
     case TypeKind::Procedure:
-        if (!returnType->isAssignableFrom(other->returnType)) return false;
+        if (returnType->id != other->returnType->id) return false;
         if (parameters.size() != other->parameters.size()) return false;
 
         for (size_t i = 0; i < parameters.size(); ++i) {
@@ -78,15 +78,63 @@ bool TypeInfo::isAssignableFrom(const std::shared_ptr<TypeInfo>& other) const
 
             if (p1.isReference != p2.isReference) return false;
 
-            if (p1.isReference) {
-                if (p1.type.get() != p2.type.get()) return false;
-            }
-            else {
-                if (!p1.type->isAssignableFrom(p2.type)) return false;
+            if (p1.type->id != p2.type->id
+                && !p1.type->isArrayConvertibleFrom(p2.type))
+                return false;
+        }
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool TypeInfo::isReferenceAssignableFrom(const std::shared_ptr<TypeInfo>& other) const
+{
+    if (!other) return false;
+
+    if (id != 0 && id == other->id) {
+        return true;
+    }
+
+    if (kind != other->kind) {
+        return false;
+    }
+
+    switch (kind) {
+    case TypeKind::Pointer:
+        if (baseType && other->baseType) {
+            return baseType->isBaseTypeOf(other->baseType);
+        }
+        return false;
+
+    case TypeKind::Struct:
+        return isBaseTypeOf(other);
+
+    case TypeKind::Array:
+        if (isOpenArray) {
+            if (other->kind == TypeKind::Array) {
+                return baseType->id == other->baseType->id;
             }
         }
-    default:
+        return false;
+
+    case TypeKind::Procedure:
+        if (returnType->id != other->returnType->id) return false;
+        if (parameters.size() != other->parameters.size()) return false;
+
+        for (size_t i = 0; i < parameters.size(); ++i) {
+            const auto& p1 = parameters[i];
+            const auto& p2 = other->parameters[i];
+
+            if (p1.isReference != p2.isReference) return false;
+
+            if (p1.type->id != p2.type->id
+                && !p1.type->isArrayConvertibleFrom(p2.type))
+                return false;
+        }
         return true;
+    default:
+        return false;
     }
 }
 
@@ -94,11 +142,22 @@ bool TypeInfo::isArrayConvertibleFrom(const std::shared_ptr<TypeInfo>& other) co
 {
     if (!other) return false;
     if (kind != TypeKind::Array || other->kind != TypeKind::Array) return false;
-    if (!isOpenArray) return false;
+    if (!baseType || !other->baseType) return false;
 
-    if (baseType->isOpenArray) {
-        return baseType->isArrayConvertibleFrom(other->baseType);
+    if (isOpenArray) {
+        if (baseType->isOpenArray) {
+            return baseType->isArrayConvertibleFrom(other->baseType);
+        }
+        return baseType->id == other->baseType->id;
     }
-    return baseType == other->baseType;
+
+    if (other->isOpenArray) {
+        if (other->baseType->isOpenArray) {
+            return baseType->isArrayConvertibleFrom(other->baseType);
+        }
+        return baseType->id == other->baseType->id;
+    }
+
+    return false;
 }
 }

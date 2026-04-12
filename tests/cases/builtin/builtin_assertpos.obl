@@ -1,0 +1,101 @@
+module BuiltinAssertPositive
+
+const {
+    Value = 42;
+    Threshold = 100;
+}
+
+fn getPositive() -> i64 {
+    return 10;
+}
+
+fn isTrue() -> bool {
+    return true;
+}
+
+fn init() -> void
+var {
+    a: i64;
+    b: f64;
+    flag: bool;
+    msg: char[20];
+    arr: i64[5];
+}
+{
+    assert(true, "true literal");
+    assert(!false, "not false");
+
+    assert(1 == 1, "equality");
+    assert(1 != 2, "inequality");
+    assert(1 < 2, "less than");
+    assert(2 > 1, "greater than");
+    assert(!(1 > 1), "less or equal");
+    assert(!(2 < 1), "greater or equal");
+
+    a = 2 + 3;
+    assert(a == 5, "addition");
+    
+    a = 10 - 4;
+    assert(a == 6, "subtraction");
+    
+    a = 3 * 4;
+    assert(a == 12, "multiplication");
+    
+    a = 20 div 4;
+    assert(a == 5, "division");
+    
+    a = 17 mod 5;
+    assert(a == 2, "modulo");
+
+    b = 1.5 + 2.5;
+    assert(b == 4.0, "float addition");
+    
+    b = 10.0 / 3.0;
+    assert((b > 3.3) && (b < 3.4), "float division range");
+
+    flag = true && true;
+    assert(flag, "and both true");
+    
+    flag = true || false;
+    assert(flag, "or one true");
+    
+    flag = !false;
+    assert(flag, "not false");
+    
+    flag = (1 < 2) && (3 > 2);
+    assert(flag, "compound boolean");
+
+    assert(Value == 42, "constant value");
+    assert(Value < Threshold, "constant comparison");
+
+    assert(getPositive() == 10, "function return");
+    assert(isTrue(), "boolean function");
+
+    arr[0] = 100;
+    arr[1] = 200;
+    arr[2] = 300;
+    assert(arr[0] == 100, "array element 0");
+    assert(arr[1] == 200, "array element 1");
+    assert(arr[2] == 300, "array element 2");
+    assert(len(arr) == 5, "array length");
+
+    msg = "Hello";
+    assert(msg == "Hello", "string equality");
+
+    a = (2 + 3) * 4;
+    assert(a == 20, "complex arithmetic");
+    
+    flag = (1 < 2) && (3 > 2) || false;
+    assert(flag, "complex boolean");
+
+    a = 1;
+    assert(a == 1, "seq step 1");
+    a = a + 1;
+    assert(a == 2, "seq step 2");
+    a = a * 3;
+    assert(a == 6, "seq step 3");
+
+    assert(true);
+    assert(1 == 1);
+    assert(!false);
+}

@@ -1,0 +1,16 @@
+// @EXPECT_RUNTIME_ERROR
+module BuiltinAssertNegative3
+
+const {
+    ExpectedValue = 100;
+    ActualValue = 50;
+}
+
+fn init() -> void
+var {
+    result: i64;
+}
+{
+    result = ActualValue * 2;
+    assert(result != 100, "result should be 100 but assertion says it shouldn't be");
+}

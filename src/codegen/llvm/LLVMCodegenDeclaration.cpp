@@ -117,7 +117,7 @@ void LLVMCodegenVisitor::visit(ProcedureDeclaration& node)
     builder->SetInsertPoint(entryBB);
 
     size_t idx = 0;
-    std::vector<TypeInfo*> arrays;
+    std::vector<uint32_t> arrays;
     for (auto& arg : fn->args()) {
         if (idx < node.parameters.size()) {
             const auto& paramDecl = node.parameters[idx];
@@ -133,7 +133,7 @@ void LLVMCodegenVisitor::visit(ProcedureDeclaration& node)
             locals[paramDecl->name] = val;
 
             while (info->isOpenArray) {
-                arrays.push_back(info.get());
+                arrays.push_back(info->id);
                 info = info->baseType;
             }
         }

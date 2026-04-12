@@ -1,0 +1,132 @@
+module StatementsAssignment
+
+const {
+    Size = 3;
+    BufSize = 8;
+}
+
+type {
+    IntArr: i64[Size];
+    IntArrAlias: IntArr;
+    CharBuf: char[BufSize];
+
+    Point: struct {
+        x, y: i64;
+    };
+
+    Pixel: struct (Point) {
+        color: i64;
+    };
+
+    PPoint: *Point;
+    PPixel: *Pixel;
+
+    BinaryOp: (a: i64, b: i64) -> i64;
+    BinaryOpAlias: BinaryOp;
+}
+
+fn add(a: i64, b: i64) -> i64 { return a + b; }
+fn sub(a: i64, b: i64) -> i64 { return a - b; }
+
+fn copyOpenToFixed(src: i64[]) -> i64
+var {
+    dst1: IntArr;
+    dst2: IntArrAlias;
+}
+{
+    dst1 = src;
+    dst2 = src;
+    return dst1[0] + dst1[1] + dst1[2] + dst2[0] + dst2[1] + dst2[2];
+}
+
+fn init() -> void
+var {
+    i: i64;
+    j: i64;
+    by: byte;
+    c: char;
+    r: f64;
+    flag: bool;
+
+    arr1: IntArr;
+    arr2: IntArr;
+    arr3: IntArrAlias;
+
+    p1: Point;
+    p2: Point;
+    px1: Pixel;
+    px2: Pixel;
+
+    pp: PPoint;
+    ppx: PPixel;
+
+    buf1: CharBuf;
+    buf2: CharBuf;
+
+    op1: BinaryOp;
+    op2: BinaryOp;
+    op3: BinaryOpAlias;
+}
+{
+    i = 42;
+    j = i;
+    by = 255;
+    i = by;
+    by = 258;
+    c = "Z";
+    r = 3.5;
+    flag = true;
+    assert(j == 42, "i64 = i64");
+    assert(i == 255, "i64 = byte");
+    assert(by == 2, "byte = i64 trunc");
+    assert(c == "Z", "char assign");
+    assert(r == 3.5, "f64 assign");
+    assert(flag, "bool assign");
+
+    arr1[0] = 10;
+    arr1[1] = 20;
+    arr1[2] = 30;
+    arr2 = arr1;
+    arr3 = arr2;
+    assert((arr2[0] == 10) && (arr2[2] == 30), "array copy");
+    assert((arr3[1] == 20) && (arr3[2] == 30), "array alias copy");
+    assert(copyOpenToFixed(arr1) == 120, "fixed = open array");
+
+    p1.x = 1;
+    p1.y = 2;
+    p2 = p1;
+    assert((p2.x == 1) && (p2.y == 2), "struct copy");
+
+    px1.x = 7;
+    px1.y = 8;
+    px1.color = 0x112233;
+    px2 = px1;
+    assert((px2.x == 7) && (px2.y == 8), "derived struct base fields");
+    assert(px2.color == 1122867, "derived struct field");
+
+    p2 = px1;
+    assert((p2.x == 7) && (p2.y == 8), "base = derived struct");
+
+    pp = nil;
+    ppx = nil;
+    new(ppx);
+    ppx.x = 100;
+    ppx.y = 200;
+    ppx.color = 300;
+    pp = ppx;
+    assert((pp != nil) && (pp.x == 100) && (pp.y == 200), "base ptr = derived ptr");
+
+    buf1 = "Hello";
+    buf2 = "Bye";
+    assert((buf1[0] == "H") && (buf1[4] == "o"), "string to char array 1");
+    assert((buf2[0] == "B") && (buf2[2] == "e"), "string to char array 2");
+
+    op1 = add;
+    op2 = sub;
+    op3 = op1;
+    op1 = op2;
+    op2 = op3;
+    assert(op1(9, 4) == 5, "fn value assign 1");
+    assert(op2(9, 4) == 13, "fn value assign 2");
+    assert(op3(3, 4) == 7, "fn alias assign");
+}

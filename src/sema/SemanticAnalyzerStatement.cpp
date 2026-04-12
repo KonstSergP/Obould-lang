@@ -84,13 +84,12 @@ void SemanticAnalyzer::visit(ProcedureCall& node)
 
         for (size_t i = 0; i < node.args.size(); ++i) {
             node.args[i]->accept(*this);
-            auto argType = node.args[i]->resolvedType;
+            auto& argType = node.args[i]->resolvedType;
             const auto& paramInfo = params[i];
 
             bool correctArgType;
             if (paramInfo.isReference) {
-                correctArgType = (paramInfo.type.get() == argType.get())
-                    || (paramInfo.type->kind == TypeKind::Struct && paramInfo.type->isBaseTypeOf(argType))
+                correctArgType = paramInfo.type->isReferenceAssignableFrom(argType)
                     || paramInfo.type->isArrayConvertibleFrom(argType);
             }
             else {
@@ -179,7 +178,9 @@ void SemanticAnalyzer::visit(AssignmentStatement& node)
     auto lhsType = node.target->resolvedType;
     auto rhsType = node.value->resolvedType;
 
-    if (!lhsType || !rhsType || !lhsType->isAssignableFrom(rhsType)) {
+    const bool assignable = lhsType && rhsType
+        && (lhsType->isAssignableFrom(rhsType) || lhsType->isArrayConvertibleFrom(rhsType));
+    if (!assignable) {
         addError("Type mismatch in assignment");
     }
 }

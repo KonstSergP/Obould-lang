@@ -91,8 +91,8 @@ private:
 
     std::unordered_map<std::string, llvm::Value*> locals;
     std::unordered_map<std::string, llvm::Function*> functions;
-    std::unordered_map<TypeInfo*, llvm::StructType*> structTypes;
-    std::unordered_map<TypeInfo*, llvm::GlobalVariable*> descriptors;
-    std::unordered_map<TypeInfo*, llvm::Value*> lengths;
+    std::unordered_map<uint32_t, llvm::StructType*> structTypes;
+    std::unordered_map<uint32_t, llvm::GlobalVariable*> descriptors;
+    std::unordered_map<uint32_t, llvm::Value*> lengths;
 };
 }

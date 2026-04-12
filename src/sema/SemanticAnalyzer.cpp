@@ -8,17 +8,24 @@ SemanticAnalyzer::SemanticAnalyzer()
     createBuiltinTypes();
 }
 
-void SemanticAnalyzer::createBuiltinTypes()
+std::shared_ptr<TypeInfo> SemanticAnalyzer::createNewType(TypeKind kind)
 {
-    builtinTypes["i64"] = std::make_shared<TypeInfo>(TypeKind::i64);
-    builtinTypes["f64"] = std::make_shared<TypeInfo>(TypeKind::f64);
-    builtinTypes["bool"] = std::make_shared<TypeInfo>(TypeKind::Bool);
-    builtinTypes["byte"] = std::make_shared<TypeInfo>(TypeKind::Byte);
-    builtinTypes["char"] = std::make_shared<TypeInfo>(TypeKind::Char);
-    builtinTypes["void"] = std::make_shared<TypeInfo>(TypeKind::Void);
+    auto type = std::make_shared<TypeInfo>(kind);
+    type->id = nextTypeId++;
+    return type;
 }
 
-std::shared_ptr<TypeInfo> SemanticAnalyzer::getBuiltinType(TypeKind kind) const
+void SemanticAnalyzer::createBuiltinTypes()
+{
+    builtinTypes["i64"] = createNewType(TypeKind::i64);
+    builtinTypes["f64"] = createNewType(TypeKind::f64);
+    builtinTypes["bool"] = createNewType(TypeKind::Bool);
+    builtinTypes["byte"] = createNewType(TypeKind::Byte);
+    builtinTypes["char"] = createNewType(TypeKind::Char);
+    builtinTypes["void"] = createNewType(TypeKind::Void);
+}
+
+std::shared_ptr<TypeInfo> SemanticAnalyzer::getBuiltinType(TypeKind kind)
 {
     switch (kind) {
     case TypeKind::i64: return builtinTypes.at("i64");
@@ -28,7 +35,7 @@ std::shared_ptr<TypeInfo> SemanticAnalyzer::getBuiltinType(TypeKind kind) const
     case TypeKind::Char: return builtinTypes.at("char");
     case TypeKind::Void: return builtinTypes.at("void");
     default:
-        return std::make_shared<TypeInfo>(kind);
+        return createNewType(kind);
     }
 }
 
@@ -51,11 +58,11 @@ void SemanticAnalyzer::addBuiltinTypes(SymbolTable& symTable) const
     }
 }
 
-void SemanticAnalyzer::addBuiltinProcedures(SymbolTable& symTable) const
+void SemanticAnalyzer::addBuiltinProcedures(SymbolTable& symTable)
 {
     auto registerBuiltin = [&](const std::string& name, BuiltinKind builtin, TypeKind retKind = TypeKind::Void)
     {
-        auto type = std::make_shared<TypeInfo>(TypeKind::Procedure);
+        auto type = createNewType(TypeKind::Procedure);
         type->builtin = builtin;
         type->returnType = getBuiltinType(retKind);
 
@@ -134,12 +141,12 @@ static void updateStructDepth(const std::shared_ptr<TypeInfo>& type)
 }
 
 static bool containsRecursiveInternal(const std::shared_ptr<TypeInfo>& t,
-                                      const TypeInfo* target,
-                                      std::set<TypeInfo*>& visiting)
+                                      const uint32_t target,
+                                      std::set<uint32_t>& visiting)
 {
     if (!t) return false;
-    if (!visiting.insert(t.get()).second) return false;
-    if (t.get() == target) return true;
+    if (!visiting.insert(t->id).second) return false;
+    if (t->id == target) return true;
 
     switch (t->kind) {
     case TypeKind::Struct:
@@ -156,16 +163,16 @@ static bool containsRecursiveInternal(const std::shared_ptr<TypeInfo>& t,
 }
 
 static bool containsRecursive(const std::shared_ptr<TypeInfo>& t,
-                              const TypeInfo* target)
+                              const uint32_t target)
 {
-    std::set<TypeInfo*> visiting;
+    std::set<uint32_t> visiting;
     return containsRecursiveInternal(t, target, visiting);
 }
 
-void SemanticAnalyzer::validateTypeInternal(const std::shared_ptr<TypeInfo>& type, std::set<TypeInfo*>& visiting)
+void SemanticAnalyzer::validateTypeInternal(const std::shared_ptr<TypeInfo>& type, std::set<uint32_t>& visiting)
 {
     if (!type) return;
-    if (!visiting.insert(type.get()).second) return;
+    if (!visiting.insert(type->id).second) return;
 
     auto checkElementType = [&](const std::shared_ptr<TypeInfo>& elem,
                                 const std::string& context,
@@ -192,11 +199,11 @@ void SemanticAnalyzer::validateTypeInternal(const std::shared_ptr<TypeInfo>& typ
         if (type->baseType && type->baseType->kind != TypeKind::Struct) {
             addError("Struct base type must be a struct");
         }
-        if (type->baseType && containsRecursive(type->baseType, type.get())) {
+        if (type->baseType && containsRecursive(type->baseType, type->id)) {
             addError("Struct " + type->name + " cannot be used in its base");
         }
         for (const auto& f : type->fields) {
-            if (containsRecursive(f.type, type.get())) {
+            if (containsRecursive(f.type, type->id)) {
                 addError("Struct " + type->name + " cannot have itself as a field");
             }
             checkElementType(f.type, "Field '" + f.name + "' in struct " + type->name, false);
@@ -205,7 +212,7 @@ void SemanticAnalyzer::validateTypeInternal(const std::shared_ptr<TypeInfo>& typ
         updateStructDepth(type);
     }
     else if (type->kind == TypeKind::Array) {
-        if (containsRecursive(type->baseType, type.get())) {
+        if (containsRecursive(type->baseType, type->id)) {
             addError("Array " + type->name + " cannot use itself as element type");
         }
         checkElementType(type->baseType, "Array " + type->name, type->isOpenArray);
@@ -226,12 +233,12 @@ void SemanticAnalyzer::validateTypeInternal(const std::shared_ptr<TypeInfo>& typ
             validateTypeInternal(param.type, visiting);
         }
     }
-    visiting.erase(type.get());
+    visiting.erase(type->id);
 }
 
 void SemanticAnalyzer::validateType(const std::shared_ptr<TypeInfo>& type)
 {
-    std::set<TypeInfo*> visiting;
+    std::set<uint32_t> visiting;
     validateTypeInternal(type, visiting);
 }
 }

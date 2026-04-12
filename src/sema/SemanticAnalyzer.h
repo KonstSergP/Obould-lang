@@ -69,15 +69,16 @@ public:
     void visit(Module& node) override;
 
 private:
+    std::shared_ptr<TypeInfo> createNewType(TypeKind kind);
     void createBuiltinTypes();
     void addBuiltinTypes(SymbolTable& symTable) const;
-    void addBuiltinProcedures(SymbolTable& symTable) const;
-    std::shared_ptr<TypeInfo> getBuiltinType(TypeKind kind) const;
+    void addBuiltinProcedures(SymbolTable& symTable);
+    std::shared_ptr<TypeInfo> getBuiltinType(TypeKind kind);
     void declareProcedure(ProcedureDeclaration& node);
     void visitBuiltinProcedure(ProcedureCall& node);
     std::shared_ptr<TypeInfo> getPolymorphicBase(Expression* expr);
     void validateType(const std::shared_ptr<TypeInfo>& type);
-    void validateTypeInternal(const std::shared_ptr<TypeInfo>& type, std::set<TypeInfo*>& visiting);
+    void validateTypeInternal(const std::shared_ptr<TypeInfo>& type, std::set<uint32_t>& visiting);
 
 
     enum class AnalyzeStages { Default, CreateType, FillType, ResolveAliases, ValidateType };
@@ -92,5 +93,6 @@ private:
     std::string currentModuleName;
     SymbolFileParser symbolFileParser;
     Module* rootModule = nullptr;
+    uint32_t nextTypeId = 1;
 };
 }

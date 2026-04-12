@@ -10,6 +10,8 @@ std::unique_ptr<llvm::Module> LLVMCodegenVisitor::codegen(Module& moduleAst, boo
     locals.clear();
     functions.clear();
     structTypes.clear();
+    descriptors.clear();
+    lengths.clear();
     lvalue = false;
     importedModule = false;
     isMainModule = isMain;
@@ -83,13 +85,13 @@ llvm::Type* LLVMCodegenVisitor::toLLVMType(const std::shared_ptr<TypeInfo>& type
     }
     case TypeKind::Struct:
     {
-        auto it = structTypes.find(typeInfo.get());
+        auto it = structTypes.find(typeInfo->id);
         if (it != structTypes.end()) {
             return it->second;
         }
 
         auto* structTy = llvm::StructType::create(context, "struct_" + typeInfo->name);
-        structTypes[typeInfo.get()] = structTy;
+        structTypes[typeInfo->id] = structTy;
 
         std::vector<TypeInfo*> chain;
         auto current = typeInfo;
@@ -151,7 +153,7 @@ llvm::Constant* LLVMCodegenVisitor::createInitConstant(const std::shared_ptr<Typ
     if (info->kind == TypeKind::Struct) {
         auto* structTy = llvm::cast<llvm::StructType>(ty);
         std::vector<llvm::Constant*> fields;
-        fields.push_back(descriptors[info.get()]);
+        fields.push_back(descriptors[info->id]);
 
         std::vector<TypeInfo*> chain;
         auto current = info;
@@ -205,12 +207,12 @@ llvm::GlobalVariable* LLVMCodegenVisitor::createStructDescriptor(const std::shar
     auto* depthVal = llvm::ConstantInt::get(intType, depth);
     std::vector<llvm::Constant*> basePtrs(depth + 1);
 
-    if (type->baseType && descriptors.find(type->baseType.get()) == descriptors.end()) {
-        descriptors[type->baseType.get()] = createStructDescriptor(type->baseType);
+    if (type->baseType && descriptors.find(type->baseType->id) == descriptors.end()) {
+        descriptors[type->baseType->id] = createStructDescriptor(type->baseType);
     }
     auto curType = type;
     while (curType != nullptr) {
-        auto* descPtr = (curType != type) ? descriptors[curType.get()] : gVar;
+        auto* descPtr = (curType->id != type->id) ? descriptors[curType->id] : gVar;
         basePtrs[curType->depth] = descPtr;
         curType = curType->baseType;
     }

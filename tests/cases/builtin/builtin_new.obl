@@ -1,0 +1,193 @@
+module BuiltinNew
+
+const {
+    ArrSize = 4;
+}
+
+type {
+    Node: struct {
+        value: i64;
+    };
+
+    BaseNode: struct {
+        id: i64;
+    };
+
+    ExtendedNode: struct (BaseNode) {
+        data: i64;
+        active: bool;
+    };
+
+    PNode: *Node;
+    NodeArr: PNode[ArrSize];
+
+    Container: struct {
+        p: *Node;
+        count: i64;
+    };
+
+    PBase: *BaseNode;
+    NodeContainer: struct {
+        head: PBase;
+        size: i64;
+    };
+}
+
+fn readNode(p: *Node) -> i64 {
+    return p.value;
+}
+
+fn writeNode(p: *Node, val: i64) -> void {
+    p.value = val;
+}
+
+fn allocNode(val: i64) -> *Node
+var p: *Node;
+{
+    new(p);
+    p.value = val;
+    return p;
+}
+
+fn readBase(p: *BaseNode) -> i64 {
+    return p.id;
+}
+
+fn readExtended(p: *ExtendedNode) -> i64 {
+    return p.data;
+}
+
+fn allocExtended(id: i64, data: i64) -> *ExtendedNode
+var p: *ExtendedNode;
+{
+    new(p);
+    p.id = id;
+    p.data = data;
+    p.active = true;
+    return p;
+}
+
+fn allocByRef(p: &*Node, val: i64) -> void {
+    new(p);
+    p.value = val;
+}
+
+fn allocExtendedByRef(p: &*ExtendedNode, id: i64, data: i64) -> void {
+    new(p);
+    p.id = id;
+    p.data = data;
+    p.active = true;
+}
+
+fn init() -> void
+var {
+    pNode: *Node;
+
+    pBase: *BaseNode;
+    pExtended: *ExtendedNode;
+
+    ptrArr: NodeArr;
+
+    cont: Container;
+    nodeCont: NodeContainer;
+
+    i: i64;
+}
+{
+    pNode = nil;
+    new(pNode);
+    pNode.value = 42;
+    assert(pNode.value == 42, "pNode.value");
+
+    assert(readNode(pNode) == 42, "readNode");
+    writeNode(pNode, 100);
+    assert(pNode.value == 100, "writeNode");
+
+    pBase = nil;
+    new(pBase);
+    pBase.id = 10;
+    assert(pBase.id == 10, "pBase.id");
+
+    pExtended = nil;
+    new(pExtended);
+    pExtended.id = 20;
+    pExtended.data = 200;
+    pExtended.active = true;
+
+    assert(pExtended.id == 20, "pExtended.id");
+    assert(pExtended.data == 200, "pExtended.data");
+    assert(pExtended.active, "pExtended.active");
+
+    assert(readBase(pExtended) == 20, "readBase via extended");
+    assert(readExtended(pExtended) == 200, "readExtended");
+
+    pBase = pExtended;
+    assert(pBase.id == 20, "pBase from extended");
+    assert(pBase is BaseNode, "pBase is BaseNode");
+    assert(pBase is ExtendedNode, "pBase is ExtendedNode");
+
+    ptrArr[0] = nil;
+    new(ptrArr[0]);
+    ptrArr[0].value = 1;
+
+    ptrArr[1] = nil;
+    new(ptrArr[1]);
+    ptrArr[1].value = 2;
+
+    ptrArr[2] = nil;
+    new(ptrArr[2]);
+    ptrArr[2].value = 3;
+
+    ptrArr[3] = nil;
+    new(ptrArr[3]);
+    ptrArr[3].value = 4;
+
+    assert(ptrArr[0].value == 1, "ptrArr[0].value");
+    assert(ptrArr[1].value == 2, "ptrArr[1].value");
+    assert(ptrArr[2].value == 3, "ptrArr[2].value");
+    assert(ptrArr[3].value == 4, "ptrArr[3].value");
+
+    assert(readNode(ptrArr[0]) == 1, "readNode from array");
+    writeNode(ptrArr[3], 400);
+    assert(ptrArr[3].value == 400, "writeNode to array");
+
+    cont.p = nil;
+    new(cont.p);
+    cont.p.value = 999;
+    cont.count = 1;
+
+    assert(cont.p.value == 999, "cont.p.value");
+    assert(cont.count == 1, "cont.count");
+
+    assert(readNode(cont.p) == 999, "readNode from struct field");
+    writeNode(cont.p, 555);
+    assert(cont.p.value == 555, "writeNode to struct field");
+
+    nodeCont.head = nil;
+    new(nodeCont.head);
+    nodeCont.head.id = 777;
+    nodeCont.size = 10;
+
+    assert(nodeCont.head.id == 777, "nodeCont.head.id");
+    assert(nodeCont.size == 10, "nodeCont.size");
+
+    assert(readBase(nodeCont.head) == 777, "readBase from struct");
+
+    pNode = allocNode(1234);
+    assert(pNode.value == 1234, "allocNode via new in function");
+
+    pExtended = allocExtended(50, 500);
+    assert(pExtended.id == 50, "allocExtended id");
+    assert(pExtended.data == 500, "allocExtended data");
+    assert(pExtended.active, "allocExtended active");
+
+    pNode = nil;
+    allocByRef(pNode, 9999);
+    assert(pNode.value == 9999, "allocByRef via &*Node");
+
+    pExtended = nil;
+    allocExtendedByRef(pExtended, 77, 777);
+    assert(pExtended.id == 77, "allocExtendedByRef id");
+    assert(pExtended.data == 777, "allocExtendedByRef data");
+    assert(pExtended.active, "allocExtendedByRef active");
+}

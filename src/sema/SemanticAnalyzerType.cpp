@@ -64,7 +64,7 @@ void SemanticAnalyzer::visit(ArrayType& node)
         return;
     }
 
-    auto arrayInfo = std::make_shared<TypeInfo>(TypeKind::Array);
+    auto arrayInfo = createNewType(TypeKind::Array);
     arrayInfo->baseType = node.elementType->resolvedType;
     arrayInfo->length = lengthValue;
     arrayInfo->isOpenArray = false;
@@ -76,7 +76,7 @@ void SemanticAnalyzer::visit(OpenArrayType& node)
 {
     node.elementType->accept(*this);
 
-    auto arrayInfo = std::make_shared<TypeInfo>(TypeKind::Array);
+    auto arrayInfo = createNewType(TypeKind::Array);
     arrayInfo->baseType = node.elementType->resolvedType;
     arrayInfo->isOpenArray = true;
 
@@ -99,7 +99,7 @@ static bool findFieldDuplication(const std::string& name, const std::shared_ptr<
 
 void SemanticAnalyzer::visit(StructType& node)
 {
-    auto structInfo = std::make_shared<TypeInfo>(TypeKind::Struct);
+    auto structInfo = createNewType(TypeKind::Struct);
     structInfo->ownerModule = currentModuleName;
     if (node.baseType) {
         node.baseType->accept(*this);
@@ -121,7 +121,7 @@ void SemanticAnalyzer::visit(StructType& node)
         structInfo->fields.push_back(field);
     }
 
-    auto tag = !node.tag.empty() ? node.tag : std::to_string(reinterpret_cast<long>(structInfo.get()));
+    auto tag = !node.tag.empty() ? node.tag : std::to_string(structInfo->id);
     structInfo->tag = tag;
     structInfo->name = tag;
     node.tag = tag;
@@ -133,14 +133,14 @@ void SemanticAnalyzer::visit(PointerType& node)
 {
     node.type->accept(*this);
 
-    auto ptrInfo = std::make_shared<TypeInfo>(TypeKind::Pointer);
+    auto ptrInfo = createNewType(TypeKind::Pointer);
     ptrInfo->baseType = node.type->resolvedType;
     node.resolvedType = ptrInfo;
 }
 
 void SemanticAnalyzer::visit(ProcedureType& node)
 {
-    auto procInfo = std::make_shared<TypeInfo>(TypeKind::Procedure);
+    auto procInfo = createNewType(TypeKind::Procedure);
 
     for (const auto& param : node.parameters) {
         param->type->accept(*this);
@@ -165,6 +165,6 @@ void SemanticAnalyzer::visit(ProcedureType& node)
 
 void SemanticAnalyzer::visit(IncompleteType& node)
 {
-    node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Incomplete);
+    node.resolvedType = createNewType(TypeKind::Incomplete);
 }
 }

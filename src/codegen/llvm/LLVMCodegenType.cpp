@@ -13,8 +13,8 @@ void LLVMCodegenVisitor::visit(PointerType& node) { node.type->accept(*this); }
 
 void LLVMCodegenVisitor::visit(ArrayType& node)
 {
-    if (lengths.find(node.resolvedType.get()) == lengths.end()) {
-        lengths[node.resolvedType.get()] = builder->getInt64(node.resolvedType->length);
+    if (lengths.find(node.resolvedType->id) == lengths.end()) {
+        lengths[node.resolvedType->id] = builder->getInt64(node.resolvedType->length);
     }
     node.elementType->accept(*this);
 }
@@ -22,8 +22,8 @@ void LLVMCodegenVisitor::visit(ArrayType& node)
 void LLVMCodegenVisitor::visit(StructType& node)
 {
     auto& type = node.resolvedType;
-    if (descriptors.find(type.get()) == descriptors.end()) {
-        descriptors[type.get()] = createStructDescriptor(type);
+    if (descriptors.find(type->id) == descriptors.end()) {
+        descriptors[type->id] = createStructDescriptor(type);
     }
 
     for (const auto& fieldDecl : node.fields) {

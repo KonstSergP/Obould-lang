@@ -17,7 +17,7 @@ void LLVMCodegenVisitor::visitBuiltinProcedure(ProcedureCall& node)
         auto argType = node.args[0]->resolvedType;
         llvm::Value* lenVal = nullptr;
         if (argType->isOpenArray) {
-            auto it = lengths.find(argType.get());
+            auto it = lengths.find(argType->id);
             if (it == lengths.end() || !it->second) {
                 llvm::report_fatal_error("Missing length for open array in LEN");
             }
@@ -114,7 +114,7 @@ void LLVMCodegenVisitor::visit(ProcedureCall& node)
         auto* lDesc = builder->CreateLoad(builder->getPtrTy(), typeTagPtrAddr, "obj.tag");
 
         auto& rType = node.args[0]->resolvedType;
-        auto* rDesc = descriptors[rType.get()];
+        auto* rDesc = descriptors[rType->id];
 
         makeStructCastCheck(lDesc, rDesc, rType->depth);
 
@@ -159,7 +159,7 @@ void LLVMCodegenVisitor::visit(ProcedureCall& node)
             while (formalType->isOpenArray) {
                 llvm::Value* lenVal = nullptr;
                 if (factType->isOpenArray) {
-                    lenVal = builder->CreateLoad(builder->getInt64Ty(), lengths[factType.get()]);
+                    lenVal = builder->CreateLoad(builder->getInt64Ty(), lengths[factType->id]);
                 }
                 else if (factType->kind == TypeKind::Array) {
                     lenVal = builder->getInt64(factType->length);
@@ -446,7 +446,7 @@ void LLVMCodegenVisitor::visit(SwitchStatement& node)
                 auto* lDesc = builder->CreateLoad(builder->getPtrTy(), typeTagPtrAddr, "obj.tag");
 
                 auto& rType = lbl->value->resolvedType;
-                auto* rDesc = descriptors[rType.get()];
+                auto* rDesc = descriptors[rType->id];
 
                 makeStructCastCheck(lDesc, rDesc, rType->depth);
                 caseCond = lastValue;
