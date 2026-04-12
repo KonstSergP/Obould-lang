@@ -86,12 +86,14 @@ struct TypeInfo
     explicit TypeInfo(const TypeKind k) : kind(k) {}
 
     [[nodiscard]] bool isAssignableFrom(const std::shared_ptr<TypeInfo>& other) const;
+    [[nodiscard]] bool isReferenceAssignableFrom(const std::shared_ptr<TypeInfo>& other) const;
     [[nodiscard]] bool isBaseTypeOf(const std::shared_ptr<TypeInfo>& other) const;
     [[nodiscard]] bool isArrayConvertibleFrom(const std::shared_ptr<TypeInfo>& other) const;
 
 
     TypeKind kind;
     std::string name;
+    uint32_t id = 0;
 
     // Array
     bool isOpenArray = false;

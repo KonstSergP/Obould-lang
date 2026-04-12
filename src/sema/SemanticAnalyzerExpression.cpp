@@ -27,7 +27,7 @@ void SemanticAnalyzer::visit(BooleanLiteral& node)
 
 void SemanticAnalyzer::visit(StringLiteral& node)
 {
-    auto type = std::make_shared<TypeInfo>(TypeKind::String);
+    auto type = createNewType(TypeKind::String);
     type->length = static_cast<int64_t>(node.value.length());
     node.resolvedType = type;
     node.constantValue = node.value;
@@ -36,7 +36,7 @@ void SemanticAnalyzer::visit(StringLiteral& node)
 
 void SemanticAnalyzer::visit(Nil& node)
 {
-    node.resolvedType = std::make_shared<TypeInfo>(TypeKind::Nil);
+    node.resolvedType = createNewType(TypeKind::Nil);
     node.isLvalue = false;
 }
 

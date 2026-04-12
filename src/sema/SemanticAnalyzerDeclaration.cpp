@@ -43,7 +43,7 @@ void SemanticAnalyzer::visit(TypeDeclaration& node)
             return;
         }
 
-        auto stubType = std::make_shared<TypeInfo>(TypeKind::Incomplete);
+        auto stubType = createNewType(TypeKind::Incomplete);
         stubType->name = node.name;
 
         Symbol sym;
@@ -161,7 +161,7 @@ void SemanticAnalyzer::visit(DeclarationsBlock& node)
 
 void SemanticAnalyzer::declareProcedure(ProcedureDeclaration& node)
 {
-    auto procType = std::make_shared<TypeInfo>(TypeKind::Procedure);
+    auto procType = createNewType(TypeKind::Procedure);
     procType->name = node.name;
     node.resolvedType = procType;
 

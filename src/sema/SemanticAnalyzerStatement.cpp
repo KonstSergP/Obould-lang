@@ -84,13 +84,12 @@ void SemanticAnalyzer::visit(ProcedureCall& node)
 
         for (size_t i = 0; i < node.args.size(); ++i) {
             node.args[i]->accept(*this);
-            auto argType = node.args[i]->resolvedType;
+            auto& argType = node.args[i]->resolvedType;
             const auto& paramInfo = params[i];
 
             bool correctArgType;
             if (paramInfo.isReference) {
-                correctArgType = (paramInfo.type.get() == argType.get())
-                    || (paramInfo.type->kind == TypeKind::Struct && paramInfo.type->isBaseTypeOf(argType))
+                correctArgType = paramInfo.type->isReferenceAssignableFrom(argType)
                     || paramInfo.type->isArrayConvertibleFrom(argType);
             }
             else {

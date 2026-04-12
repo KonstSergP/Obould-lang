@@ -1,0 +1,214 @@
+module TypesAliases
+
+const {
+    Size = 4;
+}
+
+type {
+    IntAlias: i64;
+    RealAlias: f64;
+    BoolAlias: bool;
+    ByteAlias: byte;
+    CharAlias: char;
+
+    IntArr: i64[Size];
+    RealArr: f64[Size];
+    ByteArr1: byte[Size];
+    ByteArr2: byte[Size];
+
+    Point: struct {
+        x, y: i64;
+    };
+    PointAlias: Point;
+
+    Shape: struct {
+        id: i64;
+    };
+    ColoredShape: struct (Shape) {
+        color: i64;
+    };
+    ShapeAlias: Shape;
+    ColoredAlias: ColoredShape;
+
+    PPoint: *Point;
+    PPointAlias: PPoint;
+    PShape: *Shape;
+    PColored: *ColoredShape;
+
+    BinaryOp: (a: i64, b: i64) -> i64;
+    BinaryOpAlias: BinaryOp;
+    VoidFn: () -> void;
+    VoidFnAlias: VoidFn;
+}
+
+fn add(a: i64, b: i64) -> i64 { return a + b; }
+fn sub(a: i64, b: i64) -> i64 { return a - b; }
+fn doNothing() -> void { }
+
+fn applyOp(op: BinaryOp, x: i64, y: i64) -> i64 {
+    return op(x, y);
+}
+
+fn applyOpAlias(op: BinaryOpAlias, x: i64, y: i64) -> i64 {
+    return op(x, y);
+}
+
+fn runVoid(cb: VoidFn) -> void {
+    cb();
+}
+
+fn runVoidAlias(cb: VoidFnAlias) -> void {
+    cb();
+}
+
+fn init() -> void
+var {
+    vInt: IntAlias;
+    vReal: RealAlias;
+    vBool: BoolAlias;
+    vByte: ByteAlias;
+    vChar: CharAlias;
+
+    arr1: IntArr;
+    arr2: IntArr;
+    arrR: RealArr;
+    bArr1: ByteArr1;
+    bArr2: ByteArr2;
+
+    pt: Point;
+    ptAlias: PointAlias;
+    shape: Shape;
+    cShape: ColoredShape;
+    shapeAlias: ShapeAlias;
+    cShapeAlias: ColoredAlias;
+
+    pPt: PPoint;
+    pPtAlias: PPointAlias;
+    pShape: PShape;
+    pColored: PColored;
+
+    op: BinaryOp;
+    opAlias: BinaryOpAlias;
+    vf: VoidFn;
+    vfAlias: VoidFnAlias;
+}
+{
+    vInt = 42;
+    assert(vInt == 42, "IntAlias");
+
+    vReal = 3.14;
+    assert(vReal == 3.14, "RealAlias");
+
+    vBool = true;
+    assert(vBool, "BoolAlias");
+
+    vByte = 7;
+    assert(vByte == 7, "ByteAlias");
+
+    vChar = "A";
+    assert(vChar == "A", "CharAlias");
+
+    arr1[0] = 1;
+    arr1[3] = 4;
+    assert(arr1[0] == 1, "IntArr[0]");
+    assert(arr1[3] == 4, "IntArr[3]");
+
+    arr2[0] = 10;
+    arr2[3] = 40;
+    assert(arr2[0] == 10, "IntArr alias[0]");
+
+    arr2 = arr1;
+    assert(arr2[0] == 1, "IntArr copy");
+    assert(arr2[3] == 4, "IntArr copy[3]");
+
+    arrR[0] = 1.5;
+    arrR[1] = 2.5;
+    assert(arrR[0] == 1.5, "RealArr[0]");
+
+    bArr1[0] = 1;
+    bArr1[1] = 2;
+    assert(bArr1[0] == 1, "ByteArr1[0]");
+
+    bArr2[0] = 10;
+    bArr2[1] = 20;
+    assert(bArr2[0] == 10, "ByteArr2[0]");
+
+    pt.x = 100;
+    pt.y = 200;
+    assert(pt.x == 100, "Point.x");
+    assert(pt.y == 200, "Point.y");
+
+    ptAlias = pt;
+    assert(ptAlias.x == 100, "PointAlias.x");
+    assert(ptAlias.y == 200, "PointAlias.y");
+
+    pPt = nil;
+    new(pPt);
+    pPt.x = 10;
+    pPt.y = 20;
+    assert(pPt.x == 10, "PPoint.x");
+    assert(pPt.y == 20, "PPoint.y");
+
+    pPtAlias = pPt;
+    assert(pPtAlias.x == 10, "PPointAlias.x via PPoint");
+    assert(pPtAlias.y == 20, "PPointAlias.y via PPoint");
+
+    shape.id = 42;
+    assert(shape.id == 42, "Shape.id");
+
+    shapeAlias = shape;
+    assert(shapeAlias.id == 42, "ShapeAlias.id");
+
+    cShape.id = 100;
+    cShape.color = 0xFF00;
+    assert(cShape.id == 100, "ColoredShape.id");
+    assert(cShape.color == 65280, "ColoredShape.color");
+
+    cShapeAlias = cShape;
+    assert(cShapeAlias.id == 100, "ColoredAlias.id");
+    assert(cShapeAlias.color == 65280, "ColoredAlias.color");
+
+    pShape = nil;
+    new(pShape);
+    pShape.id = 55;
+    assert(pShape.id == 55, "PShape.id");
+
+    pColored = nil;
+    new(pColored);
+    pColored.id = 77;
+    pColored.color = 0x1234;
+    assert(pColored.id == 77, "PColored.id");
+    assert(pColored.color == 4660, "PColored.color");
+
+    pShape = pColored;
+    assert(pShape.id == 77, "PShape via PColored");
+    assert(pShape is Shape, "pShape is Shape");
+    assert(pShape is ColoredShape, "pShape is ColoredShape");
+
+    op = add;
+    assert(op(3, 4) == 7, "BinaryOp add");
+
+    opAlias = sub;
+    assert(opAlias(10, 3) == 7, "BinaryOpAlias sub");
+
+    op = opAlias;
+    assert(op(5, 5) == 0, "BinaryOp = BinaryOpAlias");
+
+    opAlias = op;
+    assert(opAlias(5, 5) == 0, "BinaryOpAlias = BinaryOp");
+
+    assert(applyOp(add, 10, 20) == 30, "applyOp add");
+    assert(applyOp(sub, 100, 1) == 99, "applyOp sub");
+
+    assert(applyOpAlias(add, 5, 6) == 11, "applyOpAlias add");
+    assert(applyOpAlias(sub, 20, 8) == 12, "applyOpAlias sub");
+
+    vf = doNothing;
+    vfAlias = doNothing;
+    vf = vfAlias;
+    vfAlias = vf;
+    runVoid(vf);
+    runVoidAlias(vfAlias);
+    runVoid(doNothing);
+    runVoidAlias(doNothing);
+}

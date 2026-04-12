@@ -1,7 +1,6 @@
 #include "LLVMCodegen.h"
 #include "sema/TypeInfo.h"
 #include <llvm/IR/Module.h>
-#include <llvm/Support/ErrorHandling.h>
 
 
 namespace obould
@@ -23,7 +22,7 @@ void LLVMCodegenVisitor::visit(BooleanLiteral& node)
 
 void LLVMCodegenVisitor::visit(StringLiteral& node)
 {
-    lengths[node.resolvedType.get()] = builder->getInt64(node.value.length());
+    lengths[node.resolvedType->id] = builder->getInt64(node.value.length());
     lastValue = getConstantValue(node);
 }
 
@@ -49,7 +48,7 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
         auto* lDesc = builder->CreateLoad(builder->getPtrTy(), typeTagPtrAddr, "obj.tag");
 
         auto& rType = std::get<std::unique_ptr<Type>>(node.right)->resolvedType;
-        auto* rDesc = descriptors[rType.get()];
+        auto* rDesc = descriptors[rType->id];
 
         makeStructCastCheck(lDesc, rDesc, rType->depth);
         return;
@@ -144,7 +143,7 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
         auto getArrayLength = [&](const std::shared_ptr<TypeInfo>& t) -> llvm::Value*
         {
             if (t->isOpenArray) {
-                auto* lenVal = builder->CreateLoad(builder->getInt64Ty(), lengths[t.get()], "arr.len");
+                auto* lenVal = builder->CreateLoad(builder->getInt64Ty(), lengths[t->id], "arr.len");
                 return builder->CreateZExtOrTrunc(lenVal, builder->getInt64Ty());
             }
             return builder->getInt64(t->length);

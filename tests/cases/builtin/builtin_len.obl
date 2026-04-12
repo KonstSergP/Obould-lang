@@ -1,0 +1,94 @@
+module BuiltinLen
+
+const {
+    ArrSize = 4;
+    MatrixRows = 3;
+    MatrixCols = 5;
+}
+
+type {
+    IntArr: i64[ArrSize];
+    Matrix: i64[MatrixRows][MatrixCols];
+
+    Container: struct {
+        data: i64[8];
+        count: i64;
+    };
+
+    ContainerMatrix: struct {
+        matrix: i64[2][3];
+        id: i64;
+    };
+
+    IntArrAlias: IntArr;
+    MatrixAlias: Matrix;
+}
+
+fn processFixed(arr: IntArr) -> i64 {
+    return len(arr);
+}
+
+fn processOpen(arr: i64[]) -> i64 {
+    return len(arr);
+}
+
+fn processMatrix2D(mat: i64[][]) -> i64 {
+    return len(mat) * len(mat[0]);
+}
+
+fn getFirstDim(mat: i64[][]) -> i64 {
+    return len(mat);
+}
+
+fn getSecondDim(mat: i64[][]) -> i64 {
+    return len(mat[0]);
+}
+
+fn init() -> void
+var {
+    arr1: i64[5];
+    arr2: i64[10];
+
+    mat: i64[3][4];
+
+    arrAlias: IntArr;
+    matAlias: Matrix;
+
+    cont: Container;
+    contMat: ContainerMatrix;
+
+    fixedArr: IntArr;
+    fixedMat: Matrix;
+    openArr1: i64[7];
+    openArr2: i64[3];
+    openMat1: i64[2][3];
+    openMat2: i64[5][6];
+}
+{
+    assert(len(arr1) == 5, "arr1 length");
+    assert(len(arr2) == 10, "arr2 length");
+
+    assert(len(mat) == 3, "mat first dim");
+    assert(len(mat[0]) == 4, "mat second dim");
+
+    assert(len(arrAlias) == ArrSize, "arrAlias length");
+    assert(len(matAlias) == MatrixRows, "matAlias rows");
+    assert(len(matAlias[0]) == MatrixCols, "matAlias cols");
+
+    assert(len(cont.data) == 8, "cont.data length");
+    assert(len(contMat.matrix) == 2, "contMat.matrix rows");
+    assert(len(contMat.matrix[0]) == 3, "contMat.matrix cols");
+
+    assert(processFixed(fixedArr) == ArrSize, "processFixed");
+
+    assert(processOpen(openArr1) == 7, "openArr1");
+    assert(processOpen(openArr2) == 3, "openArr2");
+
+    assert(processMatrix2D(openMat1) == 6, "openMat1 total");
+    assert(getFirstDim(openMat1) == 2, "openMat1 first dim");
+    assert(getSecondDim(openMat1) == 3, "openMat1 second dim");
+
+    assert(processMatrix2D(openMat2) == 30, "openMat2 total");
+    assert(getFirstDim(openMat2) == 5, "openMat2 first dim");
+    assert(getSecondDim(openMat2) == 6, "openMat2 second dim");
+}
