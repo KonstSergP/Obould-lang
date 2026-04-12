@@ -178,7 +178,9 @@ void SemanticAnalyzer::visit(AssignmentStatement& node)
     auto lhsType = node.target->resolvedType;
     auto rhsType = node.value->resolvedType;
 
-    if (!lhsType || !rhsType || !lhsType->isAssignableFrom(rhsType)) {
+    const bool assignable = lhsType && rhsType
+        && (lhsType->isAssignableFrom(rhsType) || lhsType->isArrayConvertibleFrom(rhsType));
+    if (!assignable) {
         addError("Type mismatch in assignment");
     }
 }

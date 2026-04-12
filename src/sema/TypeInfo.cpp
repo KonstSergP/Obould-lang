@@ -63,7 +63,7 @@ bool TypeInfo::isAssignableFrom(const std::shared_ptr<TypeInfo>& other) const
     case TypeKind::Array:
         if (isOpenArray) {
             if (other->kind == TypeKind::Array) {
-                return baseType.get() == other->baseType.get();
+                return baseType->id == other->baseType->id;
             }
         }
         return false;
@@ -142,11 +142,22 @@ bool TypeInfo::isArrayConvertibleFrom(const std::shared_ptr<TypeInfo>& other) co
 {
     if (!other) return false;
     if (kind != TypeKind::Array || other->kind != TypeKind::Array) return false;
-    if (!isOpenArray) return false;
+    if (!baseType || !other->baseType) return false;
 
-    if (baseType->isOpenArray) {
-        return baseType->isArrayConvertibleFrom(other->baseType);
+    if (isOpenArray) {
+        if (baseType->isOpenArray) {
+            return baseType->isArrayConvertibleFrom(other->baseType);
+        }
+        return baseType->id == other->baseType->id;
     }
-    return baseType->id == other->baseType->id;
+
+    if (other->isOpenArray) {
+        if (other->baseType->isOpenArray) {
+            return baseType->isArrayConvertibleFrom(other->baseType);
+        }
+        return baseType->id == other->baseType->id;
+    }
+
+    return false;
 }
 }
