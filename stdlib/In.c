@@ -11,12 +11,12 @@
 #define OB_SYMBOL(name) __asm__("ob_" name)
 #endif
 
-int64_t ReadInt(void) OB_SYMBOL("2In_ReadInt");
-double ReadReal(void) OB_SYMBOL("2In_ReadReal");
-char ReadChar(void) OB_SYMBOL("2In_ReadChar");
-uint8_t ReadByte(void) OB_SYMBOL("2In_ReadByte");
-int64_t ReadString(char* s, int64_t s_len) OB_SYMBOL("2In_ReadString");
-int64_t ReadLine(char* s, int64_t s_len) OB_SYMBOL("2In_ReadLine");
+int64_t Int(void) OB_SYMBOL("2In_Int");
+double Real(void) OB_SYMBOL("2In_Real");
+char Char(void) OB_SYMBOL("2In_Char");
+uint8_t Byte(void) OB_SYMBOL("2In_Byte");
+int64_t String(char* s, int64_t s_len) OB_SYMBOL("2In_String");
+int64_t Line(char* s, int64_t s_len) OB_SYMBOL("2In_Line");
 void In(void) OB_SYMBOL("In");
 
 
@@ -63,7 +63,7 @@ static int64_t read_token(char* s, int64_t s_len)
     return i;
 }
 
-int64_t ReadInt(void)
+int64_t Int(void)
 {
     Truncated = false;
     char buf[64];
@@ -83,7 +83,7 @@ int64_t ReadInt(void)
     return val;
 }
 
-double ReadReal(void)
+double Real(void)
 {
     Truncated = false;
     char buf[128];
@@ -103,7 +103,7 @@ double ReadReal(void)
     return val;
 }
 
-char ReadChar(void)
+char Char(void)
 {
     Done = false;
     Truncated = false;
@@ -115,7 +115,7 @@ char ReadChar(void)
     return (char)c;
 }
 
-uint8_t ReadByte(void)
+uint8_t Byte(void)
 {
     Truncated = false;
     char buf[64];
@@ -140,13 +140,13 @@ uint8_t ReadByte(void)
     return (uint8_t)val;
 }
 
-int64_t ReadString(char* s, int64_t s_len)
+int64_t String(char* s, int64_t s_len)
 {
     Truncated = false;
     return read_token(s, s_len);
 }
 
-int64_t ReadLine(char* s, int64_t s_len)
+int64_t Line(char* s, int64_t s_len)
 {
     Done = false;
     Truncated = false;

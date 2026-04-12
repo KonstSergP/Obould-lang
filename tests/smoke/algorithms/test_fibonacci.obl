@@ -16,8 +16,8 @@ var {
 
     while i < 100 {
         if (i < 15) {
-            Out.WriteInt(a);
-            Out.WriteLn();
+            Out.Int(a);
+            Out.Ln();
         }
         t = a + b;
         a = b;

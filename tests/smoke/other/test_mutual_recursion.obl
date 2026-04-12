@@ -31,12 +31,12 @@ var res: bool;
 {
     res = IsEven(18);
     if res {
-        Out.WriteInt(1);
+        Out.Int(1);
     }
     else {
-        Out.WriteInt(0);
+        Out.Int(0);
     }
-    Out.WriteLn();
+    Out.Ln();
     return 0;
 }
 

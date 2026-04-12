@@ -25,8 +25,8 @@ var {
 
     f = Files.Open("tests/smoke/files_rw.bin", "wb");
     if f == nil {
-        Out.WriteString("Files: open(write) failed");
-        Out.WriteLn();
+        Out.String("Files: open(write) failed");
+        Out.Ln();
         status = 1;
     } else {
         Files.Set(w, f, 0);
@@ -45,8 +45,8 @@ var {
     if status == 0 {
         f = Files.Open("tests/smoke/files_rw.bin", "rb");
         if f == nil {
-            Out.WriteString("Files: open(read) failed");
-            Out.WriteLn();
+            Out.String("Files: open(read) failed");
+            Out.Ln();
             status = 1;
         } else {
             Files.Set(r, f, 0);
@@ -62,22 +62,22 @@ var {
         }
     }
 
-    Out.WriteString("Files RW:");
-    Out.WriteLn();
-    Out.WriteString("  byte=");
-    Out.WriteByte(b);
-    Out.WriteString(" int64=");
-    Out.WriteInt(i);
-    Out.WriteString(" real=");
-    Out.WriteReal(x, 2);
-    Out.WriteString(" str=");
-    Out.WriteString(t);
-    Out.WriteLn();
-    Out.WriteString("  res=");
-    Out.WriteByte(r.res);
-    Out.WriteString(" ok=");
-    Out.WriteBool(ok);
-    Out.WriteLn();
+    Out.String("Files RW:");
+    Out.Ln();
+    Out.String("  byte=");
+    Out.Byte(b);
+    Out.String(" int64=");
+    Out.Int(i);
+    Out.String(" real=");
+    Out.Real(x, 2);
+    Out.String(" str=");
+    Out.String(t);
+    Out.Ln();
+    Out.String("  res=");
+    Out.Byte(r.res);
+    Out.String(" ok=");
+    Out.Bool(ok);
+    Out.Ln();
 
     return status;
 }

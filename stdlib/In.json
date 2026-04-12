@@ -17,27 +17,27 @@
     "moduleName": "In",
     "procedures": [
         {
-            "name": "ReadInt",
+            "name": "Int",
             "parameters": [],
             "returnType": "i64"
         },
         {
-            "name": "ReadReal",
+            "name": "Real",
             "parameters": [],
             "returnType": "f64"
         },
         {
-            "name": "ReadChar",
+            "name": "Char",
             "parameters": [],
             "returnType": "char"
         },
         {
-            "name": "ReadByte",
+            "name": "Byte",
             "parameters": [],
             "returnType": "byte"
         },
         {
-            "name": "ReadString",
+            "name": "String",
             "parameters": [
                 {
                     "name": "s",
@@ -51,7 +51,7 @@
             "returnType": "i64"
         },
         {
-            "name": "ReadLine",
+            "name": "Line",
             "parameters": [
                 {
                     "name": "s",

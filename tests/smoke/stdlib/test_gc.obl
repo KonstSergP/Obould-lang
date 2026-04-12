@@ -29,10 +29,10 @@ var {
         sum = sum + (i mod 7);
         i = i + 1;
     }
-    Out.WriteInt(keep.value);
-    Out.WriteLn();
-    Out.WriteInt(sum);
-    Out.WriteLn();
+    Out.Int(keep.value);
+    Out.Ln();
+    Out.Int(sum);
+    Out.Ln();
     return sum;
 }
 

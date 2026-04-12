@@ -194,8 +194,8 @@ TEST_CASE("Hello world — WriteInt and WriteLn", "[ccodegen][basic]")
     std::string src = R"(module Hello
 import Out;
 fn init() -> void {
-    Out.WriteInt(42);
-    Out.WriteLn();
+    Out.Int(42);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("Hello", src, {"Out"}) == "42\n");
@@ -206,14 +206,14 @@ TEST_CASE("Arithmetic expressions", "[ccodegen][expr]")
     std::string src = R"(module Arith
 import Out;
 fn init() -> void {
-    Out.WriteInt(2 + 3 * 4);
-    Out.WriteLn();
-    Out.WriteInt(100 div 10);
-    Out.WriteLn();
-    Out.WriteInt(17 mod 5);
-    Out.WriteLn();
-    Out.WriteInt(10 - 3);
-    Out.WriteLn();
+    Out.Int(2 + 3 * 4);
+    Out.Ln();
+    Out.Int(100 div 10);
+    Out.Ln();
+    Out.Int(17 mod 5);
+    Out.Ln();
+    Out.Int(10 - 3);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("Arith", src, {"Out"}) == "14\n10\n2\n7\n");
@@ -227,10 +227,10 @@ fn init() -> void
 var x: i64;
 {
     x = 5;
-    Out.WriteInt(-x);
-    Out.WriteLn();
-    Out.WriteInt(+x);
-    Out.WriteLn();
+    Out.Int(-x);
+    Out.Ln();
+    Out.Int(+x);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("Unary", src, {"Out"}) == "-5\n5\n");
@@ -250,8 +250,8 @@ var {
     a = 10;
     b = 20;
     c = a + b;
-    Out.WriteInt(c);
-    Out.WriteLn();
+    Out.Int(c);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("Vars", src, {"Out"}) == "30\n");
@@ -266,8 +266,8 @@ const {
     Y = 200;
 }
 fn init() -> void {
-    Out.WriteInt(X + Y);
-    Out.WriteLn();
+    Out.Int(X + Y);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("Consts", src, {"Out"}) == "300\n");
@@ -280,8 +280,8 @@ import Out;
 var g: i64;
 fn init() -> void {
     g = 99;
-    Out.WriteInt(g);
-    Out.WriteLn();
+    Out.Int(g);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("Globals", src, {"Out"}) == "99\n");
@@ -293,13 +293,13 @@ TEST_CASE("If-else", "[ccodegen][control]")
 import Out;
 fn printSign(x: i64) -> void {
     if x > 0 {
-        Out.WriteInt(1);
+        Out.Int(1);
     } else if x == 0 {
-        Out.WriteInt(0);
+        Out.Int(0);
     } else {
-        Out.WriteInt(-1);
+        Out.Int(-1);
     }
-    Out.WriteLn();
+    Out.Ln();
 }
 fn init() -> void {
     printSign(5);
@@ -319,8 +319,8 @@ var i: i64;
 {
     i = 0;
     while i < 5 {
-        Out.WriteInt(i);
-        Out.WriteLn();
+        Out.Int(i);
+        Out.Ln();
         i = i + 1;
     }
 }
@@ -337,8 +337,8 @@ var i: i64;
 {
     i = 1;
     do {
-        Out.WriteInt(i);
-        Out.WriteLn();
+        Out.Int(i);
+        Out.Ln();
         i = i * 2;
     } while i <= 16;
 }
@@ -360,8 +360,8 @@ var {
     for (i = 1, 10, 1) {
         sum = sum + i;
     }
-    Out.WriteInt(sum);
-    Out.WriteLn();
+    Out.Int(sum);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("ForLoop", src, {"Out"}) == "55\n");
@@ -375,8 +375,8 @@ fn init() -> void
 var i: i64;
 {
     for (i = 0, 20, 5) {
-        Out.WriteInt(i);
-        Out.WriteLn();
+        Out.Int(i);
+        Out.Ln();
     }
 }
 )";
@@ -390,13 +390,13 @@ import Out;
 fn classify(x: i64) -> void {
     switch x {
         case 1:
-            Out.WriteInt(10);
+            Out.Int(10);
         case 2:
-            Out.WriteInt(20);
+            Out.Int(20);
         case 3:
-            Out.WriteInt(30);
+            Out.Int(30);
     }
-    Out.WriteLn();
+    Out.Ln();
 }
 fn init() -> void {
     classify(1);
@@ -417,11 +417,11 @@ var x: i64;
     x = 7;
     switch x {
         case 1..5:
-            Out.WriteInt(1);
+            Out.Int(1);
         case 6..10:
-            Out.WriteInt(2);
+            Out.Int(2);
     }
-    Out.WriteLn();
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("SwitchRange", src, {"Out"}) == "2\n");
@@ -435,8 +435,8 @@ fn add(a, b: i64) -> i64 {
     return a + b;
 }
 fn init() -> void {
-    Out.WriteInt(add(3, 7));
-    Out.WriteLn();
+    Out.Int(add(3, 7));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("FuncCall", src, {"Out"}) == "10\n");
@@ -456,10 +456,10 @@ fn cube(x: i64) -> i64 {
     return x * square(x);
 }
 fn init() -> void {
-    Out.WriteInt(square(5));
-    Out.WriteLn();
-    Out.WriteInt(cube(3));
-    Out.WriteLn();
+    Out.Int(square(5));
+    Out.Ln();
+    Out.Int(cube(3));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("MultiFn", src, {"Out"}) == "25\n27\n");
@@ -480,8 +480,8 @@ var result: i64;
     return result;
 }
 fn init() -> void {
-    Out.WriteInt(factorial(10));
-    Out.WriteLn();
+    Out.Int(factorial(10));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("Fact", src, {"Out"}) == "3628800\n");
@@ -502,8 +502,8 @@ var result: i64;
     return result;
 }
 fn init() -> void {
-    Out.WriteInt(fib(10));
-    Out.WriteLn();
+    Out.Int(fib(10));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("Fib", src, {"Out"}) == "55\n");
@@ -529,10 +529,10 @@ var {
     x = 10;
     y = 20;
     swap(x, y);
-    Out.WriteInt(x);
-    Out.WriteLn();
-    Out.WriteInt(y);
-    Out.WriteLn();
+    Out.Int(x);
+    Out.Ln();
+    Out.Int(y);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("RefParam", src, {"Out"}) == "20\n10\n");
@@ -554,8 +554,8 @@ var n: i64;
 {
     n = 0;
     doubleIncrement(n);
-    Out.WriteInt(n);
-    Out.WriteLn();
+    Out.Int(n);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("RefPass", src, {"Out"}) == "2\n");
@@ -575,8 +575,8 @@ var {
         arr[i] = i * i;
     }
     for (i = 0, 4, 1) {
-        Out.WriteInt(arr[i]);
-        Out.WriteLn();
+        Out.Int(arr[i]);
+        Out.Ln();
     }
 }
 )";
@@ -603,8 +603,8 @@ var {
     for (i = 0, 4, 1) {
         sum = sum + arr[i];
     }
-    Out.WriteInt(sum);
-    Out.WriteLn();
+    Out.Int(sum);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("ArrSum", src, {"Out"}) == "15\n");
@@ -625,24 +625,24 @@ var {
     b = 10;
     p = (a < b) && (b > 0);
     if p {
-        Out.WriteInt(1);
+        Out.Int(1);
     } else {
-        Out.WriteInt(0);
+        Out.Int(0);
     }
-    Out.WriteLn();
+    Out.Ln();
     p = (a > b) || (a == 5);
     if p {
-        Out.WriteInt(1);
+        Out.Int(1);
     } else {
-        Out.WriteInt(0);
+        Out.Int(0);
     }
-    Out.WriteLn();
+    Out.Ln();
     if !(a == b) {
-        Out.WriteInt(1);
+        Out.Int(1);
     } else {
-        Out.WriteInt(0);
+        Out.Int(0);
     }
-    Out.WriteLn();
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("BoolExpr", src, {"Out"}) == "1\n1\n1\n");
@@ -667,8 +667,8 @@ var {
             }
         }
     }
-    Out.WriteInt(count);
-    Out.WriteLn();
+    Out.Int(count);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("Nested", src, {"Out"}) == "5\n");
@@ -687,8 +687,8 @@ fn init() -> void {
     bump();
     bump();
     bump();
-    Out.WriteInt(counter);
-    Out.WriteLn();
+    Out.Int(counter);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("GlobFn", src, {"Out"}) == "3\n");
@@ -705,8 +705,8 @@ const {
 var total: i64;
 fn init() -> void {
     total = OFFSET + SCALE * 10;
-    Out.WriteInt(total);
-    Out.WriteLn();
+    Out.Int(total);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("ConstGlob", src, {"Out"}) == "130\n");
@@ -717,10 +717,10 @@ TEST_CASE("Integer division (div)", "[ccodegen][expr]")
     std::string src = R"(module IntDiv
 import Out;
 fn init() -> void {
-    Out.WriteInt(17 div 5);
-    Out.WriteLn();
-    Out.WriteInt(100 div 3);
-    Out.WriteLn();
+    Out.Int(17 div 5);
+    Out.Ln();
+    Out.Int(100 div 3);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("IntDiv", src, {"Out"}) == "3\n33\n");
@@ -731,10 +731,10 @@ TEST_CASE("Complex expression with parentheses", "[ccodegen][expr]")
     std::string src = R"(module ComplexExpr
 import Out;
 fn init() -> void {
-    Out.WriteInt((2 + 3) * (4 + 1));
-    Out.WriteLn();
-    Out.WriteInt((100 - 50) div (5 + 5));
-    Out.WriteLn();
+    Out.Int((2 + 3) * (4 + 1));
+    Out.Ln();
+    Out.Int((100 - 50) div (5 + 5));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("ComplexExpr", src, {"Out"}) == "25\n5\n");
@@ -748,8 +748,8 @@ fn export compute(x: i64) -> i64 {
     return x * x + 1;
 }
 fn init() -> void {
-    Out.WriteInt(compute(7));
-    Out.WriteLn();
+    Out.Int(compute(7));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("ExportFn", src, {"Out"}) == "50\n");
@@ -770,10 +770,10 @@ var result: i64;
     return result;
 }
 fn init() -> void {
-    Out.WriteInt(abs(-42));
-    Out.WriteLn();
-    Out.WriteInt(abs(17));
-    Out.WriteLn();
+    Out.Int(abs(-42));
+    Out.Ln();
+    Out.Int(abs(17));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("AbsFn", src, {"Out"}) == "42\n17\n");
@@ -796,10 +796,10 @@ var {
     } elif b < 3 {
         b = b + 1;
     }
-    Out.WriteInt(a);
-    Out.WriteLn();
-    Out.WriteInt(b);
-    Out.WriteLn();
+    Out.Int(a);
+    Out.Ln();
+    Out.Int(b);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("WhileElif", src, {"Out"}) == "3\n3\n");
@@ -838,8 +838,8 @@ var {
         }
     }
     for (i = 0, 4, 1) {
-        Out.WriteInt(arr[i]);
-        Out.WriteLn();
+        Out.Int(arr[i]);
+        Out.Ln();
     }
 }
 )";
@@ -865,10 +865,10 @@ var t: i64;
     b = t;
 }
 fn init() -> void {
-    Out.WriteInt(gcd(48, 18));
-    Out.WriteLn();
-    Out.WriteInt(gcd(100, 75));
-    Out.WriteLn();
+    Out.Int(gcd(48, 18));
+    Out.Ln();
+    Out.Int(gcd(100, 75));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("GCD", src, {"Out"}) == "6\n25\n");
@@ -890,10 +890,10 @@ var {
     }
     i = i + 2;
     sum = sum + i;
-    Out.WriteInt(sum);
-    Out.WriteLn();
-    Out.WriteInt(i);
-    Out.WriteLn();
+    Out.Int(sum);
+    Out.Ln();
+    Out.Int(i);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("ForAfter", src, {"Out"}) == "68\n13\n");
@@ -924,12 +924,12 @@ fn init() -> void {
 import MathLib, Out;
 
 fn init() -> void {
-    Out.WriteInt(MathLib.Square(5));
-    Out.WriteLn();
-    Out.WriteInt(MathLib.Cube(3));
-    Out.WriteLn();
-    Out.WriteInt(MathLib.Add(10, 20));
-    Out.WriteLn();
+    Out.Int(MathLib.Square(5));
+    Out.Ln();
+    Out.Int(MathLib.Cube(3));
+    Out.Ln();
+    Out.Int(MathLib.Add(10, 20));
+    Out.Ln();
 }
 )"};
 
@@ -968,12 +968,12 @@ fn init() -> void {
     Counter.Increment();
     Counter.Increment();
     Counter.Increment();
-    Out.WriteInt(Counter.Get());
-    Out.WriteLn();
+    Out.Int(Counter.Get());
+    Out.Ln();
     Counter.Increment();
     Counter.Increment();
-    Out.WriteInt(Counter.Get());
-    Out.WriteLn();
+    Out.Int(Counter.Get());
+    Out.Ln();
 }
 )"};
 
@@ -997,9 +997,9 @@ fn init() -> void {
 import Out;
 
 fn export PrintLabeled(label: i64, value: i64) -> void {
-    Out.WriteInt(label);
-    Out.WriteInt(value);
-    Out.WriteLn();
+    Out.Int(label);
+    Out.Int(value);
+    Out.Ln();
 }
 
 fn init() -> void {
@@ -1049,13 +1049,13 @@ var {
 {
     p.x = 10;
     p.y = 20;
-    Out.WriteInt(p.x + p.y);
-    Out.WriteLn();
+    Out.Int(p.x + p.y);
+    Out.Ln();
     p3.x = 1;
     p3.y = 2;
     p3.z = 3;
-    Out.WriteInt(p3.x + p3.y + p3.z);
-    Out.WriteLn();
+    Out.Int(p3.x + p3.y + p3.z);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("StructFields", src, {"Out"}) == "30\n6\n");
@@ -1100,16 +1100,16 @@ var {
 {
     c.id = 0;
     c.radius = 5;
-    Out.WriteInt(Identify(c));
-    Out.WriteLn();
+    Out.Int(Identify(c));
+    Out.Ln();
     r.id = 0;
     r.w = 3;
     r.h = 4;
-    Out.WriteInt(Identify(r));
-    Out.WriteLn();
+    Out.Int(Identify(r));
+    Out.Ln();
     s.id = 0;
-    Out.WriteInt(Identify(s));
-    Out.WriteLn();
+    Out.Int(Identify(s));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("IsOp", src, {"Out"}) == "1\n2\n0\n");
@@ -1133,14 +1133,14 @@ type {
 }
 
 fn Describe(a: &Animal) -> void {
-    Out.WriteInt(a.legs);
+    Out.Int(a.legs);
     if a is Dog {
-        Out.WriteInt(a(Dog).barkVolume);
+        Out.Int(a(Dog).barkVolume);
     }
     if a is Cat {
-        Out.WriteInt(a(Cat).purring);
+        Out.Int(a(Cat).purring);
     }
-    Out.WriteLn();
+    Out.Ln();
 }
 
 fn init() -> void
@@ -1203,12 +1203,12 @@ var {
     l.a = 0;
     l.b = 0;
     l.c = 0;
-    Out.WriteInt(Level(b));
-    Out.WriteLn();
-    Out.WriteInt(Level(m));
-    Out.WriteLn();
-    Out.WriteInt(Level(l));
-    Out.WriteLn();
+    Out.Int(Level(b));
+    Out.Ln();
+    Out.Int(Level(m));
+    Out.Ln();
+    Out.Int(Level(l));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("ThreeLevel", src, {"Out"}) == "1\n2\n3\n");
@@ -1229,11 +1229,11 @@ type {
 }
 
 fn PrintSpeed(v: &Vehicle) -> void {
-    Out.WriteInt(v.speed);
+    Out.Int(v.speed);
     if v is Car {
-        Out.WriteInt(v(Car).doors);
+        Out.Int(v(Car).doors);
     }
-    Out.WriteLn();
+    Out.Ln();
 }
 
 fn init() -> void
@@ -1262,8 +1262,8 @@ var {
 }
 {
     s = "Hello, World!";
-    Out.WriteString(s);
-    Out.WriteLn();
+    Out.String(s);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("OutputString", src, {"Out"}) == "Hello, World!\n");
@@ -1295,8 +1295,8 @@ var {
     a[2] = 3;
     a[3] = 4;
     a[4] = 5;
-    Out.WriteInt(sumArray(a));
-    Out.WriteLn();
+    Out.Int(sumArray(a));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("OABasic", src, {"Out"}) == "15\n");
@@ -1310,8 +1310,8 @@ fn printArray(arr: i64[]) -> void
 var i: i64;
 {
     for (i = 0, len(arr) - 1, 1) {
-        Out.WriteInt(arr[i]);
-        Out.WriteLn();
+        Out.Int(arr[i]);
+        Out.Ln();
     }
 }
 fn init() -> void
@@ -1358,8 +1358,8 @@ var {
     x[2] = 3;
     y[0] = 10;
     y[1] = 20;
-    Out.WriteInt(sumTwo(x, y));
-    Out.WriteLn();
+    Out.Int(sumTwo(x, y));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("OAMulti", src, {"Out"}) == "36\n");
@@ -1389,8 +1389,8 @@ var {
     a[0] = 1;
     a[1] = 2;
     a[2] = 3;
-    Out.WriteInt(scaleAndSum(a, 10));
-    Out.WriteLn();
+    Out.Int(scaleAndSum(a, 10));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("OAMixed", src, {"Out"}) == "60\n");
@@ -1423,8 +1423,8 @@ var {
     a[1] = 7;
     a[2] = 2;
     a[3] = 9;
-    Out.WriteInt(maxArr(a));
-    Out.WriteLn();
+    Out.Int(maxArr(a));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("OAExport", src, {"Out"}) == "9\n");
@@ -1445,8 +1445,8 @@ var {
     for (i = 0, len(arr) - 1, 1) {
         s = s + arr[i];
     }
-    Out.WriteInt(s);
-    Out.WriteLn();
+    Out.Int(s);
+    Out.Ln();
 }
 fn init() -> void {
     g[0] = 100;
@@ -1472,8 +1472,8 @@ var {
 }
 {
     a[0] = 42;
-    Out.WriteInt(getFirst(a));
-    Out.WriteLn();
+    Out.Int(getFirst(a));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("OASingle", src, {"Out"}) == "42\n");
@@ -1514,12 +1514,12 @@ var {
     big[3] = 1;
     big[4] = 1;
     big[5] = 1;
-    Out.WriteInt(sum(small));
-    Out.WriteLn();
-    Out.WriteInt(sum(medium));
-    Out.WriteLn();
-    Out.WriteInt(sum(big));
-    Out.WriteLn();
+    Out.Int(sum(small));
+    Out.Ln();
+    Out.Int(sum(medium));
+    Out.Ln();
+    Out.Int(sum(big));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("OASizes", src, {"Out"}) == "3\n100\n6\n");
@@ -1553,10 +1553,10 @@ var {
     a[2] = 30;
     a[3] = 40;
     a[4] = 50;
-    Out.WriteInt(linearSearch(a, 30));
-    Out.WriteLn();
-    Out.WriteInt(linearSearch(a, 99));
-    Out.WriteLn();
+    Out.Int(linearSearch(a, 30));
+    Out.Ln();
+    Out.Int(linearSearch(a, 99));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("OASearch", src, {"Out"}) == "2\n-1\n");
@@ -1589,8 +1589,8 @@ var {
     a[0] = 5;
     a[1] = 10;
     a[2] = 15;
-    Out.WriteInt(doubleSum(a));
-    Out.WriteLn();
+    Out.Int(doubleSum(a));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("OAPassThru", src, {"Out"}) == "60\n");
@@ -1601,10 +1601,10 @@ TEST_CASE("Open array — 2D all dimensions via len", "[ccodegen][openarray]")
     std::string src = R"(module OA2D
 import Out;
 fn printDims(m: i64[][]) -> void {
-    Out.WriteInt(len(m));
-    Out.WriteLn();
-    Out.WriteInt(len(m[0]));
-    Out.WriteLn();
+    Out.Int(len(m));
+    Out.Ln();
+    Out.Int(len(m[0]));
+    Out.Ln();
 }
 fn init() -> void
 var {
@@ -1622,12 +1622,12 @@ TEST_CASE("Open array — 3D all dimensions via len", "[ccodegen][openarray]")
     std::string src = R"(module OA3D
 import Out;
 fn printDims(m: i64[][][]) -> void {
-    Out.WriteInt(len(m));
-    Out.WriteLn();
-    Out.WriteInt(len(m[0]));
-    Out.WriteLn();
-    Out.WriteInt(len(m[0][0]));
-    Out.WriteLn();
+    Out.Int(len(m));
+    Out.Ln();
+    Out.Int(len(m[0]));
+    Out.Ln();
+    Out.Int(len(m[0][0]));
+    Out.Ln();
 }
 fn init() -> void
 var {
@@ -1645,10 +1645,10 @@ TEST_CASE("Open array — 2D pass-through with len", "[ccodegen][openarray]")
     std::string src = R"(module OA2DPass
 import Out;
 fn innerLen(m: i64[][]) -> void {
-    Out.WriteInt(len(m));
-    Out.WriteLn();
-    Out.WriteInt(len(m[0]));
-    Out.WriteLn();
+    Out.Int(len(m));
+    Out.Ln();
+    Out.Int(len(m[0]));
+    Out.Ln();
 }
 fn wrapper(m: i64[][]) -> void {
     innerLen(m);
@@ -1674,8 +1674,8 @@ fn export PrintArray(arr: i64[]) -> void
 var i: i64;
 {
     for (i = 0, len(arr) - 1, 1) {
-        Out.WriteInt(arr[i]);
-        Out.WriteLn();
+        Out.Int(arr[i]);
+        Out.Ln();
     }
 }
 
@@ -1689,8 +1689,8 @@ var {
     for (i = 0, len(arr) - 1, 1) {
         s = s + arr[i];
     }
-    Out.WriteInt(s);
-    Out.WriteLn();
+    Out.Int(s);
+    Out.Ln();
 }
 
 fn init() -> void {
@@ -1729,10 +1729,10 @@ var {
     b: i64[10];
 }
 {
-    Out.WriteInt(len(a));
-    Out.WriteLn();
-    Out.WriteInt(len(b));
-    Out.WriteLn();
+    Out.Int(len(a));
+    Out.Ln();
+    Out.Int(len(b));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("LenFixed", src, {"Out"}) == "5\n10\n");
@@ -1743,8 +1743,8 @@ TEST_CASE("Builtin len — open array parameter", "[ccodegen][builtin][len]")
     std::string src = R"(module LenOpen
 import Out;
 fn printLen(arr: i64[]) -> void {
-    Out.WriteInt(len(arr));
-    Out.WriteLn();
+    Out.Int(len(arr));
+    Out.Ln();
 }
 fn init() -> void
 var {
@@ -1767,8 +1767,8 @@ fn printAll(arr: i64[]) -> void
 var i: i64;
 {
     for (i = 0, len(arr) - 1, 1) {
-        Out.WriteInt(arr[i]);
-        Out.WriteLn();
+        Out.Int(arr[i]);
+        Out.Ln();
     }
 }
 fn init() -> void
@@ -1796,8 +1796,8 @@ var {
 }
 {
     s = "Hello";
-    Out.WriteInt(len(s));
-    Out.WriteLn();
+    Out.Int(len(s));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("LenStr", src, {"Out"}) == "6\n");
@@ -1819,8 +1819,8 @@ var {
 {
     new(p);
     p.value = 42;
-    Out.WriteInt(p.value);
-    Out.WriteLn();
+    Out.Int(p.value);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("NewBasic", src, {"Out"}) == "42\n");
@@ -1847,10 +1847,10 @@ var {
     a.y = 2;
     b.x = 10;
     b.y = 20;
-    Out.WriteInt(a.x + a.y);
-    Out.WriteLn();
-    Out.WriteInt(b.x + b.y);
-    Out.WriteLn();
+    Out.Int(a.x + a.y);
+    Out.Ln();
+    Out.Int(b.x + b.y);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("NewMulti", src, {"Out"}) == "3\n30\n");
@@ -1872,15 +1872,15 @@ var {
 {
     new(p);
     p.val = 99;
-    Out.WriteInt(p.val);
-    Out.WriteLn();
+    Out.Int(p.val);
+    Out.Ln();
     p = nil;
     if p == nil {
-        Out.WriteInt(0);
+        Out.Int(0);
     } else {
-        Out.WriteInt(1);
+        Out.Int(1);
     }
-    Out.WriteLn();
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("NewNil", src, {"Out"}) == "99\n0\n");
@@ -1901,15 +1901,15 @@ var {
 }
 {
     new(p);
-    Out.WriteInt(p.a);
-    Out.WriteLn();
-    Out.WriteInt(p.b);
-    Out.WriteLn();
-    Out.WriteInt(p.c);
-    Out.WriteLn();
+    Out.Int(p.a);
+    Out.Ln();
+    Out.Int(p.b);
+    Out.Ln();
+    Out.Int(p.c);
+    Out.Ln();
     p.a = 100;
-    Out.WriteInt(p.a);
-    Out.WriteLn();
+    Out.Int(p.a);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("NewZero", src, {"Out"}) == "0\n0\n0\n100\n");
@@ -1926,8 +1926,8 @@ var x: i64;
     assert(x == 42);
     assert(x > 0);
     assert(x < 100);
-    Out.WriteInt(x);
-    Out.WriteLn();
+    Out.Int(x);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("AssertPass", src, {"Out"}) == "42\n");
@@ -1948,8 +1948,8 @@ var {
     assert(a + b == 30);
     assert(a != b);
     assert((a < b) && (b > 0));
-    Out.WriteInt(a + b);
-    Out.WriteLn();
+    Out.Int(a + b);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("AssertBool", src, {"Out"}) == "30\n");
@@ -1967,8 +1967,8 @@ var {
     x = 10;
     assert(x > 0, "x must be positive");
     assert(x == 10, "x must equal 10");
-    Out.WriteInt(x);
-    Out.WriteLn();
+    Out.Int(x);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("AssertMsg", src, {"Out"}) == "10\n");
@@ -1990,8 +1990,8 @@ var {
 }
 {
     b.x = 42;
-    Out.WriteInt(b.x);
-    Out.WriteLn();
+    Out.Int(b.x);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("FwdAlias", src, {"Out"}) == "42\n");
@@ -2017,8 +2017,8 @@ var {
 {
     it.value = 77;
     c.item = nil;
-    Out.WriteInt(it.value);
-    Out.WriteLn();
+    Out.Int(it.value);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("FwdPtr", src, {"Out"}) == "77\n");
@@ -2043,10 +2043,10 @@ var {
 {
     d.legs = 4;
     d.bark = 1;
-    Out.WriteInt(d.legs);
-    Out.WriteLn();
-    Out.WriteInt(d.bark);
-    Out.WriteLn();
+    Out.Int(d.legs);
+    Out.Ln();
+    Out.Int(d.bark);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("FwdInherit", src, {"Out"}) == "4\n1\n");
@@ -2083,8 +2083,8 @@ var {
         sum = sum + cur.value;
         cur = cur.next;
     }
-    Out.WriteInt(sum);
-    Out.WriteLn();
+    Out.Int(sum);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("LList", src, {"Out"}) == "150\n");
@@ -2142,10 +2142,10 @@ var {
         cur.next = head;
         head = cur;
     }
-    Out.WriteInt(count(head));
-    Out.WriteLn();
-    Out.WriteInt(last(head));
-    Out.WriteLn();
+    Out.Int(count(head));
+    Out.Ln();
+    Out.Int(last(head));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("LListOps", src, {"Out"}) == "4\n1\n");
@@ -2167,8 +2167,8 @@ var {
 }
 {
     f = double;
-    Out.WriteInt(f(5));
-    Out.WriteLn();
+    Out.Int(f(5));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("FnBasic", src, {"Out"}) == "10\n");
@@ -2196,11 +2196,11 @@ var {
 }
 {
     f = add;
-    Out.WriteInt(apply(f, 3, 4));
-    Out.WriteLn();
+    Out.Int(apply(f, 3, 4));
+    Out.Ln();
     f = mul;
-    Out.WriteInt(apply(f, 3, 4));
-    Out.WriteLn();
+    Out.Int(apply(f, 3, 4));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("FnSwap", src, {"Out"}) == "7\n12\n");
@@ -2234,12 +2234,12 @@ var {
 {
     maker = getDoubler;
     f = maker();
-    Out.WriteInt(f(5));
-    Out.WriteLn();
+    Out.Int(f(5));
+    Out.Ln();
     maker = getTripler;
     f = maker();
-    Out.WriteInt(f(5));
-    Out.WriteLn();
+    Out.Int(f(5));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("FnRet", src, {"Out"}) == "10\n15\n");
@@ -2273,8 +2273,8 @@ var {
     l2 = makeLevel2;
     l1 = l2();
     l0 = l1();
-    Out.WriteInt(l0());
-    Out.WriteLn();
+    Out.Int(l0());
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("FnDeep", src, {"Out"}) == "42\n");
@@ -2309,11 +2309,11 @@ var {
 }
 {
     f = pick(0);
-    Out.WriteInt(f(3));
-    Out.WriteLn();
+    Out.Int(f(3));
+    Out.Ln();
     f = pick(1);
-    Out.WriteInt(f(3));
-    Out.WriteLn();
+    Out.Int(f(3));
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("FnFactory", src, {"Out"}) == "13\n15\n");
@@ -2345,8 +2345,8 @@ var {
     ops[1] = double;
     ops[2] = square;
     for (i = 0, 2, 1) {
-        Out.WriteInt(ops[i](5));
-        Out.WriteLn();
+        Out.Int(ops[i](5));
+        Out.Ln();
     }
 }
 )";
@@ -2362,8 +2362,8 @@ var i: i64;
 {
     Random.Seed(42);
     for (i = 0, 4, 1) {
-        Out.WriteInt(Random.NextInt(100));
-        Out.WriteLn();
+        Out.Int(Random.NextInt(100));
+        Out.Ln();
     }
 }
 )";
@@ -2380,11 +2380,11 @@ var i: i64;
     Random.Seed(42);
     for (i = 0, 3, 1) {
         if Random.NextBool() {
-            Out.WriteInt(1);
+            Out.Int(1);
         } else {
-            Out.WriteInt(0);
+            Out.Int(0);
         }
-        Out.WriteLn();
+        Out.Ln();
     }
 }
 )";
@@ -2406,11 +2406,11 @@ var {
     Random.Seed(123);
     b = Random.NextInt(1000);
     if a == b {
-        Out.WriteInt(1);
+        Out.Int(1);
     } else {
-        Out.WriteInt(0);
+        Out.Int(0);
     }
-    Out.WriteLn();
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("RndRepro", src, {"Out", "Random"}) == "1\n");
@@ -2426,10 +2426,10 @@ var {
     b: i64;
 }
 {
-    a = In.ReadInt();
-    b = In.ReadInt();
-    Out.WriteInt(a + b);
-    Out.WriteLn();
+    a = In.Int();
+    b = In.Int();
+    Out.Int(a + b);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("InInt", src, {"Out", "In"}, "10 20\n") == "30\n");
@@ -2444,9 +2444,9 @@ var {
     buf: char[64];
 }
 {
-    In.ReadLine(buf);
-    Out.WriteString(buf);
-    Out.WriteLn();
+    In.Line(buf);
+    Out.String(buf);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("InLine", src, {"Out", "In"}, "Hello World\n") == "Hello World\n");
@@ -2461,13 +2461,13 @@ var {
     c: char;
 }
 {
-    c = In.ReadChar();
-    Out.WriteChar(c);
-    c = In.ReadChar();
-    Out.WriteChar(c);
-    c = In.ReadChar();
-    Out.WriteChar(c);
-    Out.WriteLn();
+    c = In.Char();
+    Out.Char(c);
+    c = In.Char();
+    Out.Char(c);
+    c = In.Char();
+    Out.Char(c);
+    Out.Ln();
 }
 )";
     REQUIRE(transpileCompileRun("InChar", src, {"Out", "In"}, "ABC") == "ABC\n");
@@ -2493,11 +2493,11 @@ var {
     f = Files.Open("_test_int.bin", "rb");
     Files.Set(r, f, 0);
     Files.ReadInt64(r, val);
-    Out.WriteInt(val);
-    Out.WriteLn();
+    Out.Int(val);
+    Out.Ln();
     Files.ReadInt64(r, val);
-    Out.WriteInt(val);
-    Out.WriteLn();
+    Out.Int(val);
+    Out.Ln();
     Files.Close(f);
 }
 )";
@@ -2525,14 +2525,14 @@ var {
     f = Files.Open("_test_byte.bin", "rb");
     Files.Set(r, f, 0);
     Files.ReadByte(r, b);
-    Out.WriteInt(b);
-    Out.WriteLn();
+    Out.Int(b);
+    Out.Ln();
     Files.ReadByte(r, b);
-    Out.WriteInt(b);
-    Out.WriteLn();
+    Out.Int(b);
+    Out.Ln();
     Files.ReadByte(r, b);
-    Out.WriteInt(b);
-    Out.WriteLn();
+    Out.Int(b);
+    Out.Ln();
     Files.Close(f);
 }
 )";
@@ -2558,8 +2558,8 @@ var {
     f = Files.Open("_test_str.bin", "rb");
     Files.Set(r, f, 0);
     Files.ReadString(r, buf);
-    Out.WriteString(buf);
-    Out.WriteLn();
+    Out.String(buf);
+    Out.Ln();
     Files.Close(f);
 }
 )";

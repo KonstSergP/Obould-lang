@@ -10,32 +10,32 @@ var {
 }
 {
     ch = "A";
-    Out.WriteChar(ch);
-    Out.WriteSpace();
-    Out.WriteString("Hello");
-    Out.WriteSpace();
-    Out.WriteStringLen("Hello", 2);
-    Out.WriteLn();
+    Out.Char(ch);
+    Out.Space();
+    Out.String("Hello");
+    Out.Space();
+    Out.StringLen("Hello", 2);
+    Out.Ln();
 
     t = 42;
-    Out.WriteInt(t);
-    Out.WriteSpace();
-    Out.WriteIntWidth(t, 5);
-    Out.WriteSpace();
-    Out.WriteHex(255, 4);
-    Out.WriteSpace();
-    Out.WriteByte(255);
-    Out.WriteSpace();
-    Out.WriteBool(true);
-    Out.WriteSpace();
-    Out.WriteBool(false);
-    Out.WriteSpace();
-    Out.WriteReal(3.14159, 2);
-    Out.WriteLn();
+    Out.Int(t);
+    Out.Space();
+    Out.IntWidth(t, 5);
+    Out.Space();
+    Out.Hex(255, 4);
+    Out.Space();
+    Out.Byte(255);
+    Out.Space();
+    Out.Bool(true);
+    Out.Space();
+    Out.Bool(false);
+    Out.Space();
+    Out.Real(3.14159, 2);
+    Out.Ln();
 
     s = "Hello";
-    Out.WriteString(s);
-    Out.WriteLn();
+    Out.String(s);
+    Out.Ln();
 
     return 0;
 }

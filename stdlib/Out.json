@@ -8,7 +8,7 @@
     "moduleName": "Out",
     "procedures": [
         {
-            "name": "WriteString",
+            "name": "String",
             "parameters": [
                 {
                     "name": "s",
@@ -22,7 +22,7 @@
             "returnType": "void"
         },
         {
-            "name": "WriteStringLen",
+            "name": "StringLen",
             "parameters": [
                 {
                     "name": "s",
@@ -41,7 +41,7 @@
             "returnType": "void"
         },
         {
-            "name": "WriteInt",
+            "name": "Int",
             "parameters": [
                 {
                     "name": "x",
@@ -52,23 +52,7 @@
             "returnType": "void"
         },
         {
-            "name": "WriteIntWidth",
-            "parameters": [
-                {
-                    "name": "x",
-                    "reference": false,
-                    "type": "i64"
-                },
-                {
-                    "name": "width",
-                    "reference": false,
-                    "type": "i64"
-                }
-            ],
-            "returnType": "void"
-        },
-        {
-            "name": "WriteHex",
+            "name": "IntWidth",
             "parameters": [
                 {
                     "name": "x",
@@ -84,7 +68,23 @@
             "returnType": "void"
         },
         {
-            "name": "WriteByte",
+            "name": "Hex",
+            "parameters": [
+                {
+                    "name": "x",
+                    "reference": false,
+                    "type": "i64"
+                },
+                {
+                    "name": "width",
+                    "reference": false,
+                    "type": "i64"
+                }
+            ],
+            "returnType": "void"
+        },
+        {
+            "name": "Byte",
             "parameters": [
                 {
                     "name": "x",
@@ -95,7 +95,7 @@
             "returnType": "void"
         },
         {
-            "name": "WriteBool",
+            "name": "Bool",
             "parameters": [
                 {
                     "name": "b",
@@ -106,7 +106,7 @@
             "returnType": "void"
         },
         {
-            "name": "WriteReal",
+            "name": "Real",
             "parameters": [
                 {
                     "name": "x",
@@ -122,17 +122,17 @@
             "returnType": "void"
         },
         {
-            "name": "WriteLn",
+            "name": "Ln",
             "parameters": [],
             "returnType": "void"
         },
         {
-            "name": "WriteSpace",
+            "name": "Space",
             "parameters": [],
             "returnType": "void"
         },
         {
-            "name": "WriteChar",
+            "name": "Char",
             "parameters": [
                 {
                     "name": "ch",

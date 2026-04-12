@@ -16,18 +16,18 @@ var {
     c = Random.NextInt(10);
     d = Random.NextInt(10);
 
-    Out.WriteInt(a);
-    Out.WriteLn();
-    Out.WriteInt(b);
-    Out.WriteLn();
-    Out.WriteInt(c);
-    Out.WriteLn();
-    Out.WriteInt(d);
-    Out.WriteLn();
-    Out.WriteBool(Random.NextBool());
-    Out.WriteLn();
-    Out.WriteReal(Random.NextReal(), 6);
-    Out.WriteLn();
+    Out.Int(a);
+    Out.Ln();
+    Out.Int(b);
+    Out.Ln();
+    Out.Int(c);
+    Out.Ln();
+    Out.Int(d);
+    Out.Ln();
+    Out.Bool(Random.NextBool());
+    Out.Ln();
+    Out.Real(Random.NextReal(), 6);
+    Out.Ln();
 
     return 0;
 }

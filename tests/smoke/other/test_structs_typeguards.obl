@@ -41,16 +41,16 @@ var {
     c.y = 0;
     c.radius = 7;
     res = Check(c);
-    Out.WriteInt(res);
-    Out.WriteLn();
+    Out.Int(res);
+    Out.Ln();
 
     r.x = 0;
     r.y = 0;
     r.w = 3;
     r.h = 4;
     res = Check(r);
-    Out.WriteInt(res);
-    Out.WriteLn();
+    Out.Int(res);
+    Out.Ln();
     return res;
 }
 

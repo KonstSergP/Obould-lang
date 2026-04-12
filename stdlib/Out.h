@@ -5,17 +5,17 @@
 #include <stdbool.h>
 
 
-void ob_3Out_WriteString(const char* s, int64_t s_len);
-void ob_3Out_WriteStringLen(const char* s, int64_t n, int64_t s_len);
-void ob_3Out_WriteInt(int64_t x);
-void ob_3Out_WriteIntWidth(int64_t x, int64_t width);
-void ob_3Out_WriteHex(int64_t x, int64_t width);
-void ob_3Out_WriteByte(uint8_t x);
-void ob_3Out_WriteBool(bool b);
-void ob_3Out_WriteReal(double x, int64_t digits);
-void ob_3Out_WriteLn(void);
-void ob_3Out_WriteSpace(void);
-void ob_3Out_WriteChar(char ch);
+void ob_3Out_String(const char* s, int64_t s_len);
+void ob_3Out_StringLen(const char* s, int64_t n, int64_t s_len);
+void ob_3Out_Int(int64_t x);
+void ob_3Out_IntWidth(int64_t x, int64_t width);
+void ob_3Out_Hex(int64_t x, int64_t width);
+void ob_3Out_Byte(uint8_t x);
+void ob_3Out_Bool(bool b);
+void ob_3Out_Real(double x, int64_t digits);
+void ob_3Out_Ln(void);
+void ob_3Out_Space(void);
+void ob_3Out_Char(char ch);
 void ob_Out(void);
 
 #endif /* OUT_H */

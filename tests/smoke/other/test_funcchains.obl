@@ -45,8 +45,8 @@ var {
 {
     f3 = Make3(3);
     res = f3(5)(7)(11);
-    Out.WriteInt(res);
-    Out.WriteLn();
+    Out.Int(res);
+    Out.Ln();
     return 0;
 }
 
