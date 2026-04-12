@@ -355,7 +355,7 @@ void CCodegenVisitor::visit(ProcedureCall& node)
                 } else {
                     typeName = "void";
                 }
-                os_ << argStr << " = (" << typeName << "*)calloc(1, sizeof(" << typeName << "))";
+                os_ << argStr << " = (" << typeName << "*)GC_MALLOC(sizeof(" << typeName << "))";
                 return;
             }
             break;
@@ -1306,7 +1306,11 @@ void CCodegenVisitor::visit(Module& node)
         os_ << "#include \"" << node.name << ".h\"\n";
         os_ << "#include <string.h>\n";
         os_ << "#include <stdlib.h>\n";
-        os_ << "#include <assert.h>\n\n";
+        os_ << "#include <assert.h>\n";
+        if (node.properties.needsGC) {
+            os_ << "#include <gc.h>\n";
+        }
+        os_ << "\n";
 
         // RTTI helper functions
         if (!structTypes_.empty()) {
@@ -1454,6 +1458,9 @@ void CCodegenVisitor::visit(Module& node)
 
             os_ << "/* Entry point */\n";
             os_ << "int main(int argc, char** argv) {\n";
+            if (node.properties.needsGC) {
+                os_ << "    GC_INIT();\n";
+            }
             os_ << "    " << makePrefix(moduleName_) << "init();\n";
             os_ << "    return 0;\n";
             os_ << "}\n";
