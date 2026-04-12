@@ -1,0 +1,11 @@
+// @EXPECT_RUNTIME_ERROR
+module BuiltinAssertNegative1
+
+fn init() -> void
+var {
+    x: i64;
+}
+{
+    x = 5;
+    assert(x == 10, "This should fail: x is 5, not 10");
+}

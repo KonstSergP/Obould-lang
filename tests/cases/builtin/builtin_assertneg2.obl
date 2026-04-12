@@ -1,0 +1,17 @@
+// @EXPECT_RUNTIME_ERROR
+module BuiltinAssertNegative2
+
+fn checkCondition() -> bool {
+    return false;
+}
+
+fn init() -> void
+var {
+    a: i64;
+    b: i64;
+}
+{
+    a = 10;
+    b = 20;
+    assert(checkCondition(), "Direct false assertion");
+}
