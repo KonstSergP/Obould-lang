@@ -55,6 +55,52 @@ void SemanticAnalyzer::visitBuiltinProcedure(ProcedureCall& node)
         }
     }
     break;
+    case BuiltinKind::INT:
+    {
+        if (node.args.size() != 1) {
+            addError("'int' expects 1 argument");
+            return;
+        }
+        if (node.args[0]->resolvedType->kind != TypeKind::f64) {
+            addError("Argument of 'int' must be a floating point number");
+        }
+    }
+    break;
+    case BuiltinKind::FLOAT:
+    {
+        if (node.args.size() != 1) {
+            addError("'float' expects 1 argument");
+            return;
+        }
+        if (!isIntegerType(node.args[0]->resolvedType->kind)) {
+            addError("Argument of 'float' must be an integer");
+        }
+    }
+    break;
+    case BuiltinKind::ORD:
+    {
+        if (node.args.size() != 1) {
+            addError("'ord' expects 1 argument");
+            return;
+        }
+        auto& type = node.args[0]->resolvedType;
+        if (type->kind != TypeKind::Bool && type->kind != TypeKind::Char
+            && (type->kind != TypeKind::String || type->length != 1)) {
+            addError("Argument of 'ord' must be a char or bool");
+        }
+    }
+    break;
+    case BuiltinKind::CHR:
+    {
+        if (node.args.size() != 1) {
+            addError("'chr' expects 1 argument");
+            return;
+        }
+        if (!isIntegerType(node.args[0]->resolvedType->kind)) {
+            addError("Argument of 'chr' must be an integer");
+        }
+    }
+    break;
     default:
         addError("Unknown builtin kind");
     }

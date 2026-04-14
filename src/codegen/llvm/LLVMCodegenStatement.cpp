@@ -84,6 +84,52 @@ void LLVMCodegenVisitor::visitBuiltinProcedure(ProcedureCall& node)
         lastValue = nullptr;
     }
     break;
+    case BuiltinKind::INT:
+    {
+        node.args[0]->accept(*this);
+        lastValue = builder->CreateFPToSI(lastValue, builder->getInt64Ty());
+    }
+    break;
+    case BuiltinKind::FLOAT:
+    {
+        node.args[0]->accept(*this);
+        lastValue = builder->CreateSIToFP(lastValue, builder->getDoubleTy());
+    }
+    break;
+    case BuiltinKind::ORD:
+    {
+        node.args[0]->accept(*this);
+        if (node.args[0]->resolvedType->kind == TypeKind::String) {
+            lastValue = builder->CreateLoad(builder->getInt8Ty(), lastValue);
+        }
+        lastValue = builder->CreateIntCast(lastValue, builder->getInt64Ty(), false);
+    }
+    break;
+    case BuiltinKind::CHR:
+    {
+        node.args[0]->accept(*this);
+        auto val = lastValue;
+
+        auto zero = builder->getInt64(0);
+        auto max  = builder->getInt64(255);
+
+        auto geZero = builder->CreateICmpSGE(val, zero);
+        auto leMax  = builder->CreateICmpSLE(val, max);
+        auto inRange = builder->CreateAnd(geZero, leMax);
+
+        auto* failBB = llvm::BasicBlock::Create(context, "chr.fail", currentFunction);
+        auto* contBB = llvm::BasicBlock::Create(context, "chr.cont", currentFunction);
+        builder->CreateCondBr(inRange, contBB, failBB);
+
+        builder->SetInsertPoint(failBB);
+        auto abortFunc = module->getOrInsertFunction("abort", llvm::FunctionType::get(builder->getVoidTy(), false));
+        builder->CreateCall(abortFunc);
+        builder->CreateUnreachable();
+
+        builder->SetInsertPoint(contBB);
+        lastValue = builder->CreateIntCast(val, builder->getInt8Ty(), false);
+    }
+    break;
     default: break;
     }
 }

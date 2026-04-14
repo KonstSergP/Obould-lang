@@ -1,0 +1,73 @@
+module BuiltinChr
+
+const {
+    CodeA = 65;
+    CodeZ = 90;
+}
+
+fn getCode() -> i64 {
+    return 97;
+}
+
+fn init() -> void
+var {
+    ch: char;
+    code: i64;
+}
+{
+    ch = chr(65);
+    assert(ch == "A", "chr(65) == 'A'");
+
+    ch = chr(97);
+    assert(ch == "a", "chr(97) == 'a'");
+
+    ch = chr(48);
+    assert(ch == "0", "chr(48) == '0'");
+
+    ch = chr(32);
+    assert(ch == " ", "chr(32) == ' '");
+
+    ch = chr(90);
+    assert(ch == "Z", "chr(90) == 'Z'");
+
+    ch = chr(CodeA);
+    assert(ch == "A", "chr(CodeA) == 'A'");
+
+    ch = chr(CodeZ);
+    assert(ch == "Z", "chr(CodeZ) == 'Z'");
+
+    ch = chr(getCode());
+    assert(ch == "a", "chr(getCode()) == 'a'");
+
+    code = 66;
+    ch = chr(code);
+    assert(ch == "B", "chr(code) where code=66");
+
+    code = 122;
+    ch = chr(code);
+    assert(ch == "z", "chr(code) where code=122");
+
+    ch = "X";
+    code = ord(ch);
+    ch = chr(code);
+    assert(ch == "X", "chr(ord('X')) == 'X'");
+
+    ch = "m";
+    assert(chr(ord(ch)) == "m", "chr(ord('m')) == 'm'");
+
+    ch = chr(65 + 1);
+    assert(ch == "B", "chr(65 + 1) == 'B'");
+
+    ch = chr(ord("A") + 25);
+    assert(ch == "Z", "chr(ord('A') + 25) == 'Z'");
+
+    ch = chr(ord("a") - 32);
+    assert(ch == "A", "chr(ord('a') - 32) == 'A'");
+
+    ch = chr(ord("A") + 32);
+    assert(ch == "a", "chr(ord('A') + 32) == 'a'");
+
+    ch = chr(255);
+    code = ord(ch);
+    assert(code == 255, "chr(255) round-trip");
+}

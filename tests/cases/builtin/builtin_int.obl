@@ -1,0 +1,60 @@
+module BuiltinInt
+
+const {
+    PiApprox = 3.14159;
+    Negative = -2.718;
+}
+
+fn getFloat() -> f64 {
+    return 99.9;
+}
+
+fn init() -> void
+var {
+    a: i64;
+    b: f64;
+}
+{
+    a = int(3.7);
+    assert(a == 3, "int(3.7) == 3");
+
+    a = int(3.0);
+    assert(a == 3, "int(3.0) == 3");
+
+    a = int(0.5);
+    assert(a == 0, "int(0.5) == 0");
+
+    a = int(0.9);
+    assert(a == 0, "int(0.9) == 0");
+
+    a = int(0.0);
+    assert(a == 0, "int(0.0) == 0");
+
+    a = int(-2.9);
+    assert(a == -2, "int(-2.9) == -2");
+
+    a = int(-0.5);
+    assert(a == 0, "int(-0.5) == 0");
+
+    a = int(-3.1);
+    assert(a == -3, "int(-3.1) == -3");
+
+    a = int(1000.999);
+    assert(a == 1000, "int(1000.999) == 1000");
+
+    a = int(PiApprox);
+    assert(a == 3, "int(PiApprox) == 3");
+
+    a = int(Negative);
+    assert(a == -2, "int(Negative) == -2");
+
+    a = int(getFloat());
+    assert(a == 99, "int(getFloat()) == 99");
+
+    b = 42.7;
+    a = int(b);
+    assert(a == 42, "int(b) where b=42.7");
+
+    a = int(2.5 + 3.9);
+    assert(a == 6, "int(2.5 + 3.9) == 6");
+}

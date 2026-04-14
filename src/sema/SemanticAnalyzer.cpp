@@ -80,6 +80,10 @@ void SemanticAnalyzer::addBuiltinProcedures(SymbolTable& symTable)
     registerBuiltin("new", BuiltinKind::NEW);
     registerBuiltin("len", BuiltinKind::LEN, TypeKind::i64);
     registerBuiltin("assert", BuiltinKind::ASSERT);
+    registerBuiltin("int", BuiltinKind::INT, TypeKind::i64);
+    registerBuiltin("float", BuiltinKind::FLOAT, TypeKind::f64);
+    registerBuiltin("ord", BuiltinKind::ORD, TypeKind::i64);
+    registerBuiltin("chr", BuiltinKind::CHR, TypeKind::Char);
 }
 
 bool SemanticAnalyzer::analyze(Module& module)

@@ -162,6 +162,11 @@ void LLVMCodegenVisitor::visit(ProcedureDeclaration& node)
         if (!retVal) {
             retVal = llvm::Constant::getNullValue(retType);
         }
+        if (node.resolvedType->returnType->kind == TypeKind::Char
+            && node.returnExpression->resolvedType->kind == TypeKind::String
+            && node.returnExpression->resolvedType->length == 1) {
+            retVal = builder->CreateLoad(builder->getInt8Ty(), retVal);
+        }
         builder->CreateRet(retVal);
     }
     currentFunction = nullptr;

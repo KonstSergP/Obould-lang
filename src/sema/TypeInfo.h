@@ -76,7 +76,11 @@ enum class BuiltinKind {
     None,
     NEW,
     LEN,
-    ASSERT
+    ASSERT,
+    INT,
+    FLOAT,
+    ORD,
+    CHR
 };
 
 struct TypeInfo
