@@ -1,0 +1,250 @@
+module StatementsIf
+
+const {
+    TrueConst = true;
+    FalseConst = false;
+    Threshold = 50;
+}
+
+fn isPositive(x: i64) -> bool {
+    return x > 0;
+}
+
+fn init() -> void
+var {
+    flag: bool;
+    value: i64;
+    result: i64;
+}
+{
+    if TrueConst {
+        result = 1;
+    } else {
+        result = 0;
+    }
+    assert(result == 1, "if true const == 1");
+
+    if FalseConst {
+        result = 0;
+    } else {
+        result = 2;
+    }
+    assert(result == 2, "if false const == 2");
+
+    flag = true;
+    if flag {
+        result = 10;
+    } else {
+        result = 20;
+    }
+    assert(result == 10, "if variable true == 10");
+    
+    flag = false;
+    if flag {
+        result = 30;
+    } else {
+        result = 40;
+    }
+    assert(result == 40, "if variable false == 40");
+    
+    value = 100;
+    if value > Threshold {
+        result = 100;
+    } else {
+        result = 0;
+    }
+    assert(result == 100, "if value > threshold");
+    
+    value = 10;
+    if value > Threshold {
+        result = 100;
+    } else {
+        result = 0;
+    }
+    assert(result == 0, "if value <= threshold");
+
+    flag = true;
+    if !flag {
+        result = 0;
+    } else {
+        result = 50;
+    }
+    assert(result == 50, "if !true -> else branch");
+    
+    flag = false;
+    if !flag {
+        result = 60;
+    } else {
+        result = 0;
+    }
+    assert(result == 60, "if !false -> then branch");
+
+    value = 5;
+    if -value < 0 {
+        result = 70;
+    } else {
+        result = 0;
+    }
+    assert(result == 70, "if -value < 0");
+
+    flag = true;
+    value = 10;
+    if flag && (value > 5) {
+        result = 80;
+    } else {
+        result = 0;
+    }
+    assert(result == 80, "if true && value > 5");
+    
+    if flag && (value < 5) {
+        result = 0;
+    } else {
+        result = 90;
+    }
+    assert(result == 90, "if true && value < 5 -> else");
+
+    flag = false;
+    if flag || (value == 10) {
+        result = 100;
+    } else {
+        result = 0;
+    }
+    assert(result == 100, "if false || value == 10");
+    
+    if flag || (value == 20) {
+        result = 0;
+    } else {
+        result = 110;
+    }
+    assert(result == 110, "if false || value == 20 -> else");
+
+    value = 25;
+    if (value >= 20) && (value <= 30) {
+        result = 120;
+    } else {
+        result = 0;
+    }
+    assert(result == 120, "if value in range [20, 30]");
+
+    if isPositive(5) {
+        result = 130;
+    } else {
+        result = 0;
+    }
+    assert(result == 130, "if function returns true");
+    
+    if isPositive(-5) {
+        result = 0;
+    } else {
+        result = 140;
+    }
+    assert(result == 140, "if function returns false");
+
+    result = 0;
+    if true {
+        result = 150;
+    }
+    assert(result == 150, "if without else (true)");
+    
+    result = 200;
+    if false {
+        result = 0;
+    }
+    assert(result == 200, "if without else (false)");
+    
+    value = 10;
+    result = 0;
+    if value > 5 {
+        result = 210;
+    }
+    assert(result == 210, "if without else (variable condition)");
+
+    value = 10;
+    if value < 5 {
+        result = 0;
+    } else if value < 15 {
+        result = 220;
+    } else {
+        result = 0;
+    }
+    assert(result == 220, "if-else if: first elif matches");
+    
+    value = 20;
+    if value < 5 {
+        result = 0;
+    } else if value < 15 {
+        result = 0;
+    } else {
+        result = 230;
+    }
+    assert(result == 230, "if-else if: else branch");
+    
+    value = 3;
+    if value < 5 {
+        result = 240;
+    } else if value < 15 {
+        result = 0;
+    } else {
+        result = 0;
+    }
+    assert(result == 240, "if-else if: first if matches");
+
+    value = 50;
+    if value < 10 {
+        result = 0;
+    } else if value < 30 {
+        result = 0;
+    } else if value < 60 {
+        result = 250;
+    } else {
+        result = 0;
+    }
+    assert(result == 250, "if with 3 elif branches");
+
+    value = 85;
+    if value < 20 {
+        result = 0;
+    } else if value < 40 {
+        result = 0;
+    } else if value < 60 {
+        result = 0;
+    } else if value < 90 {
+        result = 260;
+    } else {
+        result = 0;
+    }
+    assert(result == 260, "if with 4 elif branches");
+
+    value = 15;
+    if value > 10 {
+        if value < 20 {
+            result = 270;
+        } else {
+            result = 0;
+        }
+    } else {
+        result = 0;
+    }
+    assert(result == 270, "nested if");
+
+    flag = true;
+    value = 42;
+    if flag && (value > 40) {
+        if (value < 50) || !flag {
+            result = 280;
+        } else {
+            result = 0;
+        }
+    } else {
+        result = 0;
+    }
+    assert(result == 280, "complex nested if");
+
+    result = 0;
+    if true result = 290;
+    assert(result == 290, "if with single statement");
+    
+    result = 300;
+    if false result = 0;
+    assert(result == 300, "if without else single statement");
+}

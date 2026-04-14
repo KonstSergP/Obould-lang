@@ -343,7 +343,7 @@ void SemanticAnalyzer::visit(SwitchCase& node)
     for (const auto& label : node.labels) {
         label->accept(*this);
     }
-    const auto& cntrType = switchSelectorType;
+    const auto cntrType = switchSelectorType;
     node.body->accept(*this);
     switchSelectorType = cntrType;
 }
