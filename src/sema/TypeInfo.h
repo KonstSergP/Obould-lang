@@ -19,7 +19,8 @@ enum class TypeKind
     Struct,
     Pointer,
     Procedure,
-    Incomplete
+    Incomplete,
+    Set
 };
 
 inline bool isIntegerType(TypeKind kind)
@@ -49,6 +50,7 @@ inline bool isValidVariableType(TypeKind kind)
     case TypeKind::Struct:
     case TypeKind::Pointer:
     case TypeKind::Procedure:
+    case TypeKind::Set:
         return true;
     default:
         return false;
@@ -72,7 +74,8 @@ struct ParamInfo
     bool isReference;
 };
 
-enum class BuiltinKind {
+enum class BuiltinKind
+{
     None,
     NEW,
     LEN,

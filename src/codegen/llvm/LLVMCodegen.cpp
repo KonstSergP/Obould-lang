@@ -60,6 +60,7 @@ llvm::Type* LLVMCodegenVisitor::toLLVMType(const std::shared_ptr<TypeInfo>& type
 
     switch (typeInfo->kind) {
     case TypeKind::i64:
+    case TypeKind::Set:
         return builder->getInt64Ty();
     case TypeKind::Byte:
     case TypeKind::Char:

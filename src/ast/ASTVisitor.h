@@ -20,6 +20,7 @@ public:
     virtual void visit(RealLiteral& node) = 0;
     virtual void visit(BooleanLiteral& node) = 0;
     virtual void visit(StringLiteral& node) = 0;
+    virtual void visit(SetLiteral& node) = 0;
     virtual void visit(Nil& node) = 0;
     virtual void visit(BinaryExpression& node) = 0;
     virtual void visit(UnaryExpression& node) = 0;

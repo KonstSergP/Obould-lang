@@ -23,6 +23,7 @@ void SemanticAnalyzer::createBuiltinTypes()
     builtinTypes["byte"] = createNewType(TypeKind::Byte);
     builtinTypes["char"] = createNewType(TypeKind::Char);
     builtinTypes["void"] = createNewType(TypeKind::Void);
+    builtinTypes["set"] = createNewType(TypeKind::Set);
 }
 
 std::shared_ptr<TypeInfo> SemanticAnalyzer::getBuiltinType(TypeKind kind)
@@ -34,6 +35,7 @@ std::shared_ptr<TypeInfo> SemanticAnalyzer::getBuiltinType(TypeKind kind)
     case TypeKind::Byte: return builtinTypes.at("byte");
     case TypeKind::Char: return builtinTypes.at("char");
     case TypeKind::Void: return builtinTypes.at("void");
+    case TypeKind::Set: return builtinTypes.at("set");
     default:
         return createNewType(kind);
     }

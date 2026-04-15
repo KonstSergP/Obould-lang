@@ -34,6 +34,13 @@ void SemanticAnalyzer::visit(StringLiteral& node)
     node.isLvalue = false;
 }
 
+void SemanticAnalyzer::visit(SetLiteral& node)
+{
+    node.resolvedType = getBuiltinType(TypeKind::Set);
+    node.constantValue = static_cast<int64_t>(node.value);
+    node.isLvalue = false;
+}
+
 void SemanticAnalyzer::visit(Nil& node)
 {
     node.resolvedType = createNewType(TypeKind::Nil);
@@ -107,7 +114,7 @@ void SemanticAnalyzer::visit(UnaryExpression& node)
 
     case UnaryExpression::Op::Negate:
     case UnaryExpression::Op::Plus:
-        if (type->kind != TypeKind::i64 && type->kind != TypeKind::f64 && type->kind != TypeKind::Byte) {
+        if (!isIntegerType(type->kind) && !isRealType(type->kind) && type->kind != TypeKind::Set) {
             addError("Unary operator requires numeric operand");
         }
         node.resolvedType = type;
@@ -122,7 +129,10 @@ void SemanticAnalyzer::visit(UnaryExpression& node)
             break;
         case UnaryExpression::Op::Negate:
             if (std::holds_alternative<int64_t>(val))
-                node.constantValue = -std::get<int64_t>(val);
+                if (type->kind == TypeKind::Set)
+                    node.constantValue = ~std::get<int64_t>(val);
+                else
+                    node.constantValue = -std::get<int64_t>(val);
             else if (std::holds_alternative<double>(val))
                 node.constantValue = -std::get<double>(val);
             break;
@@ -187,6 +197,9 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
         else if (isRealType(lType->kind) && isRealType(rType->kind)) {
             node.resolvedType = getBuiltinType(TypeKind::f64);
         }
+        else if (lType->kind == TypeKind::Set && rType->kind == TypeKind::Set) {
+            node.resolvedType = getBuiltinType(TypeKind::Set);
+        }
         else {
             addError("Arithmetic operators require compatible numeric operands (both int/byte or both real)");
             node.resolvedType = getBuiltinType(TypeKind::Void);
@@ -197,6 +210,9 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
     case Op::FDiv:
         if (isRealType(lType->kind) && isRealType(rType->kind)) {
             node.resolvedType = getBuiltinType(TypeKind::f64);
+        }
+        else if (lType->kind == TypeKind::Set && rType->kind == TypeKind::Set) {
+            node.resolvedType = getBuiltinType(TypeKind::Set);
         }
         else {
             addError("Real division requires real operands");
@@ -250,12 +266,20 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
                 correct = false;
             }
         }
-        else if (((lType->kind == TypeKind::Pointer && rType->kind == TypeKind::Nil)
-            || (lType->kind == TypeKind::Nil && rType->kind == TypeKind::Pointer)
-            || (lType->kind == TypeKind::Pointer && rType->kind == TypeKind::Pointer))) {
+        else if ((lType->kind == TypeKind::Pointer || lType->kind == TypeKind::Nil || lType->kind ==
+                TypeKind::Procedure)
+            && (rType->kind == TypeKind::Pointer || rType->kind == TypeKind::Nil || rType->kind ==
+                TypeKind::Procedure)) {
             if (node.op == Op::Eq || node.op == Op::Neq) {}
             else {
                 addError("Pointers allow only equality comparisons");
+                correct = false;
+            }
+        }
+        else if (lType->kind == TypeKind::Set && rType->kind == TypeKind::Set) {
+            if (node.op == Op::Eq || node.op == Op::Neq) {}
+            else {
+                addError("Set allow only equality comparisons");
                 correct = false;
             }
         }
@@ -288,6 +312,16 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
         }
         if (!rType->isBaseTypeOf(baseType) && !baseType->isBaseTypeOf(rType)) {
             addError("'IS' target type must be related to the variable type");
+            correct = false;
+        }
+        break;
+    }
+
+    case Op::In:
+    {
+        node.resolvedType = getBuiltinType(TypeKind::Bool);
+        if (!isIntegerType(lType->kind) || rType->kind != TypeKind::Set) {
+            addError("'In' requires integer as left operand and set as right operand");
             correct = false;
         }
         break;
@@ -345,7 +379,7 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
                 }
             }
         }
-        else if (lType->kind == TypeKind::f64 && rType->kind == TypeKind::f64) {
+        else if (isRealType(lType->kind) && isRealType(rType->kind)) {
             double lv = std::get<double>(*lConst);
             double rv = std::get<double>(*rConst);
 
@@ -406,6 +440,29 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
             case Op::Gte: node.constantValue = lv >= rv;
                 break;
             default: break;
+            }
+        }
+        else if (isIntegerType(lType->kind) && rType->kind == TypeKind::Set) {
+            auto lv = std::get<int64_t>(*lConst);
+            auto rv = std::get<int64_t>(*rConst);
+
+            switch (node.op) {
+            case Op::Add: node.constantValue = lv | rv;
+                break;
+            case Op::Sub: node.constantValue = lv & ~rv;
+                break;
+            case Op::Mul: node.constantValue = lv & rv;
+                break;
+            case Op::FDiv: node.constantValue = (lv | rv) & ~(lv & rv);
+                break;
+            case Op::Eq: node.constantValue = lv == rv;
+                break;
+            case Op::Neq: node.constantValue = lv != rv;
+                break;
+            case Op::In: node.constantValue = static_cast<bool>(rv & (1 << lv));
+                break;
+            default:
+                break;
             }
         }
     }

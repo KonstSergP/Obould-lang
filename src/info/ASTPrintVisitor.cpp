@@ -1,11 +1,10 @@
+#include <sstream>
 #include "ASTPrintVisitor.h"
+
 
 namespace obould
 {
 ASTPrintVisitor::ASTPrintVisitor(std::ostream& os) : os(os) {}
-
-
-// Helpers
 
 void ASTPrintVisitor::printNodeName(const std::string& name, const std::string& extraInfo) const
 {
@@ -87,6 +86,36 @@ void ASTPrintVisitor::visit(BooleanLiteral& node)
     os << GREEN << (node.value ? "true" : "false") << RESET << std::endl;
 }
 
+void ASTPrintVisitor::visit(SetLiteral& node)
+{
+    std::stringstream ss;
+    uint64_t val = node.value;
+    bool prev = false;
+    int start = 0, end = 0, cnt = 0;
+    for (int i = 0; i < 64 + 1; i++) { // +1 чтобы корректно учесть последние биты
+        bool bit = val & 1;
+        if (bit) {
+            if (!prev) {
+                start = i;
+                end = i;
+            }
+            else {
+                end = i;
+            }
+        }
+        else {
+            if (prev) {
+                ss << (cnt++ ? ", " : "") << start;
+                if (start != end)
+                    ss << ".." << end;
+            }
+        }
+        prev = bit;
+        val >>= 1;
+    }
+    os << GREEN << "{ " << ss.str() << " }" << RESET << std::endl;
+}
+
 void ASTPrintVisitor::visit(Nil& node)
 {
     os << "nil" << std::endl;
@@ -135,7 +164,8 @@ void ASTPrintVisitor::visit(QualifiedNameNode& node)
 
     if (auto* id = std::get_if<std::unique_ptr<IdentifierExpression>>(&node.realisation)) {
         printChild(*id, true);
-    } else if (auto* member = std::get_if<std::unique_ptr<MemberAccessExpression>>(&node.realisation)) {
+    }
+    else if (auto* member = std::get_if<std::unique_ptr<MemberAccessExpression>>(&node.realisation)) {
         printChild(*member, true);
     }
 }

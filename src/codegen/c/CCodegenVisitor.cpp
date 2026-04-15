@@ -122,6 +122,8 @@ void CCodegenVisitor::visit(StringLiteral& node)
     os_ << "\"";
 }
 
+void CCodegenVisitor::visit(SetLiteral& node) {}
+
 void CCodegenVisitor::visit(Nil& node)
 {
     os_ << "NULL";

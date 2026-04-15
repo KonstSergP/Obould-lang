@@ -15,6 +15,7 @@ public:
     void visit(RealLiteral& node) override;
     void visit(BooleanLiteral& node) override;
     void visit(StringLiteral& node) override;
+    void visit(SetLiteral& node) override;
     void visit(Nil& node) override;
     void visit(BinaryExpression& node) override;
     void visit(UnaryExpression& node) override;

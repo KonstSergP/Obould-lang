@@ -30,6 +30,7 @@ void SymbolFileGenerator::visit(IntegerLiteral& node) {}
 void SymbolFileGenerator::visit(RealLiteral& node) {}
 void SymbolFileGenerator::visit(StringLiteral& node) {}
 void SymbolFileGenerator::visit(BooleanLiteral& node) {}
+void SymbolFileGenerator::visit(SetLiteral& node) {}
 void SymbolFileGenerator::visit(Nil& node) {}
 void SymbolFileGenerator::visit(BinaryExpression& node) {}
 void SymbolFileGenerator::visit(UnaryExpression& node) {}

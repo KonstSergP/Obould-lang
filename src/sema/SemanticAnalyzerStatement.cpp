@@ -61,7 +61,7 @@ void SemanticAnalyzer::visitBuiltinProcedure(ProcedureCall& node)
             addError("'int' expects 1 argument");
             return;
         }
-        if (node.args[0]->resolvedType->kind != TypeKind::f64) {
+        if (!isRealType(node.args[0]->resolvedType->kind)) {
             addError("Argument of 'int' must be a floating point number");
         }
     }
@@ -85,8 +85,8 @@ void SemanticAnalyzer::visitBuiltinProcedure(ProcedureCall& node)
         }
         auto& type = node.args[0]->resolvedType;
         if (type->kind != TypeKind::Bool && type->kind != TypeKind::Char
-            && (type->kind != TypeKind::String || type->length != 1)) {
-            addError("Argument of 'ord' must be a char or bool");
+            && (type->kind != TypeKind::String || type->length != 1) && type->kind != TypeKind::Set) {
+            addError("Argument of 'ord' must be a char or bool or set");
         }
     }
     break;

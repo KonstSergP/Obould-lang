@@ -26,6 +26,11 @@ void LLVMCodegenVisitor::visit(StringLiteral& node)
     lastValue = getConstantValue(node);
 }
 
+void LLVMCodegenVisitor::visit(SetLiteral& node)
+{
+    lastValue = getConstantValue(node);
+}
+
 void LLVMCodegenVisitor::visit(Nil& node)
 {
     lastValue = llvm::ConstantPointerNull::get(builder->getPtrTy());
@@ -99,7 +104,7 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
 
     right->accept(*this);
     auto* rhs = lastValue;
-    auto rType = right->resolvedType;
+    auto& rType = right->resolvedType;
     if (!lhs || !rhs) {
         lastValue = nullptr;
         return;
@@ -238,22 +243,37 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
 
     switch (node.op) {
     case Op::Add:
-        lastValue = isInt
-                        ? builder->CreateAdd(lhs, rhs, "add")
-                        : builder->CreateFAdd(lhs, rhs, "fadd");
+        if (node.resolvedType->kind == TypeKind::Set)
+            lastValue = builder->CreateOr(lhs, rhs, "set.add");
+        else
+            lastValue = isInt
+                            ? builder->CreateAdd(lhs, rhs, "add")
+                            : builder->CreateFAdd(lhs, rhs, "fadd");
         break;
     case Op::Sub:
-        lastValue = isInt
-                        ? builder->CreateSub(lhs, rhs, "sub")
-                        : builder->CreateFSub(lhs, rhs, "fsub");
+        if (node.resolvedType->kind == TypeKind::Set)
+            lastValue = builder->CreateAnd(lhs, builder->CreateNot(rhs), "set.sub");
+        else
+            lastValue = isInt
+                            ? builder->CreateSub(lhs, rhs, "sub")
+                            : builder->CreateFSub(lhs, rhs, "fsub");
         break;
     case Op::Mul:
-        lastValue = isInt
-                        ? builder->CreateMul(lhs, rhs, "mul")
-                        : builder->CreateFMul(lhs, rhs, "fmul");
+        if (node.resolvedType->kind == TypeKind::Set)
+            lastValue = builder->CreateAnd(lhs, rhs, "set.mul");
+        else
+            lastValue = isInt
+                            ? builder->CreateMul(lhs, rhs, "mul")
+                            : builder->CreateFMul(lhs, rhs, "fmul");
         break;
     case Op::FDiv:
-        lastValue = builder->CreateFDiv(lhs, rhs, "fdiv");
+        if (node.resolvedType->kind == TypeKind::Set) {
+            auto l = builder->CreateOr(lhs, rhs);
+            auto r = builder->CreateNot(builder->CreateAnd(lhs, rhs));
+            lastValue = builder->CreateAnd(l, r, "set.div");
+        }
+        else
+            lastValue = builder->CreateFDiv(lhs, rhs, "fdiv");
         break;
     case Op::IDiv:
     {
@@ -265,7 +285,7 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
 
         auto* minusOne = llvm::ConstantInt::get(lhs->getType(), -1);
         auto* adjustment = builder->CreateSelect(isNegRem, minusOne, zero);
-        auto* finalDiv = builder->CreateAdd(q, adjustment, "div_oberon");
+        auto* finalDiv = builder->CreateAdd(q, adjustment, "div");
 
         lastValue = finalDiv;
         break;
@@ -278,7 +298,7 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
         auto* isNegRem = builder->CreateICmpSLT(r, zero, "rem_is_neg");
 
         auto* adjustment = builder->CreateSelect(isNegRem, rhs, zero);
-        auto* finalMod = builder->CreateAdd(r, adjustment, "mod_oberon");
+        auto* finalMod = builder->CreateAdd(r, adjustment, "mod");
 
         lastValue = finalMod;
         break;
@@ -373,7 +393,10 @@ void LLVMCodegenVisitor::visit(UnaryExpression& node)
 
     switch (node.op) {
     case Op::Negate:
-        if (operand->getType()->isIntegerTy()) {
+        if (node.resolvedType->kind == TypeKind::Set) {
+            lastValue = builder->CreateNot(operand, "set.neg");
+        }
+        else if (operand->getType()->isIntegerTy()) {
             lastValue = builder->CreateNeg(operand, "neg");
         }
         else {
