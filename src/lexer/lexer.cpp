@@ -28,6 +28,8 @@ const std::unordered_map<std::string, TokenType> Lexer::keywords_ = {
     {"export", TokenType::KW_EXPORT},
     {"import", TokenType::KW_IMPORT},
     {"void",   TokenType::KW_VOID},
+    {"set",    TokenType::KW_SET},
+    {"in",     TokenType::KW_IN},
 };
 
 Lexer::Lexer(std::string source)

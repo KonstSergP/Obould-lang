@@ -412,6 +412,9 @@ std::unique_ptr<Type> Parser::parseType() {
     else if (check(TokenType::LPAREN)) {
         type = parseProcedureType();
     }
+    else if (match(TokenType::KW_SET)) {
+        type = std::make_unique<IdentifierType>("", "set");
+    }
     else {
         type = parseIdentifierType();
     }
@@ -707,7 +710,7 @@ std::unique_ptr<Expression> Parser::parseExpression() {
     if (check(TokenType::OP_EQ) || check(TokenType::OP_NE) ||
         check(TokenType::OP_LT) || check(TokenType::OP_LE) ||
         check(TokenType::OP_GT) || check(TokenType::OP_GE) ||
-        check(TokenType::KW_IS)) {
+        check(TokenType::KW_IS) || check(TokenType::KW_IN)) {
 
         Token opToken = advance();
         BinaryExpression::Op op;
@@ -720,6 +723,7 @@ std::unique_ptr<Expression> Parser::parseExpression() {
             case TokenType::OP_GT:  op = BinaryExpression::Op::Gt; break;
             case TokenType::OP_GE:  op = BinaryExpression::Op::Gte; break;
             case TokenType::KW_IS:  op = BinaryExpression::Op::Is; break;
+            case TokenType::KW_IN:  op = BinaryExpression::Op::In; break;
             default: throw error("Unexpected relational operator");
         }
 
@@ -841,6 +845,21 @@ std::unique_ptr<Expression> Parser::parseFactor() {
     else if (match(TokenType::OP_NOT)) {
         auto operand = parseFactor();
         expr = std::make_unique<UnaryExpression>(std::move(operand), UnaryExpression::Op::Not);
+    }
+    else if (match(TokenType::LBRACE)) {
+        std::vector<SetElement> elements;
+        if (!check(TokenType::RBRACE)) {
+            do {
+                SetElement elem;
+                elem.start = parseExpression();
+                if (match(TokenType::OP_DOTDOT)) {
+                    elem.end = parseExpression();
+                }
+                elements.push_back(std::move(elem));
+            } while (match(TokenType::COMMA));
+        }
+        expect(TokenType::RBRACE, "Expected '}' after set literal");
+        expr = std::make_unique<SetLiteral>(std::move(elements));
     }
     else {
         expr = parseDesignator();

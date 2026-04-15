@@ -33,6 +33,7 @@ static std::string binOpToString(const BinaryExpression::Op op)
     case BinaryExpression::Op::Gt: return ">";
     case BinaryExpression::Op::Gte: return ">=";
     case BinaryExpression::Op::Is: return "is";
+    case BinaryExpression::Op::In: return "in";
     default: throw std::runtime_error("Unknown binary expression type");
     }
 }
@@ -88,32 +89,7 @@ void ASTPrintVisitor::visit(BooleanLiteral& node)
 
 void ASTPrintVisitor::visit(SetLiteral& node)
 {
-    std::stringstream ss;
-    uint64_t val = node.value;
-    bool prev = false;
-    int start = 0, end = 0, cnt = 0;
-    for (int i = 0; i < 64 + 1; i++) { // +1 чтобы корректно учесть последние биты
-        bool bit = val & 1;
-        if (bit) {
-            if (!prev) {
-                start = i;
-                end = i;
-            }
-            else {
-                end = i;
-            }
-        }
-        else {
-            if (prev) {
-                ss << (cnt++ ? ", " : "") << start;
-                if (start != end)
-                    ss << ".." << end;
-            }
-        }
-        prev = bit;
-        val >>= 1;
-    }
-    os << GREEN << "{ " << ss.str() << " }" << RESET << std::endl;
+    os << GREEN << "{ " << node.elements.size() << " elements }" << RESET << std::endl;
 }
 
 void ASTPrintVisitor::visit(Nil& node)

@@ -150,14 +150,19 @@ public:
 };
 
 
+struct SetElement {
+    std::unique_ptr<Expression> start;
+    std::unique_ptr<Expression> end;
+};
+
 class SetLiteral : public Expression
 {
 public:
-    explicit SetLiteral(uint64_t val) : value(val) {}
+    explicit SetLiteral(std::vector<SetElement> elems) : elements(std::move(elems)) {}
 
     void accept(ASTVisitor& v) override;
 
-    uint64_t value;
+    std::vector<SetElement> elements;
 };
 
 

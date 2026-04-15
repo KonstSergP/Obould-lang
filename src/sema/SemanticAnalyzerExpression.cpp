@@ -37,8 +37,48 @@ void SemanticAnalyzer::visit(StringLiteral& node)
 void SemanticAnalyzer::visit(SetLiteral& node)
 {
     node.resolvedType = getBuiltinType(TypeKind::Set);
-    node.constantValue = static_cast<int64_t>(node.value);
     node.isLvalue = false;
+
+    uint64_t bits = 0;
+    bool allConst = true;
+    for (auto& elem : node.elements) {
+        elem.start->accept(*this);
+        if (!elem.start->resolvedType || !isIntegerType(elem.start->resolvedType->kind)) {
+            addError("Set element must be an integer");
+            allConst = false;
+            continue;
+        }
+        if (elem.end) {
+            elem.end->accept(*this);
+            if (!elem.end->resolvedType || !isIntegerType(elem.end->resolvedType->kind)) {
+                addError("Set range bound must be an integer");
+                allConst = false;
+                continue;
+            }
+        }
+        if (!elem.start->constantValue.has_value()) { allConst = false; continue; }
+        int64_t startVal = std::get<int64_t>(*elem.start->constantValue);
+        if (startVal < 0 || startVal > 63) {
+            addError("Set element value " + std::to_string(startVal) + " out of range 0..63");
+            continue;
+        }
+        if (elem.end) {
+            if (!elem.end->constantValue.has_value()) { allConst = false; continue; }
+            int64_t endVal = std::get<int64_t>(*elem.end->constantValue);
+            if (endVal < 0 || endVal > 63) {
+                addError("Set element value " + std::to_string(endVal) + " out of range 0..63");
+                continue;
+            }
+            for (int64_t v = startVal; v <= endVal; v++) {
+                bits |= (1ULL << v);
+            }
+        } else {
+            bits |= (1ULL << startVal);
+        }
+    }
+    if (allConst) {
+        node.constantValue = static_cast<int64_t>(bits);
+    }
 }
 
 void SemanticAnalyzer::visit(Nil& node)

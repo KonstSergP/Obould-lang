@@ -36,6 +36,7 @@ std::string CCodegenVisitor::mapTypeName(const std::string& obouldType)
     if (obouldType == "char") return "char";
     if (obouldType == "byte") return "uint8_t";
     if (obouldType == "void") return "void";
+    if (obouldType == "set") return "uint64_t";
     return obouldType;
 }
 
@@ -122,7 +123,14 @@ void CCodegenVisitor::visit(StringLiteral& node)
     os_ << "\"";
 }
 
-void CCodegenVisitor::visit(SetLiteral& node) {}
+void CCodegenVisitor::visit(SetLiteral& node)
+{
+    if (node.constantValue.has_value()) {
+        os_ << std::get<int64_t>(*node.constantValue) << "ULL";
+    } else {
+        os_ << "0ULL";
+    }
+}
 
 void CCodegenVisitor::visit(Nil& node)
 {
@@ -158,26 +166,54 @@ void CCodegenVisitor::visit(BinaryExpression& node)
         return;
     }
 
+    if (node.op == BinaryExpression::Op::In) {
+        os_ << "((";
+        std::visit([this](auto&& arg) {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, std::unique_ptr<Expression>>) {
+                arg->accept(*this);
+            }
+        }, node.right);
+        os_ << " >> ";
+        node.left->accept(*this);
+        os_ << ") & 1)";
+        return;
+    }
+
+    bool isSetOp = node.left->resolvedType && node.left->resolvedType->kind == TypeKind::Set;
+
     os_ << "(";
     node.left->accept(*this);
 
-    switch (node.op) {
-        case BinaryExpression::Op::Add: os_ << " + "; break;
-        case BinaryExpression::Op::Sub: os_ << " - "; break;
-        case BinaryExpression::Op::Mul: os_ << " * "; break;
-        case BinaryExpression::Op::FDiv: os_ << " / "; break;
-        case BinaryExpression::Op::IDiv: os_ << " / "; break;
-        case BinaryExpression::Op::Mod: os_ << " % "; break;
-        case BinaryExpression::Op::And: os_ << " && "; break;
-        case BinaryExpression::Op::Or: os_ << " || "; break;
-        case BinaryExpression::Op::Eq: os_ << " == "; break;
-        case BinaryExpression::Op::Neq: os_ << " != "; break;
-        case BinaryExpression::Op::Lt: os_ << " < "; break;
-        case BinaryExpression::Op::Lte: os_ << " <= "; break;
-        case BinaryExpression::Op::Gt: os_ << " > "; break;
-        case BinaryExpression::Op::Gte: os_ << " >= "; break;
-        case BinaryExpression::Op::Is:
-            throw std::runtime_error("CCodegenVisitor: BinaryExpression::Op::Is reached in switch (should be handled above)");
+    if (isSetOp) {
+        switch (node.op) {
+            case BinaryExpression::Op::Add: os_ << " | "; break;
+            case BinaryExpression::Op::Sub: os_ << " & ~"; break;
+            case BinaryExpression::Op::Mul: os_ << " & "; break;
+            case BinaryExpression::Op::FDiv: os_ << " ^ "; break;
+            case BinaryExpression::Op::Eq: os_ << " == "; break;
+            case BinaryExpression::Op::Neq: os_ << " != "; break;
+            default:
+                throw std::runtime_error("CCodegenVisitor: unsupported operation on SET type");
+        }
+    } else {
+        switch (node.op) {
+            case BinaryExpression::Op::Add: os_ << " + "; break;
+            case BinaryExpression::Op::Sub: os_ << " - "; break;
+            case BinaryExpression::Op::Mul: os_ << " * "; break;
+            case BinaryExpression::Op::FDiv: os_ << " / "; break;
+            case BinaryExpression::Op::IDiv: os_ << " / "; break;
+            case BinaryExpression::Op::Mod: os_ << " % "; break;
+            case BinaryExpression::Op::And: os_ << " && "; break;
+            case BinaryExpression::Op::Or: os_ << " || "; break;
+            case BinaryExpression::Op::Eq: os_ << " == "; break;
+            case BinaryExpression::Op::Neq: os_ << " != "; break;
+            case BinaryExpression::Op::Lt: os_ << " < "; break;
+            case BinaryExpression::Op::Lte: os_ << " <= "; break;
+            case BinaryExpression::Op::Gt: os_ << " > "; break;
+            case BinaryExpression::Op::Gte: os_ << " >= "; break;
+            default: break;
+        }
     }
 
     std::visit([this](auto&& arg) {
@@ -194,10 +230,15 @@ void CCodegenVisitor::visit(BinaryExpression& node)
 
 void CCodegenVisitor::visit(UnaryExpression& node)
 {
-    switch (node.op) {
-        case UnaryExpression::Op::Negate: os_ << "(-"; break;
-        case UnaryExpression::Op::Not: os_ << "(!"; break;
-        case UnaryExpression::Op::Plus: os_ << "(+"; break;
+    bool isSet = node.operand->resolvedType && node.operand->resolvedType->kind == TypeKind::Set;
+    if (isSet && node.op == UnaryExpression::Op::Negate) {
+        os_ << "(~";
+    } else {
+        switch (node.op) {
+            case UnaryExpression::Op::Negate: os_ << "(-"; break;
+            case UnaryExpression::Op::Not: os_ << "(!"; break;
+            case UnaryExpression::Op::Plus: os_ << "(+"; break;
+        }
     }
     node.operand->accept(*this);
     os_ << ")";
@@ -690,7 +731,7 @@ void CCodegenVisitor::visit(CaseLabel& node)
 void CCodegenVisitor::visit(IdentifierType& node)
 {
     static const std::set<std::string> primitiveTypes = {
-        "i64", "f64", "bool", "char", "byte", "void"
+        "i64", "f64", "bool", "char", "byte", "void", "set"
     };
 
     bool isPrimitive = primitiveTypes.count(node.name) > 0;

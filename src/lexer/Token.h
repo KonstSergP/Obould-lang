@@ -39,6 +39,8 @@ enum class TokenType {
     KW_EXPORT,
     KW_IMPORT,
     KW_VOID,
+    KW_SET,
+    KW_IN,
 
     // Operators
     OP_PLUS,        // +
@@ -116,6 +118,8 @@ inline const char* tokenTypeToString(TokenType type) {
         case TokenType::KW_EXPORT:   return "KW_EXPORT";
         case TokenType::KW_IMPORT:   return "KW_IMPORT";
         case TokenType::KW_VOID:     return "KW_VOID";
+        case TokenType::KW_SET:      return "KW_SET";
+        case TokenType::KW_IN:       return "KW_IN";
         case TokenType::OP_PLUS:     return "OP_PLUS";
         case TokenType::OP_MINUS:    return "OP_MINUS";
         case TokenType::OP_STAR:     return "OP_STAR";

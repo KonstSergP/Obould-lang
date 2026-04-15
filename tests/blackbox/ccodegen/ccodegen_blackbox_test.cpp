@@ -2565,3 +2565,229 @@ var {
 )";
     REQUIRE(transpileCompileRun("FilesStr", src, {"Out", "Files"}) == "Hello\n");
 }
+
+TEST_CASE("Set — literal and in operator", "[ccodegen][set]")
+{
+    std::string src = R"(module SetIn
+import Out;
+fn init() -> void
+var x: set;
+{
+    x = {0, 3, 5..11};
+    if 7 in x { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+    if 2 in x { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+    if 0 in x { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("SetIn", src, {"Out"}) == "1\n0\n1\n");
+}
+
+TEST_CASE("Set — union (+)", "[ccodegen][set]")
+{
+    std::string src = R"(module SetUnion
+import Out;
+fn init() -> void
+var {
+    a: set;
+    b: set;
+    c: set;
+}
+{
+    a = {1, 2, 3};
+    b = {3, 4, 5};
+    c = a + b;
+    if 1 in c { Out.Int(1); } else { Out.Int(0); }
+    if 4 in c { Out.Int(1); } else { Out.Int(0); }
+    if 6 in c { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("SetUnion", src, {"Out"}) == "110\n");
+}
+
+TEST_CASE("Set — difference (-)", "[ccodegen][set]")
+{
+    std::string src = R"(module SetDiff
+import Out;
+fn init() -> void
+var {
+    a: set;
+    b: set;
+    c: set;
+}
+{
+    a = {1, 2, 3, 4, 5};
+    b = {3, 4};
+    c = a - b;
+    if 1 in c { Out.Int(1); } else { Out.Int(0); }
+    if 3 in c { Out.Int(1); } else { Out.Int(0); }
+    if 5 in c { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("SetDiff", src, {"Out"}) == "101\n");
+}
+
+TEST_CASE("Set — intersection (*)", "[ccodegen][set]")
+{
+    std::string src = R"(module SetInter
+import Out;
+fn init() -> void
+var {
+    a: set;
+    b: set;
+    c: set;
+}
+{
+    a = {1, 2, 3, 4};
+    b = {3, 4, 5, 6};
+    c = a * b;
+    if 2 in c { Out.Int(1); } else { Out.Int(0); }
+    if 3 in c { Out.Int(1); } else { Out.Int(0); }
+    if 5 in c { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("SetInter", src, {"Out"}) == "010\n");
+}
+
+TEST_CASE("Set — symmetric difference (/)", "[ccodegen][set]")
+{
+    std::string src = R"(module SetSymDiff
+import Out;
+fn init() -> void
+var {
+    a: set;
+    b: set;
+    c: set;
+}
+{
+    a = {1, 2, 3};
+    b = {2, 3, 4};
+    c = a / b;
+    if 1 in c { Out.Int(1); } else { Out.Int(0); }
+    if 2 in c { Out.Int(1); } else { Out.Int(0); }
+    if 4 in c { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("SetSymDiff", src, {"Out"}) == "101\n");
+}
+
+TEST_CASE("Set — complement (unary minus)", "[ccodegen][set]")
+{
+    std::string src = R"(module SetCompl
+import Out;
+fn init() -> void
+var {
+    a: set;
+    b: set;
+}
+{
+    a = {0, 1, 2};
+    b = -a;
+    if 0 in b { Out.Int(1); } else { Out.Int(0); }
+    if 3 in b { Out.Int(1); } else { Out.Int(0); }
+    if 63 in b { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("SetCompl", src, {"Out"}) == "011\n");
+}
+
+TEST_CASE("Set — equality and inequality", "[ccodegen][set]")
+{
+    std::string src = R"(module SetEq
+import Out;
+fn init() -> void
+var {
+    a: set;
+    b: set;
+}
+{
+    a = {1, 2, 3};
+    b = {1, 2, 3};
+    if a == b { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+    b = {1, 2};
+    if a != b { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("SetEq", src, {"Out"}) == "1\n1\n");
+}
+
+TEST_CASE("Set — empty set", "[ccodegen][set]")
+{
+    std::string src = R"(module SetEmpty
+import Out;
+fn init() -> void
+var x: set;
+{
+    x = {};
+    if 0 in x { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+    x = x + {5};
+    if 5 in x { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("SetEmpty", src, {"Out"}) == "0\n1\n");
+}
+
+TEST_CASE("Set — combined operations", "[ccodegen][set]")
+{
+    std::string src = R"(module SetCombined
+import Out;
+fn init() -> void
+var {
+    evens: set;
+    odds: set;
+    small: set;
+    result: set;
+    i: i64;
+}
+{
+    evens = {0, 2, 4, 6, 8};
+    odds = {1, 3, 5, 7, 9};
+    small = {0..4};
+    result = (evens + odds) * small;
+    for (i = 0, 9, 1) {
+        if i in result {
+            Out.Int(i);
+        }
+    }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("SetCombined", src, {"Out"}) == "01234\n");
+}
+
+TEST_CASE("Set — range expressions with constants", "[ccodegen][set]")
+{
+    std::string src = R"(module SetConst
+import Out;
+const {
+    LO = 3;
+    HI = 7;
+}
+fn init() -> void
+var {
+    x: set;
+    i: i64;
+}
+{
+    x = {LO..HI};
+    for (i = 0, 9, 1) {
+        if i in x {
+            Out.Int(i);
+        }
+    }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("SetConst", src, {"Out"}) == "34567\n");
+}
