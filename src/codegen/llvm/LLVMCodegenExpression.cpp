@@ -369,7 +369,13 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
             lastValue = builder->CreateICmpSGE(lhs, rhs, "gte");
         }
         break;
-
+    case Op::In:
+    {
+        auto* shifted = builder->CreateShl(builder->getInt64(1), lhs, "in.shl");
+        auto* andVal = builder->CreateAnd(rhs, shifted, "in.and");
+        lastValue = builder->CreateICmpNE(andVal, builder->getInt64(0), "in.cmp");
+        break;
+    }
     default:
         lastValue = nullptr;
         break;

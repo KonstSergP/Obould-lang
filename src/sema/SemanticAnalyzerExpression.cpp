@@ -484,7 +484,7 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
             default: break;
             }
         }
-        else if (isIntegerType(lType->kind) && rType->kind == TypeKind::Set) {
+        else if (lType->kind == TypeKind::Set && rType->kind == TypeKind::Set) {
             auto lv = std::get<int64_t>(*lConst);
             auto rv = std::get<int64_t>(*rConst);
 
@@ -501,10 +501,16 @@ void SemanticAnalyzer::visit(BinaryExpression& node)
                 break;
             case Op::Neq: node.constantValue = lv != rv;
                 break;
-            case Op::In: node.constantValue = static_cast<bool>(rv & (1 << lv));
-                break;
             default:
                 break;
+            }
+        }
+        else if (isIntegerType(lType->kind) && rType->kind == TypeKind::Set) {
+            auto lv = std::get<int64_t>(*lConst);
+            auto rv = std::get<int64_t>(*rConst);
+
+            if (node.op == Op::In) {
+                node.constantValue = static_cast<bool>(rv & (1ULL << lv));
             }
         }
     }
