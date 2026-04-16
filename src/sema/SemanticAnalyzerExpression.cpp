@@ -78,6 +78,8 @@ void SemanticAnalyzer::visit(SetLiteral& node)
     }
     if (allConst) {
         node.constantValue = static_cast<int64_t>(bits);
+    } else {
+        addError("Elements of set must be constant expressions");
     }
 }
 
