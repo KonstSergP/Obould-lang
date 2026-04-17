@@ -1,0 +1,57 @@
+module OpsIs
+
+
+type {
+    Animal: struct { age: i64; };
+
+    Cat: struct (Animal) { meowVolume: i64; };
+    Dog: struct (Animal) { barkVolume: i64; };
+
+    Lion: struct (Cat) { maneSize: i64; };
+
+    AnimalPtr: *Animal;
+    CatPtr: *Cat;
+    DogPtr: *Dog;
+    LionPtr: *Lion;
+}
+
+var {
+    pAnimal: AnimalPtr;
+    pCat: CatPtr;
+    pDog: DogPtr;
+    pLion: LionPtr;
+}
+
+
+fn IsFeline(a: AnimalPtr) -> bool {
+    return a is Cat;
+}
+
+fn init() -> void
+{
+    new(pAnimal);
+    new(pCat);
+    new(pDog);
+    new(pLion);
+
+    assert(pAnimal is Animal);
+    assert(pCat is Cat);
+    assert(pLion is Lion);
+
+    assert(pLion is Animal);
+    assert(pCat is Animal);
+
+    pAnimal = pLion;
+
+    assert(pAnimal is Lion);
+    assert(pAnimal is Cat);
+    assert(pAnimal is Animal);
+    assert(!(pAnimal is Dog));
+    assert(IsFeline(pAnimal) == true);
+
+    pAnimal = pDog;
+    assert(pAnimal is Dog);
+    assert(!(pAnimal is Cat));
+    assert(!(pAnimal is Lion));
+    assert(IsFeline(pAnimal) == false);
+}

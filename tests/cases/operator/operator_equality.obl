@@ -1,0 +1,85 @@
+module OpsEquality
+
+const {
+    IntA = 42;
+    RealA = 3.14;
+    BoolA = true;
+    StrA = "Test";
+    SetA = {1, 5..10};
+}
+
+type {
+    IntArr: i64[5];
+    CharArr: char[10];
+    Node: struct { val: i64; };
+    NodePtr: *Node;
+}
+
+var {
+    GInt: i64;
+    GReal: f64;
+    GBool: bool;
+    GSet: set;
+    iArr: IntArr;
+    cArr: CharArr;
+    p1, p2: NodePtr;
+}
+
+fn init() -> void
+var {
+    LInt: i64;
+    LReal: f64;
+    LBool: bool;
+    LSet: set;
+    LByte: byte;
+}
+{
+    LInt = 42;
+    LByte = 42;
+    GInt = 100;
+    assert(IntA == LInt);
+    assert(IntA != GInt);
+    assert(LInt == LByte);
+    assert(10 == 10);
+    assert(10 != 20);
+
+    LReal = 3.14;
+    GReal = 2.71;
+    assert(RealA == LReal);
+    assert(RealA != GReal);
+    assert(1.5 == 1.5);
+    assert(1.5 != -1.5);
+
+    LBool = true;
+    GBool = false;
+    assert(BoolA == LBool);
+    assert(BoolA != GBool);
+    assert(true == true);
+    assert(false == false);
+    assert(true != false);
+
+    LSet = {1, 5, 6, 7, 8, 9, 10};
+    GSet = {1, 2};
+    assert(SetA == LSet);
+    assert(SetA != GSet);
+    assert({0, 2} == {0, 2});
+    assert({0, 2} != {0, 1});
+
+    cArr = "Test";
+    assert(cArr == StrA);
+    assert(cArr == "Test");
+    assert(cArr != "Hello");
+    assert("A" == "A");
+    assert("A" != "B");
+
+    assert(p1 == nil);
+    assert(p2 == nil);
+    assert(p1 == p2);
+
+    new(p1);
+    assert(p1 != nil);
+    assert(p1 != p2);
+
+    p2 = p1;
+    assert(p1 == p2);
+}

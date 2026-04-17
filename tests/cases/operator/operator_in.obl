@@ -1,0 +1,36 @@
+module OpsIn
+
+const {
+    SetConst = {0, 10..20, 63};
+}
+
+var {
+    GSet: set;
+}
+
+fn init() -> void
+var {
+    LSet: set;
+    elem1, elem2: i64;
+}
+{
+    assert(0 in SetConst);
+    assert(15 in SetConst);
+    assert(63 in SetConst);
+    assert(!(1 in SetConst));
+    assert(!(30 in SetConst));
+
+    LSet = {5, 8..12};
+    GSet = {63};
+    elem1 = 5;
+    elem2 = 10;
+
+    assert(elem1 in LSet);
+    assert(elem2 in LSet);
+    assert(!(7 in LSet));
+
+    elem1 = 0;
+    elem2 = 63;
+    assert(!(elem1 in GSet));
+    assert(elem2 in GSet);
+}

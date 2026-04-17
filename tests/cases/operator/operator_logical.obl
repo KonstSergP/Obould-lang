@@ -1,0 +1,61 @@
+module OpsLogical
+
+const {
+    CTrue = true;
+    CFalse = false;
+}
+
+var {
+    GBool1: bool;
+    GBool2: bool;
+    SideEffectCounter: i64;
+}
+
+fn SideEffect(val: bool) -> bool {
+    SideEffectCounter = SideEffectCounter + 1;
+    return val;
+}
+
+fn init() -> void
+var {
+    LTrue: bool;
+    LFalse: bool;
+}
+{
+    assert(CTrue && CTrue);
+    assert(!(CTrue && CFalse));
+    assert(!(CFalse && CFalse));
+    assert(CTrue || CFalse);
+    assert(CFalse || CTrue);
+    assert(!(CFalse || CFalse));
+    assert(!CFalse);
+    assert(!(!CTrue));
+
+    LTrue = true;
+    LFalse = false;
+    GBool1 = true;
+    GBool2 = false;
+
+    assert(LTrue && GBool1);
+    assert(!(LFalse && GBool1));
+    assert(LTrue || GBool2);
+    assert(GBool2 || LTrue);
+    assert(!(GBool2 || LFalse));
+    assert(!LFalse);
+    assert(!GBool2);
+
+    assert(LFalse || LTrue && GBool1);
+    assert(LTrue && !GBool2);
+    assert((LTrue || LFalse) && GBool1);
+
+    SideEffectCounter = 0;
+    assert(!(LFalse && SideEffect(true)));
+    assert(SideEffectCounter == 0);
+    assert(LTrue && SideEffect(true));
+    assert(SideEffectCounter == 1);
+
+    assert(LTrue || SideEffect(false));
+    assert(SideEffectCounter == 1);
+    assert(!(LFalse || SideEffect(false)));
+    assert(SideEffectCounter == 2);
+}
