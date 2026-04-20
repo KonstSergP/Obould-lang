@@ -5,7 +5,7 @@ import Out;
 type {
     F1: (x: i64) -> i64;
     F2: (x: i64) -> F1;
-    F3: (x: i64) -> (y: i64) -> (z: i64) -> i64;
+    F3: (x: i64) -> F2;
 }
 
 var {
