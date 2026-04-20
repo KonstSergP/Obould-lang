@@ -189,6 +189,10 @@ static std::string multiModuleRun(const std::vector<ModuleSource>& libs,
     return ss.str();
 }
 
+// ============================================================================
+// Basic tests
+// ============================================================================
+
 TEST_CASE("Hello world — WriteInt and WriteLn", "[ccodegen][basic]")
 {
     std::string src = R"(module Hello
@@ -200,6 +204,10 @@ fn init() -> void {
 )";
     REQUIRE(transpileCompileRun("Hello", src, {"Out"}) == "42\n");
 }
+
+// ============================================================================
+// Expression tests
+// ============================================================================
 
 TEST_CASE("Arithmetic expressions", "[ccodegen][expr]")
 {
@@ -235,6 +243,10 @@ var x: i64;
 )";
     REQUIRE(transpileCompileRun("Unary", src, {"Out"}) == "-5\n5\n");
 }
+
+// ============================================================================
+// Variable and constant tests
+// ============================================================================
 
 TEST_CASE("Local variables and assignment", "[ccodegen][var]")
 {
@@ -286,6 +298,10 @@ fn init() -> void {
 )";
     REQUIRE(transpileCompileRun("Globals", src, {"Out"}) == "99\n");
 }
+
+// ============================================================================
+// Control flow tests
+// ============================================================================
 
 TEST_CASE("If-else", "[ccodegen][control]")
 {
@@ -427,6 +443,10 @@ var x: i64;
     REQUIRE(transpileCompileRun("SwitchRange", src, {"Out"}) == "2\n");
 }
 
+// ============================================================================
+// Procedure and function tests
+// ============================================================================
+
 TEST_CASE("Function call and return value", "[ccodegen][proc]")
 {
     std::string src = R"(module FuncCall
@@ -509,6 +529,10 @@ fn init() -> void {
     REQUIRE(transpileCompileRun("Fib", src, {"Out"}) == "55\n");
 }
 
+// ============================================================================
+// Reference parameter tests
+// ============================================================================
+
 TEST_CASE("Reference parameters", "[ccodegen][ref]")
 {
     std::string src = R"(module RefParam
@@ -560,6 +584,10 @@ var n: i64;
 )";
     REQUIRE(transpileCompileRun("RefPass", src, {"Out"}) == "2\n");
 }
+
+// ============================================================================
+// Array tests
+// ============================================================================
 
 TEST_CASE("Array — basic indexing", "[ccodegen][array]")
 {
@@ -805,6 +833,10 @@ var {
     REQUIRE(transpileCompileRun("WhileElif", src, {"Out"}) == "3\n3\n");
 }
 
+// ============================================================================
+// Integration tests
+// ============================================================================
+
 TEST_CASE("Bubble sort with arrays and refs", "[ccodegen][integration]")
 {
     std::string src = R"(module BubbleSort
@@ -898,6 +930,10 @@ var {
 )";
     REQUIRE(transpileCompileRun("ForAfter", src, {"Out"}) == "68\n13\n");
 }
+
+// ============================================================================
+// Multi-module tests
+// ============================================================================
 
 TEST_CASE("Multi-module — import custom library", "[ccodegen][multimodule]")
 {
@@ -1252,6 +1288,10 @@ var {
     REQUIRE(transpileCompileRun("InheritedFields", src, {"Out"}) == "1204\n60\n");
 }
 
+// ============================================================================
+// Output tests
+// ============================================================================
+
 TEST_CASE("Output string type support", "[ccodegen][output]")
 {
     std::string src = R"(module OutputString
@@ -1268,6 +1308,10 @@ var {
 )";
     REQUIRE(transpileCompileRun("OutputString", src, {"Out"}) == "Hello, World!\n");
 }
+
+// ============================================================================
+// Open array tests
+// ============================================================================
 
 TEST_CASE("Open array — sum with len", "[ccodegen][openarray]")
 {
@@ -1719,6 +1763,10 @@ var {
     REQUIRE(multiModuleRun({arrLib}, main) == "2\n4\n6\n8\n10\n30\n");
 }
 
+// ============================================================================
+// Builtin function tests
+// ============================================================================
+
 TEST_CASE("Builtin len — fixed array", "[ccodegen][builtin][len]")
 {
     std::string src = R"(module LenFixed
@@ -1974,6 +2022,10 @@ var {
     REQUIRE(transpileCompileRun("AssertMsg", src, {"Out"}) == "10\n");
 }
 
+// ============================================================================
+// Forward declaration tests
+// ============================================================================
+
 TEST_CASE("Forward decl — type alias before struct definition", "[ccodegen][fwddecl]")
 {
     std::string src = R"(module FwdAlias
@@ -2051,6 +2103,10 @@ var {
 )";
     REQUIRE(transpileCompileRun("FwdInherit", src, {"Out"}) == "4\n1\n");
 }
+
+// ============================================================================
+// Linked list tests
+// ============================================================================
 
 TEST_CASE("Linked list — build and traverse", "[ccodegen][linkedlist]")
 {
@@ -2150,6 +2206,10 @@ var {
 )";
     REQUIRE(transpileCompileRun("LListOps", src, {"Out"}) == "4\n1\n");
 }
+
+// ============================================================================
+// Function type tests
+// ============================================================================
 
 TEST_CASE("Function type — basic call through variable", "[ccodegen][functype]")
 {
@@ -2353,6 +2413,10 @@ var {
     REQUIRE(transpileCompileRun("FnArray", src, {"Out"}) == "-5\n10\n25\n");
 }
 
+// ============================================================================
+// Random module tests
+// ============================================================================
+
 TEST_CASE("Random — Seed and NextInt deterministic", "[ccodegen][stdlib][random]")
 {
     std::string src = R"(module RndTest
@@ -2416,6 +2480,10 @@ var {
     REQUIRE(transpileCompileRun("RndRepro", src, {"Out", "Random"}) == "1\n");
 }
 
+// ============================================================================
+// In module tests
+// ============================================================================
+
 TEST_CASE("In — ReadInt from stdin", "[ccodegen][stdlib][in]")
 {
     std::string src = R"(module InInt
@@ -2472,6 +2540,10 @@ var {
 )";
     REQUIRE(transpileCompileRun("InChar", src, {"Out", "In"}, "ABC") == "ABC\n");
 }
+
+// ============================================================================
+// Files module tests
+// ============================================================================
 
 TEST_CASE("Files — write and read back integers", "[ccodegen][stdlib][files]")
 {
@@ -2565,6 +2637,10 @@ var {
 )";
     REQUIRE(transpileCompileRun("FilesStr", src, {"Out", "Files"}) == "Hello\n");
 }
+
+// ============================================================================
+// Set tests
+// ============================================================================
 
 TEST_CASE("Set — literal and in operator", "[ccodegen][set]")
 {
@@ -2790,4 +2866,85 @@ var {
 }
 )";
     REQUIRE(transpileCompileRun("SetConst", src, {"Out"}) == "34567\n");
+}
+
+// ============================================================================
+// Threads module tests
+// ============================================================================
+
+TEST_CASE("Threads — start and join single thread", "[ccodegen][stdlib][threads]")
+{
+    std::string src = R"(module ThrSingle
+import Threads, Out;
+var done: i64;
+fn task() -> void {
+    done = 1;
+}
+fn init() -> void
+var t: Threads.Thread;
+{
+    done = 0;
+    t = Threads.Start(task);
+    Threads.Join(t);
+    Out.Int(done);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("ThrSingle", src, {"Out", "Threads"}) == "1\n");
+}
+
+TEST_CASE("Threads — two threads accumulate into global", "[ccodegen][stdlib][threads]")
+{
+    std::string src = R"(module ThrTwo
+import Threads, Out;
+var counter: i64;
+fn addTen() -> void {
+    counter = counter + 10;
+}
+fn addTwenty() -> void {
+    counter = counter + 20;
+}
+fn init() -> void
+var {
+    t1: Threads.Thread;
+    t2: Threads.Thread;
+}
+{
+    counter = 0;
+    t1 = Threads.Start(addTen);
+    Threads.Join(t1);
+    t2 = Threads.Start(addTwenty);
+    Threads.Join(t2);
+    Out.Int(counter);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("ThrTwo", src, {"Out", "Threads"}) == "30\n");
+}
+
+TEST_CASE("Threads — thread modifies global array", "[ccodegen][stdlib][threads]")
+{
+    std::string src = R"(module ThrArr
+import Threads, Out;
+var arr: i64[3];
+fn fillArr() -> void {
+    arr[0] = 10;
+    arr[1] = 20;
+    arr[2] = 30;
+}
+fn init() -> void
+var {
+    t: Threads.Thread;
+    i: i64;
+}
+{
+    t = Threads.Start(fillArr);
+    Threads.Join(t);
+    for (i = 0, 2, 1) {
+        Out.Int(arr[i]);
+        Out.Ln();
+    }
+}
+)";
+    REQUIRE(transpileCompileRun("ThrArr", src, {"Out", "Threads"}) == "10\n20\n30\n");
 }
