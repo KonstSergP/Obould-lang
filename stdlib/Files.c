@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include "gc/gc.h"
 #include "Files.h"
 
 #if defined(__APPLE__)
@@ -65,7 +65,7 @@ static char* to_c_string(const char* s, int64_t s_len)
     size_t max = (size_t)s_len;
 
     if (s == NULL) {
-        char* out = malloc(1);
+        char* out =  GC_MALLOC(1);
         if (out) out[0] = '\0';
         return out;
     }
@@ -75,7 +75,7 @@ static char* to_c_string(const char* s, int64_t s_len)
         actual++;
     }
 
-    char* out = malloc(actual + 1);
+    char* out = GC_MALLOC(actual + 1);
     if (!out) return NULL;
     if (actual > 0) {
         memcpy(out, s, actual);
@@ -90,20 +90,20 @@ File Open(const char* name, const char* mode, int64_t name_len, int64_t mode_len
     char* mode_c = to_c_string(mode, mode_len);
 
     if (!name_c || !mode_c) {
-        free(name_c);
-        free(mode_c);
+        if (name_c) GC_FREE(name_c);
+        if (mode_c) GC_FREE(mode_c);
         return NULL;
     }
 
     FILE* stream = fopen(name_c, mode_c);
-    free(name_c);
-    free(mode_c);
+    GC_FREE(name_c);
+    GC_FREE(mode_c);
 
     if (!stream) {
         return NULL;
     }
 
-    FileHandle* f = malloc(sizeof(FileHandle));
+    FileHandle* f = GC_MALLOC(sizeof(FileHandle));
     if (!f) {
         fclose(stream);
         return NULL;
@@ -121,7 +121,7 @@ void Close(File f)
         fclose(f->stream);
         f->stream = NULL;
     }
-    free(f);
+    GC_FREE(f);
 }
 
 void Set(FileRider* r, File f, int64_t pos)

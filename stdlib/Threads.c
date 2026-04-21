@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <pthread.h>
+#include "gc/gc.h"
 #include "Threads.h"
 
 #if defined(__APPLE__)
@@ -28,11 +29,11 @@ static void* thread_wrapper(void* arg) {
 ob_7Threads_Thread Start(ob_Routine routine) {
     if (!routine) return NULL;
 
-    ob_7Threads_Thread t = malloc(sizeof(ThreadHandle));
+    ob_7Threads_Thread t = GC_MALLOC(sizeof(ThreadHandle));
     if (!t) return NULL;
 
     if (pthread_create(&t->handle, NULL, thread_wrapper, (void*)routine) != 0) {
-        free(t);
+        GC_FREE(t);
         return NULL;
     }
     return t;

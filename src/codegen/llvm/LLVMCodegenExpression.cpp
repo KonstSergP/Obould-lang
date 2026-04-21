@@ -447,12 +447,11 @@ void LLVMCodegenVisitor::visit(IdentifierExpression& node)
         }
     }
 
-    auto tyInfo = node.resolvedType;
-    if (lvalue || tyInfo->kind == TypeKind::Array || tyInfo->kind == TypeKind::Struct) {
+    if (lvalue || node.resolvedType->kind == TypeKind::Array || node.resolvedType->kind == TypeKind::Struct) {
         lastValue = ptr;
     }
     else {
-        auto* ty = toLLVMType(tyInfo);
+        auto* ty = toLLVMType(node.resolvedType);
         lastValue = builder->CreateLoad(ty, ptr);
     }
 }
@@ -500,7 +499,7 @@ void LLVMCodegenVisitor::visit(ArrayAccessExpression& node)
         lastValue = nullptr;
         return;
     }
-    if (lvalue) {
+    if (lvalue || node.resolvedType->kind == TypeKind::Array || node.resolvedType->kind == TypeKind::Struct) {
         lastValue = elemPtr;
     }
     else {
@@ -565,7 +564,7 @@ void LLVMCodegenVisitor::visit(MemberAccessExpression& node)
         return;
     }
 
-    if (lvalue) {
+    if (lvalue || node.resolvedType->kind == TypeKind::Array || node.resolvedType->kind == TypeKind::Struct) {
         lastValue = fieldPtr;
     }
     else {
@@ -586,12 +585,12 @@ void LLVMCodegenVisitor::visit(DereferenceExpression& node)
         return;
     }
 
-    if (!lvalue) {
-        auto* pointeeTy = toLLVMType(node.resolvedType);
-        lastValue = builder->CreateLoad(pointeeTy, ptrVal, "deref");
+    if (lvalue || node.resolvedType->kind == TypeKind::Array || node.resolvedType->kind == TypeKind::Struct) { // TODO: а эта проверка вообще нужна? нужен тестик
+        lastValue = ptrVal;
     }
     else {
-        lastValue = ptrVal;
+        auto* pointeeTy = toLLVMType(node.resolvedType);
+        lastValue = builder->CreateLoad(pointeeTy, ptrVal, "deref");
     }
 }
 

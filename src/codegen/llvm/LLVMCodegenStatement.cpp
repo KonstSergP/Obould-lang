@@ -111,10 +111,10 @@ void LLVMCodegenVisitor::visitBuiltinProcedure(ProcedureCall& node)
         auto val = builder->CreateZExtOrTrunc(lastValue, builder->getInt64Ty());
 
         auto zero = builder->getInt64(0);
-        auto max  = builder->getInt64(255);
+        auto max = builder->getInt64(255);
 
         auto geZero = builder->CreateICmpSGE(val, zero);
-        auto leMax  = builder->CreateICmpSLE(val, max);
+        auto leMax = builder->CreateICmpSLE(val, max);
         auto inRange = builder->CreateAnd(geZero, leMax);
 
         auto* failBB = llvm::BasicBlock::Create(context, "chr.fail", currentFunction);
@@ -221,7 +221,7 @@ void LLVMCodegenVisitor::visit(ProcedureCall& node)
         }
         args.insert(args.end(), hiddenParams.begin(), hiddenParams.end());
 
-        auto* call = builder->CreateCall(funcType, callee, args, "call");
+        auto* call = builder->CreateCall(funcType, callee, args);
         lastValue = funcType->getReturnType()->isVoidTy() ? nullptr : call;
     }
     lvalue = oldLvalue;
@@ -301,10 +301,16 @@ void LLVMCodegenVisitor::visit(IfStatement& node)
     condVal = builder->CreateTruncOrBitCast(condVal, builder->getInt1Ty(), "ifcond");
 
     auto* thenBB = llvm::BasicBlock::Create(context, "then", currentFunction);
-    auto* elseBB = llvm::BasicBlock::Create(context, "else", currentFunction);
+    auto* elseBB = llvm::BasicBlock::Create(context, "else");
     auto* mergeBB = llvm::BasicBlock::Create(context, "merge", currentFunction);
 
-    builder->CreateCondBr(condVal, thenBB, node.elseBranch ? elseBB : mergeBB);
+    if (node.elseBranch) {
+        elseBB->insertInto(currentFunction);
+        builder->CreateCondBr(condVal, thenBB, elseBB);
+    }
+    else {
+        builder->CreateCondBr(condVal, thenBB, mergeBB);
+    }
 
     builder->SetInsertPoint(thenBB);
     node.thenBranch->accept(*this);
