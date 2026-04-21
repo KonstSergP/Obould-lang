@@ -121,6 +121,10 @@ foreach (OBL_FILE IN LISTS STD_OBL_SOURCES)
 endforeach ()
 
 add_library(obould_std STATIC ${STD_C_SOURCES} ${STD_OBL_OBJS})
+target_compile_options(obould_std PRIVATE
+        -ffunction-sections
+        -fdata-sections
+)
 set(OB_STD_LIB "${LIB_DIR}/libobould_std.a")
 add_custom_command(
         OUTPUT "${LIB_DIR}/libobould_std.a"

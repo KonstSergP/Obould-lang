@@ -13,6 +13,7 @@ fn init() -> void
 var {
     ch: char;
     code: i64;
+    bcode: byte;
 }
 {
     ch = chr(65);
@@ -70,4 +71,7 @@ var {
     ch = chr(255);
     code = ord(ch);
     assert(code == 255, "chr(255) round-trip");
+
+    bcode = ord("A");
+    assert(chr(bcode) == "A");
 }

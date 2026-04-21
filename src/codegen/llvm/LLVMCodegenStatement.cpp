@@ -108,7 +108,7 @@ void LLVMCodegenVisitor::visitBuiltinProcedure(ProcedureCall& node)
     case BuiltinKind::CHR:
     {
         node.args[0]->accept(*this);
-        auto val = lastValue;
+        auto val = builder->CreateZExtOrTrunc(lastValue, builder->getInt64Ty());
 
         auto zero = builder->getInt64(0);
         auto max  = builder->getInt64(255);
