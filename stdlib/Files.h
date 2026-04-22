@@ -26,6 +26,6 @@ void ob_5Files_ReadReal64(ob_5Files_FileRider* r, double* f);
 void ob_5Files_WriteReal64(ob_5Files_FileRider* r, double f);
 void ob_5Files_ReadString(ob_5Files_FileRider* r, char* s, int64_t s_len);
 void ob_5Files_WriteString(ob_5Files_FileRider* r, const char* s, int64_t s_len);
-void ob_Files(void);
+void ob_5Files_Files(void);
 
 #endif // FILES_H

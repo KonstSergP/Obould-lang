@@ -2948,3 +2948,154 @@ var {
 )";
     REQUIRE(transpileCompileRun("ThrArr", src, {"Out", "Threads"}) == "10\n20\n30\n");
 }
+
+// ============================================================================
+// Module init ordering tests
+// ============================================================================
+
+TEST_CASE("Init — single module init called via wrapper", "[ccodegen][init]")
+{
+    std::string src = R"(module InitSingle
+import Out;
+fn init() -> void {
+    Out.Int(1);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("InitSingle", src, {"Out"}) == "1\n");
+}
+
+TEST_CASE("Init — imported module init called before main", "[ccodegen][init][multimodule]")
+{
+    ModuleSource lib = {"InitLib", R"(module InitLib
+import Out;
+fn init() -> void {
+    Out.Int(1);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource main = {"InitOrder", R"(module InitOrder
+import InitLib, Out;
+fn init() -> void {
+    Out.Int(2);
+    Out.Ln();
+}
+)"};
+
+    REQUIRE(multiModuleRun({lib}, main) == "1\n2\n");
+}
+
+TEST_CASE("Init — diamond import, init called once", "[ccodegen][init][multimodule]")
+{
+    ModuleSource shared = {"Shared", R"(module Shared
+import Out;
+fn init() -> void {
+    Out.Int(99);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource libA = {"LibA", R"(module LibA
+import Shared, Out;
+fn init() -> void {
+    Out.Int(10);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource libB = {"LibB", R"(module LibB
+import Shared, Out;
+fn init() -> void {
+    Out.Int(20);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource main = {"Diamond", R"(module Diamond
+import LibA, LibB, Out;
+fn init() -> void {
+    Out.Int(30);
+    Out.Ln();
+}
+)"};
+
+    REQUIRE(multiModuleRun({shared, libA, libB}, main) == "99\n10\n20\n30\n");
+}
+
+TEST_CASE("Init — module without init procedure", "[ccodegen][init][multimodule]")
+{
+    ModuleSource lib = {"NoInit", R"(module NoInit
+fn export Add(a, b: i64) -> i64 {
+    return a + b;
+}
+)"};
+
+    ModuleSource main = {"UseNoInit", R"(module UseNoInit
+import NoInit, Out;
+fn init() -> void {
+    Out.Int(NoInit.Add(3, 4));
+    Out.Ln();
+}
+)"};
+
+    REQUIRE(multiModuleRun({lib}, main) == "7\n");
+}
+
+TEST_CASE("Init — chain of imports A->B->C", "[ccodegen][init][multimodule]")
+{
+    ModuleSource modC = {"ModC", R"(module ModC
+import Out;
+fn init() -> void {
+    Out.Int(1);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource modB = {"ModB", R"(module ModB
+import ModC, Out;
+fn init() -> void {
+    Out.Int(2);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource main = {"ModA", R"(module ModA
+import ModB, ModC, Out;
+fn init() -> void {
+    Out.Int(3);
+    Out.Ln();
+}
+)"};
+
+    REQUIRE(multiModuleRun({modC, modB}, main) == "1\n2\n3\n");
+}
+
+TEST_CASE("Init — chain of imports A->B+C", "[ccodegen][init][multimodule]")
+{
+    ModuleSource modC = {"ModC", R"(module ModC
+import Out;
+fn init() -> void {
+    Out.Int(1);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource modB = {"ModB", R"(module ModB
+import Out;
+fn init() -> void {
+    Out.Int(2);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource main = {"ModA", R"(module ModA
+import ModB, ModC, Out;
+fn init() -> void {
+    Out.Int(3);
+    Out.Ln();
+}
+)"};
+
+    REQUIRE(multiModuleRun({modC, modB}, main) == "2\n1\n3\n");
+}

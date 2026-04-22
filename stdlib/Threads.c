@@ -16,7 +16,7 @@ typedef struct ob_7Threads_ThreadHandle {
 
 ob_7Threads_Thread Start(ob_Routine routine) OB_SYMBOL("7Threads_Start");
 void Join(ob_7Threads_Thread t) OB_SYMBOL("7Threads_Join");
-void Threads(void) OB_SYMBOL("Threads");
+void Threads(void) OB_SYMBOL("7Threads_Threads");
 
 static void* thread_wrapper(void* arg) {
     ob_Routine routine = arg;

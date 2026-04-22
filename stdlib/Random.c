@@ -12,7 +12,7 @@ int64_t Next() OB_SYMBOL("6Random_Next");
 int64_t NextInt(int64_t n) OB_SYMBOL("6Random_NextInt");
 bool NextBool() OB_SYMBOL("6Random_NextBool");
 double NextReal() OB_SYMBOL("6Random_NextReal");
-void Random(void) OB_SYMBOL("Random");
+void Random(void) OB_SYMBOL("6Random_Random");
 
 
 static uint64_t state = 1;

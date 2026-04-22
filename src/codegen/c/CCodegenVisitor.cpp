@@ -1318,6 +1318,7 @@ void CCodegenVisitor::visit(Module& node)
             os_ << "\n";
         }
 
+        os_ << "void " << makePrefix(moduleName_) << moduleName_ << "(void);\n\n";
         os_ << "#endif /* " << guardName << " */\n";
 
     } else {
@@ -1492,19 +1493,28 @@ void CCodegenVisitor::visit(Module& node)
             }
         }
 
-        if (isMain_) {
-            if (!hasInitProcedure_) {
-                throw std::runtime_error(
-                    "Error: --main flag specified but no 'init' procedure found in module '" +
-                    moduleName_ + "'. The entry point must be 'fn init() -> void'.");
-            }
+        std::string wrapperName = makePrefix(moduleName_) + moduleName_;
+        for (auto& import : node.imports) {
+            os_ << "extern void " << makePrefix(import->realName) << import->realName << "(void);\n";
+        }
+        os_ << "void " << wrapperName << "(void) {\n";
+        os_ << "    static int _initialized = 0;\n";
+        os_ << "    if (_initialized) return;\n";
+        os_ << "    _initialized = 1;\n";
+        for (auto& import : node.imports) {
+            os_ << "    " << makePrefix(import->realName) << import->realName << "();\n";
+        }
+        if (hasInitProcedure_) {
+            os_ << "    " << makePrefix(moduleName_) << "init();\n";
+        }
+        os_ << "}\n\n";
 
-            os_ << "/* Entry point */\n";
+        if (isMain_) {
             os_ << "int main(int argc, char** argv) {\n";
             if (node.properties.needsGC) {
                 os_ << "    GC_INIT();\n";
             }
-            os_ << "    " << makePrefix(moduleName_) << "init();\n";
+            os_ << "    " << wrapperName << "();\n";
             os_ << "    return 0;\n";
             os_ << "}\n";
         }
