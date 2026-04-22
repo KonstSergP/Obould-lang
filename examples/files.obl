@@ -1,0 +1,108 @@
+module FileDatabase
+
+import Files, Out;
+
+type {
+    Player: struct {
+        id: i64;
+        level: i64;
+        health: f64;
+        name: char[16];
+    };
+}
+
+fn export SaveDatabase(filename: char[]) -> bool
+var {
+    f: Files.File;
+    w: Files.FileRider;
+    p1, p2: Player;
+    ret: bool;
+}
+{
+    p1.id = 1001; p1.level = 42; p1.health = 98.5; p1.name = "GordonFreeman";
+    p2.id = 1002; p2.level = 15; p2.health = 12.0; p2.name = "AlyxVance";
+
+    f = Files.Open(filename, "wb");
+    if f == nil {
+        ret = false;
+    } else {
+        Files.Set(w, f, 0);
+
+        Files.WriteInt64(w, 0xBADB00B5);
+        Files.WriteInt64(w, 2);
+
+        Files.WriteInt64(w, p1.id);
+        Files.WriteInt64(w, p1.level);
+        Files.WriteReal64(w, p1.health);
+        Files.WriteString(w, p1.name);
+
+        Files.WriteInt64(w, p2.id);
+        Files.WriteInt64(w, p2.level);
+        Files.WriteReal64(w, p2.health);
+        Files.WriteString(w, p2.name);
+
+        Files.Close(f);
+        ret = true;
+    }
+    return ret;
+}
+
+fn export LoadAndPrintDatabase(filename: char[]) -> bool
+var {
+    f: Files.File;
+    r: Files.FileRider;
+    magic, count, i: i64;
+    p: Player;
+    ret: bool;
+}
+{
+    f = Files.Open(filename, "rb");
+    if f == nil {
+        ret = false;
+    } else {
+        Files.Set(r, f, 0);
+
+        Files.ReadInt64(r, magic);
+        if magic != 0xBADB00B5 {
+            Out.String("Error: Invalid file format!"); Out.Ln();
+            Files.Close(f);
+            ret = false;
+        } else {
+            Files.ReadInt64(r, count);
+            Out.String("--- Loading Database ("); Out.Int(count); Out.String(" records) ---"); Out.Ln();
+
+            for (i = 1, count) {
+                Files.ReadInt64(r, p.id);
+                Files.ReadInt64(r, p.level);
+                Files.ReadReal64(r, p.health);
+                Files.ReadString(r, p.name);
+
+                Out.String("[Player "); Out.Int(p.id); Out.String("] ");
+                Out.String(p.name);
+                Out.String(" | Lvl: "); Out.Int(p.level);
+                Out.String(" | HP: "); Out.Real(p.health, 1);
+                Out.Ln();
+            }
+
+            Files.Close(f);
+            Out.String("-----------------------------------"); Out.Ln();
+            ret = true;
+        }
+    }
+    return ret;
+}
+
+fn init() -> void
+var { dbName: char[64]; ok: bool; }
+{
+    dbName = "tests/smoke/players_db.bin";
+
+    Out.String("Saving binary database..."); Out.Ln();
+    ok = SaveDatabase(dbName);
+
+    if ok {
+        LoadAndPrintDatabase(dbName);
+    } else {
+        Out.String("Failed to open file!"); Out.Ln();
+    }
+}

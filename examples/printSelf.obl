@@ -1,4 +1,4 @@
-module Quine
+module PrintSelf
 
 import Out;
 
@@ -19,7 +19,7 @@ var { i: i64; ch: char; }
 fn init() -> void
 var { s: char[28][100]; i: i64; }
 {
-    s[0] = "module Quine";
+    s[0] = "module PrintSelf";
     s[1] = "";
     s[2] = "import Out;";
     s[3] = "";

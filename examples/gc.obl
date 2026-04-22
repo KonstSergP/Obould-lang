@@ -1,0 +1,71 @@
+module GCTest
+
+import Out;
+
+type {
+    Chunk: struct { // ~80 КБ
+        id: i64;
+        payload: i64[10000];
+        next: *Chunk;
+    };
+}
+
+fn GenerateGarbage(count: i64) -> *Chunk
+var {
+    i: i64;
+    head, newNode: *Chunk;
+}
+{
+    head = nil;
+    for (i = 0, count) {
+        new(newNode);
+        newNode.id = i;
+        newNode.next = head;
+        head = newNode;
+    }
+    return head;
+}
+
+fn export Run() -> void
+var {
+    i: i64;
+    trash, longLived: *Chunk;
+}
+{
+    Out.String("--- GC Stress Test ---"); Out.Ln();
+
+    new(longLived);
+    longLived.id = 777;
+    longLived.payload[0] = 42;
+    Out.String("Created long-lived object with ID = ");
+    Out.Int(longLived.id); Out.Ln();
+
+    Out.String("Allocating 40 Gigabytes of garbage..."); Out.Ln();
+
+    for (i = 1, 50001) {
+        trash = GenerateGarbage(10); // ~800КБ
+
+        if (i mod 5000) == 0 {
+            Out.String("  ...iteration ");
+            Out.Int(i);
+            Out.String(" / 50000");
+            Out.Ln();
+        }
+    }
+
+    Out.String("Allocation finished successfully! GC works!"); Out.Ln();
+
+    Out.String("Checking long-lived object: ID = ");
+    Out.Int(longLived.id);
+
+    if (longLived.id == 777) && (longLived.payload[0] == 42) {
+        Out.String(" (SAFE)"); Out.Ln();
+    } else {
+        Out.String(" (CORRUPTED)"); Out.Ln();
+    }
+}
+
+fn init() -> void
+{
+    Run();
+}
