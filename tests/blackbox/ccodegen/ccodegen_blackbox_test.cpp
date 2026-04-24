@@ -3099,3 +3099,200 @@ fn init() -> void {
 
     REQUIRE(multiModuleRun({modC, modB}, main) == "2\n1\n3\n");
 }
+
+// ============================================================================
+// Hex and float-E literal tests
+// ============================================================================
+
+TEST_CASE("Literals — hex integers", "[ccodegen][literals]")
+{
+    std::string src = R"(module HexLit
+import Out;
+fn init() -> void {
+    Out.Int(0xFF);
+    Out.Ln();
+    Out.Int(0x0);
+    Out.Ln();
+    Out.Int(0x1A);
+    Out.Ln();
+    Out.Int(0x10);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("HexLit", src, {"Out"}) == "255\n0\n26\n16\n");
+}
+
+TEST_CASE("Literals — hex arithmetic", "[ccodegen][literals]")
+{
+    std::string src = R"(module HexArith
+import Out;
+fn init() -> void
+var x: i64;
+{
+    x = 0xA + 0xB;
+    Out.Int(x);
+    Out.Ln();
+    x = 0xFF - 0xF;
+    Out.Int(x);
+    Out.Ln();
+    x = 0x10 * 2;
+    Out.Int(x);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("HexArith", src, {"Out"}) == "21\n240\n32\n");
+}
+
+TEST_CASE("Literals — float with E notation", "[ccodegen][literals]")
+{
+    std::string src = R"(module FloatE
+import Out;
+fn init() -> void
+var f: f64;
+{
+    f = 1.5E2;
+    Out.Real(f, 1);
+    Out.Ln();
+    f = 2.0E-1;
+    Out.Real(f, 1);
+    Out.Ln();
+    f = 3.14E0;
+    Out.Real(f, 2);
+    Out.Ln();
+    f = 1.0E3;
+    Out.Real(f, 1);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("FloatE", src, {"Out"}) == "150.0\n0.2\n3.14\n1000.0\n");
+}
+
+TEST_CASE("Literals — float E with positive exponent", "[ccodegen][literals]")
+{
+    std::string src = R"(module FloatEPos
+import Out;
+fn init() -> void
+var f: f64;
+{
+    f = 5.0E+2;
+    Out.Real(f, 1);
+    Out.Ln();
+    f = 1.23E+1;
+    Out.Real(f, 1);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("FloatEPos", src, {"Out"}) == "500.0\n12.3\n");
+}
+
+TEST_CASE("Literals — float E arithmetic", "[ccodegen][literals]")
+{
+    std::string src = R"(module FloatECalc
+import Out;
+fn init() -> void
+var {
+    a: f64;
+    b: f64;
+}
+{
+    a = 1.0E2;
+    b = 2.5E1;
+    Out.Real(a + b, 1);
+    Out.Ln();
+    Out.Real(a / b, 1);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("FloatECalc", src, {"Out"}) == "125.0\n4.0\n");
+}
+
+TEST_CASE("Literals — hex in conditions and arrays", "[ccodegen][literals]")
+{
+    std::string src = R"(module HexUsage
+import Out;
+fn init() -> void
+var {
+    arr: i64[3];
+    i: i64;
+}
+{
+    arr[0] = 0xA;
+    arr[1] = 0xB;
+    arr[2] = 0xC;
+    for (i = 0, 2, 1) {
+        Out.Int(arr[i]);
+        Out.Ln();
+    }
+    if 0xA == 10 {
+        Out.Int(1);
+    } else {
+        Out.Int(0);
+    }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("HexUsage", src, {"Out"}) == "10\n11\n12\n1\n");
+}
+
+TEST_CASE("Literals — H-suffix hex integers", "[ccodegen][literals]")
+{
+    std::string src = R"(module HexHLit
+import Out;
+fn init() -> void {
+    Out.Int(0FFH);
+    Out.Ln();
+    Out.Int(1AH);
+    Out.Ln();
+    Out.Int(10H);
+    Out.Ln();
+    Out.Int(0H);
+    Out.Ln();
+    Out.Int(7FH);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("HexHLit", src, {"Out"}) == "255\n26\n16\n0\n127\n");
+}
+
+TEST_CASE("Literals — H-suffix hex arithmetic", "[ccodegen][literals]")
+{
+    std::string src = R"(module HexHArith
+import Out;
+fn init() -> void
+var x: i64;
+{
+    x = 0AH + 0BH;
+    Out.Int(x);
+    Out.Ln();
+    x = 0FFH - 0FH;
+    Out.Int(x);
+    Out.Ln();
+    x = 10H * 2;
+    Out.Int(x);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("HexHArith", src, {"Out"}) == "21\n240\n32\n");
+}
+
+TEST_CASE("Literals — H-suffix and 0x hex mixed", "[ccodegen][literals]")
+{
+    std::string src = R"(module HexMixed
+import Out;
+fn init() -> void {
+    if 0FFH == 0xFF {
+        Out.Int(1);
+    } else {
+        Out.Int(0);
+    }
+    Out.Ln();
+    if 10H == 0x10 {
+        Out.Int(1);
+    } else {
+        Out.Int(0);
+    }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("HexMixed", src, {"Out"}) == "1\n1\n");
+}
