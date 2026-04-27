@@ -1,0 +1,67 @@
+{
+    "declarations": {
+        "constants": [
+            {
+                "name": "PI",
+                "value": 3.141592653589793
+            }
+        ],
+        "variables": [],
+        "types": []
+    },
+    "imports": [],
+    "moduleName": "Math",
+    "procedures": [
+        {
+            "name": "Sin",
+            "parameters": [{"name": "x", "reference": false, "type": "f64"}],
+            "returnType": "f64"
+        },
+        {
+            "name": "Cos",
+            "parameters": [{"name": "x", "reference": false, "type": "f64"}],
+            "returnType": "f64"
+        },
+        {
+            "name": "Tan",
+            "parameters": [{"name": "x", "reference": false, "type": "f64"}],
+            "returnType": "f64"
+        },
+        {
+            "name": "Atan",
+            "parameters": [{"name": "x", "reference": false, "type": "f64"}],
+            "returnType": "f64"
+        },
+        {
+            "name": "Atan2",
+            "parameters": [
+                {"name": "y", "reference": false, "type": "f64"},
+                {"name": "x", "reference": false, "type": "f64"}
+            ],
+            "returnType": "f64"
+        },
+        {
+            "name": "Sqrt",
+            "parameters": [{"name": "x", "reference": false, "type": "f64"}],
+            "returnType": "f64"
+        },
+        {
+            "name": "Pow",
+            "parameters": [
+                {"name": "base", "reference": false, "type": "f64"},
+                {"name": "exponent", "reference": false, "type": "f64"}
+            ],
+            "returnType": "f64"
+        },
+        {
+            "name": "Log10",
+            "parameters": [{"name": "x", "reference": false, "type": "f64"}],
+            "returnType": "f64"
+        },
+        {
+            "name": "Fabs",
+            "parameters": [{"name": "x", "reference": false, "type": "f64"}],
+            "returnType": "f64"
+        }
+    ]
+}

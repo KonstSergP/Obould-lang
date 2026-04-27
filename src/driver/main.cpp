@@ -345,6 +345,7 @@ int main(int argc, char** argv)
         }
         cmd << " " << shellQuote(stdlibPath.string());
         cmd << " " << shellQuote(gcPath.string());
+        cmd << " -lm";
 
         int rc = std::system(cmd.str().c_str());
         if (rc != 0) {
@@ -537,6 +538,7 @@ int main(int argc, char** argv)
                 }
                 cmd << " " << shellQuote(stdlibPath.string());
                 cmd << " " << shellQuote(gcPath.string());
+                cmd << " -lm";
 
                 int rc = std::system(cmd.str().c_str());
                 if (rc != 0) {

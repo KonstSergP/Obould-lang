@@ -92,6 +92,7 @@ static std::string transpileCompileRun(const std::string& moduleName,
         compileCmd += " " + (tmpDir / (lib + ".c")).string();
     }
     compileCmd += " " + (getGcLibDir() / "libgc.a").string();
+    compileCmd += " -lm";
     compileCmd += " 2>&1";
     REQUIRE(std::system(compileCmd.c_str()) == 0);
 
@@ -174,6 +175,7 @@ static std::string multiModuleRun(const std::vector<ModuleSource>& libs,
         compileCmd += " " + cf.string();
     }
     compileCmd += " " + (getGcLibDir() / "libgc.a").string();
+    compileCmd += " -lm";
     compileCmd += " 2>&1";
     REQUIRE(std::system(compileCmd.c_str()) == 0);
 
@@ -1018,7 +1020,7 @@ fn init() -> void {
 
 TEST_CASE("Multi-module — two libraries", "[ccodegen][multimodule]")
 {
-    ModuleSource mathLib = {"Math", R"(module Math
+    ModuleSource mathLib = {"MyMath", R"(module MyMath
 
 fn export Double(x: i64) -> i64 {
     return x + x;
@@ -1044,14 +1046,14 @@ fn init() -> void {
 
     ModuleSource main = {"App", R"(module App
 
-import Math, Fmt, Out;
+import MyMath, Fmt, Out;
 
 fn init() -> void
 var x: i64;
 {
-    x = Math.Double(21);
+    x = MyMath.Double(21);
     Fmt.PrintLabeled(0, x);
-    x = Math.Double(x);
+    x = MyMath.Double(x);
     Fmt.PrintLabeled(1, x);
 }
 )"};
