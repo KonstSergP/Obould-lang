@@ -10,7 +10,7 @@
 void SetArgs(int64_t argc, char** argv) OB_SYMBOL("4Args_SetArgs");
 int64_t Count(void) OB_SYMBOL("4Args_Count");
 int64_t Get(int64_t index, char* buf, int64_t buf_len) OB_SYMBOL("4Args_Get");
-void Args(void) OB_SYMBOL("Args");
+void Args(void) OB_SYMBOL("4Args_4Args");
 
 static int64_t args_count = 0;
 static char** args_values = NULL;

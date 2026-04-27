@@ -1,5 +1,4 @@
 #pragma once
-#include <iostream>
 #include <sstream>
 #include <string>
 #include <set>
@@ -77,17 +76,13 @@ private:
     std::string indent_;
     std::string moduleName_;
 
-    // For collecting type string (used when we need to build type before name)
     std::stringstream typeBuffer_;
     bool collectingType_ = false;
 
-    // For array dimensions
     std::stringstream arrayDims_;
 
-    // Current typedef name (for struct/procedure type declarations)
     std::string currentTypedefName_;
 
-    // Reference parameter tracking
     std::set<std::string> referenceParams_;  // Names of reference parameters in current function
     // Open array parameter tracking: param name -> list of hidden len param names per dimension
     // "m" -> ["m_len", "m_len2", "m_len3"] for m: i64[][][]
@@ -108,14 +103,10 @@ private:
     std::set<std::string> globalVariables_;
     std::set<std::string> globalConstants_;
 
-    // When true, reference params are emitted as raw pointers (no dereference).
-    // Used for RTTI: `is` operator and type guards need the pointer, not the value.
     bool suppressDeref_ = false;
 
-    // Flag indicating this is the main module (should generate main() calling init())
     bool isMain_ = false;
 
-    // Track if init() procedure exists
     bool hasInitProcedure_ = false;
 
 public:

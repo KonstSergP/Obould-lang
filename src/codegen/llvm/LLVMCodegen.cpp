@@ -262,7 +262,7 @@ void LLVMCodegenVisitor::makeStructCastCheck(llvm::Value* left, llvm::Value* rig
 
 void LLVMCodegenVisitor::createModuleInitializer(Module& node)
 {
-    auto funcName = "ob_" + node.name;
+    auto funcName = getMangledName(node.name, std::to_string(node.name.length()) + node.name);
     auto fnType = llvm::FunctionType::get(builder->getVoidTy(), false);
     auto func = llvm::Function::Create(fnType, llvm::GlobalValue::ExternalLinkage, funcName, *module);
     functions[funcName] = func;
@@ -293,7 +293,7 @@ void LLVMCodegenVisitor::createModuleInitializer(Module& node)
     builder->CreateStore(builder->getTrue(), gVar);
 
     for (auto& import : node.imports) {
-        auto callee = functions["ob_" + import->realName];
+        auto callee = functions[getMangledName(import->realName, std::to_string(import->realName.length()) + import->realName)];
         builder->CreateCall(fnType, callee);
     }
     if (auto it = functions.find(getMangledName(node.name, "init")); it != functions.end()) {
@@ -336,7 +336,7 @@ void LLVMCodegenVisitor::createEntryPoint(Module& node)
         builder->CreateCall(setArgsFn, {argc64, argv});
     }
 
-    builder->CreateCall(functions["ob_" + node.name]);
+    builder->CreateCall(functions[getMangledName(node.name, std::to_string(node.name.length())+node.name)]);
 
     builder->CreateRet(builder->getInt32(0));
 }

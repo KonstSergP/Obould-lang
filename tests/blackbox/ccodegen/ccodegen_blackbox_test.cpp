@@ -2950,3 +2950,351 @@ var {
 )";
     REQUIRE(transpileCompileRun("ThrArr", src, {"Out", "Threads"}) == "10\n20\n30\n");
 }
+
+// ============================================================================
+// Module init ordering tests
+// ============================================================================
+
+TEST_CASE("Init — single module init called via wrapper", "[ccodegen][init]")
+{
+    std::string src = R"(module InitSingle
+import Out;
+fn init() -> void {
+    Out.Int(1);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("InitSingle", src, {"Out"}) == "1\n");
+}
+
+TEST_CASE("Init — imported module init called before main", "[ccodegen][init][multimodule]")
+{
+    ModuleSource lib = {"InitLib", R"(module InitLib
+import Out;
+fn init() -> void {
+    Out.Int(1);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource main = {"InitOrder", R"(module InitOrder
+import InitLib, Out;
+fn init() -> void {
+    Out.Int(2);
+    Out.Ln();
+}
+)"};
+
+    REQUIRE(multiModuleRun({lib}, main) == "1\n2\n");
+}
+
+TEST_CASE("Init — diamond import, init called once", "[ccodegen][init][multimodule]")
+{
+    ModuleSource shared = {"Shared", R"(module Shared
+import Out;
+fn init() -> void {
+    Out.Int(99);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource libA = {"LibA", R"(module LibA
+import Shared, Out;
+fn init() -> void {
+    Out.Int(10);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource libB = {"LibB", R"(module LibB
+import Shared, Out;
+fn init() -> void {
+    Out.Int(20);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource main = {"Diamond", R"(module Diamond
+import LibA, LibB, Out;
+fn init() -> void {
+    Out.Int(30);
+    Out.Ln();
+}
+)"};
+
+    REQUIRE(multiModuleRun({shared, libA, libB}, main) == "99\n10\n20\n30\n");
+}
+
+TEST_CASE("Init — module without init procedure", "[ccodegen][init][multimodule]")
+{
+    ModuleSource lib = {"NoInit", R"(module NoInit
+fn export Add(a, b: i64) -> i64 {
+    return a + b;
+}
+)"};
+
+    ModuleSource main = {"UseNoInit", R"(module UseNoInit
+import NoInit, Out;
+fn init() -> void {
+    Out.Int(NoInit.Add(3, 4));
+    Out.Ln();
+}
+)"};
+
+    REQUIRE(multiModuleRun({lib}, main) == "7\n");
+}
+
+TEST_CASE("Init — chain of imports A->B->C", "[ccodegen][init][multimodule]")
+{
+    ModuleSource modC = {"ModC", R"(module ModC
+import Out;
+fn init() -> void {
+    Out.Int(1);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource modB = {"ModB", R"(module ModB
+import ModC, Out;
+fn init() -> void {
+    Out.Int(2);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource main = {"ModA", R"(module ModA
+import ModB, ModC, Out;
+fn init() -> void {
+    Out.Int(3);
+    Out.Ln();
+}
+)"};
+
+    REQUIRE(multiModuleRun({modC, modB}, main) == "1\n2\n3\n");
+}
+
+TEST_CASE("Init — chain of imports A->B+C", "[ccodegen][init][multimodule]")
+{
+    ModuleSource modC = {"ModC", R"(module ModC
+import Out;
+fn init() -> void {
+    Out.Int(1);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource modB = {"ModB", R"(module ModB
+import Out;
+fn init() -> void {
+    Out.Int(2);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource main = {"ModA", R"(module ModA
+import ModB, ModC, Out;
+fn init() -> void {
+    Out.Int(3);
+    Out.Ln();
+}
+)"};
+
+    REQUIRE(multiModuleRun({modC, modB}, main) == "2\n1\n3\n");
+}
+
+// ============================================================================
+// Hex and float-E literal tests
+// ============================================================================
+
+TEST_CASE("Literals — hex integers", "[ccodegen][literals]")
+{
+    std::string src = R"(module HexLit
+import Out;
+fn init() -> void {
+    Out.Int(0xFF);
+    Out.Ln();
+    Out.Int(0x0);
+    Out.Ln();
+    Out.Int(0x1A);
+    Out.Ln();
+    Out.Int(0x10);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("HexLit", src, {"Out"}) == "255\n0\n26\n16\n");
+}
+
+TEST_CASE("Literals — hex arithmetic", "[ccodegen][literals]")
+{
+    std::string src = R"(module HexArith
+import Out;
+fn init() -> void
+var x: i64;
+{
+    x = 0xA + 0xB;
+    Out.Int(x);
+    Out.Ln();
+    x = 0xFF - 0xF;
+    Out.Int(x);
+    Out.Ln();
+    x = 0x10 * 2;
+    Out.Int(x);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("HexArith", src, {"Out"}) == "21\n240\n32\n");
+}
+
+TEST_CASE("Literals — float with E notation", "[ccodegen][literals]")
+{
+    std::string src = R"(module FloatE
+import Out;
+fn init() -> void
+var f: f64;
+{
+    f = 1.5E2;
+    Out.Real(f, 1);
+    Out.Ln();
+    f = 2.0E-1;
+    Out.Real(f, 1);
+    Out.Ln();
+    f = 3.14E0;
+    Out.Real(f, 2);
+    Out.Ln();
+    f = 1.0E3;
+    Out.Real(f, 1);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("FloatE", src, {"Out"}) == "150.0\n0.2\n3.14\n1000.0\n");
+}
+
+TEST_CASE("Literals — float E with positive exponent", "[ccodegen][literals]")
+{
+    std::string src = R"(module FloatEPos
+import Out;
+fn init() -> void
+var f: f64;
+{
+    f = 5.0E+2;
+    Out.Real(f, 1);
+    Out.Ln();
+    f = 1.23E+1;
+    Out.Real(f, 1);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("FloatEPos", src, {"Out"}) == "500.0\n12.3\n");
+}
+
+TEST_CASE("Literals — float E arithmetic", "[ccodegen][literals]")
+{
+    std::string src = R"(module FloatECalc
+import Out;
+fn init() -> void
+var {
+    a: f64;
+    b: f64;
+}
+{
+    a = 1.0E2;
+    b = 2.5E1;
+    Out.Real(a + b, 1);
+    Out.Ln();
+    Out.Real(a / b, 1);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("FloatECalc", src, {"Out"}) == "125.0\n4.0\n");
+}
+
+TEST_CASE("Literals — hex in conditions and arrays", "[ccodegen][literals]")
+{
+    std::string src = R"(module HexUsage
+import Out;
+fn init() -> void
+var {
+    arr: i64[3];
+    i: i64;
+}
+{
+    arr[0] = 0xA;
+    arr[1] = 0xB;
+    arr[2] = 0xC;
+    for (i = 0, 2, 1) {
+        Out.Int(arr[i]);
+        Out.Ln();
+    }
+    if 0xA == 10 {
+        Out.Int(1);
+    } else {
+        Out.Int(0);
+    }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("HexUsage", src, {"Out"}) == "10\n11\n12\n1\n");
+}
+
+TEST_CASE("Literals — H-suffix hex integers", "[ccodegen][literals]")
+{
+    std::string src = R"(module HexHLit
+import Out;
+fn init() -> void {
+    Out.Int(0FFH);
+    Out.Ln();
+    Out.Int(1AH);
+    Out.Ln();
+    Out.Int(10H);
+    Out.Ln();
+    Out.Int(0H);
+    Out.Ln();
+    Out.Int(7FH);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("HexHLit", src, {"Out"}) == "255\n26\n16\n0\n127\n");
+}
+
+TEST_CASE("Literals — H-suffix hex arithmetic", "[ccodegen][literals]")
+{
+    std::string src = R"(module HexHArith
+import Out;
+fn init() -> void
+var x: i64;
+{
+    x = 0AH + 0BH;
+    Out.Int(x);
+    Out.Ln();
+    x = 0FFH - 0FH;
+    Out.Int(x);
+    Out.Ln();
+    x = 10H * 2;
+    Out.Int(x);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("HexHArith", src, {"Out"}) == "21\n240\n32\n");
+}
+
+TEST_CASE("Literals — H-suffix and 0x hex mixed", "[ccodegen][literals]")
+{
+    std::string src = R"(module HexMixed
+import Out;
+fn init() -> void {
+    if 0FFH == 0xFF {
+        Out.Int(1);
+    } else {
+        Out.Int(0);
+    }
+    Out.Ln();
+    if 10H == 0x10 {
+        Out.Int(1);
+    } else {
+        Out.Int(0);
+    }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("HexMixed", src, {"Out"}) == "1\n1\n");
+}

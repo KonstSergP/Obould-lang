@@ -42,7 +42,7 @@ void ReadReal64(FileRider* r, double* f) OB_SYMBOL("5Files_ReadReal64");
 void WriteReal64(FileRider* r, double f) OB_SYMBOL("5Files_WriteReal64");
 void ReadString(FileRider* r, char* s, int64_t s_len) OB_SYMBOL("5Files_ReadString");
 void WriteString(FileRider* r, const char* s, int64_t s_len) OB_SYMBOL("5Files_WriteString");
-void Files(void) OB_SYMBOL("Files");
+void Files(void) OB_SYMBOL("5Files_5Files");
 
 
 static void FileHandleInit(FileHandle* f)

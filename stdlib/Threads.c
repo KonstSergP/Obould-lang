@@ -22,7 +22,7 @@ typedef struct ob_7Threads_RoutineArg {
 ob_7Threads_Thread Start(ob_Routine routine) OB_SYMBOL("7Threads_Start");
 ob_7Threads_Thread StartI64(ob_RoutineI64 routine, int64_t arg) OB_SYMBOL("7Threads_StartI64");
 void Join(ob_7Threads_Thread t) OB_SYMBOL("7Threads_Join");
-void Threads(void) OB_SYMBOL("Threads");
+void Threads(void) OB_SYMBOL("7Threads_7Threads");
 
 
 static void* thread_wrapper(void* arg) {

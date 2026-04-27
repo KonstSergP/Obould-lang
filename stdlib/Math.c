@@ -16,7 +16,7 @@ double Sqrt(double x) OB_SYMBOL("4Math_Sqrt");
 double Pow(double base, double exponent) OB_SYMBOL("4Math_Pow");
 double Log10(double x) OB_SYMBOL("4Math_Log10");
 double Fabs(double x) OB_SYMBOL("4Math_Fabs");
-void Math(void) OB_SYMBOL("Math");
+void Math(void) OB_SYMBOL("4Math_4Math");
 
 double Sin(double x) { return sin(x); }
 double Cos(double x) { return cos(x); }
