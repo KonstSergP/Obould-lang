@@ -35,6 +35,31 @@
             "returnType": "Thread"
         },
         {
+            "name": "StartI64",
+            "parameters": [
+                {
+                    "name": "task",
+                    "reference": false,
+                    "type": {
+                        "parameters": [
+                            {
+                                "name": "arg",
+                                "reference": false,
+                                "type": "i64"
+                            }
+                        ],
+                        "returnType": "void"
+                    }
+                },
+                {
+                    "name": "arg",
+                    "reference": false,
+                    "type": "i64"
+                }
+            ],
+            "returnType": "Thread"
+        },
+        {
             "name": "Join",
             "parameters": [
                 {
