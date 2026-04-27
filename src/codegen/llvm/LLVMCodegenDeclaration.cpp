@@ -178,6 +178,7 @@ void LLVMCodegenVisitor::visit(Import& node)
 {
     auto curModule = std::move(currentModule);
     auto curMain = isMainModule;
+    auto wasImportedModule = importedModule;
     currentModule = node.module->name;
     importedModule = true;
     isMainModule = false;
@@ -185,7 +186,7 @@ void LLVMCodegenVisitor::visit(Import& node)
     node.module->accept(*this);
 
     currentModule = curModule;
-    importedModule = false;
+    importedModule = wasImportedModule;
     isMainModule = curMain;
 }
 
