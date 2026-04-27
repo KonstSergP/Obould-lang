@@ -2,7 +2,20 @@
     "declarations": {
         "constants": [],
         "variables": [],
-        "types": []
+        "types": [
+            {
+                "name": "Generator",
+                "type": {
+                    "kind": "struct",
+                    "fields": [
+                        {
+                            "name": "state",
+                            "type": "i64"
+                        }
+                    ]
+                }
+            }
+        ]
     },
     "imports": [],
     "moduleName": "Random",
@@ -19,12 +32,12 @@
             "returnType": "void"
         },
         {
-            "name": "Next",
+            "name": "Int",
             "parameters": [],
             "returnType": "i64"
         },
         {
-            "name": "NextInt",
+            "name": "IntN",
             "parameters": [
                 {
                     "name": "n",
@@ -35,13 +48,115 @@
             "returnType": "i64"
         },
         {
-            "name": "NextBool",
+            "name": "Bool",
             "parameters": [],
             "returnType": "bool"
         },
         {
-            "name": "NextReal",
+            "name": "Real",
             "parameters": [],
+            "returnType": "f64"
+        },
+        {
+            "name": "Between",
+            "parameters": [
+                {
+                    "name": "min",
+                    "reference": false,
+                    "type": "f64"
+                },
+                {
+                    "name": "max",
+                    "reference": false,
+                    "type": "f64"
+                }
+            ],
+            "returnType": "f64"
+        },
+        {
+            "name": "GenSeed",
+            "parameters": [
+                {
+                    "name": "gen",
+                    "reference": true,
+                    "type": "Generator"
+                },
+                {
+                    "name": "seed",
+                    "reference": false,
+                    "type": "i64"
+                }
+            ],
+            "returnType": "void"
+        },
+        {
+            "name": "GenInt",
+            "parameters": [
+                {
+                    "name": "gen",
+                    "reference": true,
+                    "type": "Generator"
+                }
+            ],
+            "returnType": "i64"
+        },
+        {
+            "name": "GenIntN",
+            "parameters": [
+                {
+                    "name": "gen",
+                    "reference": true,
+                    "type": "Generator"
+                },
+                {
+                    "name": "n",
+                    "reference": false,
+                    "type": "i64"
+                }
+            ],
+            "returnType": "i64"
+        },
+        {
+            "name": "GenBool",
+            "parameters": [
+                {
+                    "name": "gen",
+                    "reference": true,
+                    "type": "Generator"
+                }
+            ],
+            "returnType": "bool"
+        },
+        {
+            "name": "GenReal",
+            "parameters": [
+                {
+                    "name": "gen",
+                    "reference": true,
+                    "type": "Generator"
+                }
+            ],
+            "returnType": "f64"
+        },
+        {
+            "name": "GenBetween",
+            "parameters": [
+                {
+                    "name": "gen",
+                    "reference": true,
+                    "type": "Generator"
+                },
+                {
+                    "name": "min",
+                    "reference": false,
+                    "type": "f64"
+                },
+                {
+                    "name": "max",
+                    "reference": false,
+                    "type": "f64"
+                }
+            ],
             "returnType": "f64"
         }
     ]

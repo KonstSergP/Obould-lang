@@ -2428,7 +2428,7 @@ var i: i64;
 {
     Random.Seed(42);
     for (i = 0, 4, 1) {
-        Out.Int(Random.NextInt(100));
+        Out.Int(Random.IntN(100));
         Out.Ln();
     }
 }
@@ -2445,7 +2445,7 @@ var i: i64;
 {
     Random.Seed(42);
     for (i = 0, 3, 1) {
-        if Random.NextBool() {
+        if Random.Bool() {
             Out.Int(1);
         } else {
             Out.Int(0);
@@ -2468,9 +2468,9 @@ var {
 }
 {
     Random.Seed(123);
-    a = Random.NextInt(1000);
+    a = Random.IntN(1000);
     Random.Seed(123);
-    b = Random.NextInt(1000);
+    b = Random.IntN(1000);
     if a == b {
         Out.Int(1);
     } else {
