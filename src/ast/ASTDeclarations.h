@@ -180,6 +180,7 @@ public:
 struct Properties
 {
     bool needsGC = false;
+    bool needsArgs = false;
 };
 
 class Module : public ASTNode

@@ -1504,6 +1504,9 @@ void CCodegenVisitor::visit(Module& node)
             if (node.properties.needsGC) {
                 os_ << "    GC_INIT();\n";
             }
+            if (node.properties.needsArgs) {
+                os_ << "    ob_4Args_SetArgs((int64_t)argc, argv);\n";
+            }
             os_ << "    " << makePrefix(moduleName_) << "init();\n";
             os_ << "    return 0;\n";
             os_ << "}\n";

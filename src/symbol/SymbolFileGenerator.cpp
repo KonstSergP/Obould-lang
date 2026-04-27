@@ -273,6 +273,9 @@ void SymbolFileGenerator::visit(Module& node)
     if (props.needsGC) {
         propsJson["needsGC"] = true;
     }
+    if (props.needsArgs) {
+        propsJson["needsArgs"] = true;
+    }
     if (!propsJson.empty()) {
         moduleJson["properties"] = propsJson;
     }

@@ -307,7 +307,10 @@ void LLVMCodegenVisitor::createEntryPoint(Module& node)
 {
     if (importedModule) return;
 
-    auto* mainTy = llvm::FunctionType::get(builder->getInt32Ty(), false);
+    auto* mainTy = llvm::FunctionType::get(
+        builder->getInt32Ty(),
+        {builder->getInt32Ty(), builder->getPtrTy()},
+        false);
     auto* mainFn = llvm::Function::Create(mainTy, llvm::GlobalValue::ExternalLinkage, "main", *module);
 
     auto* entry = llvm::BasicBlock::Create(context, "entry", mainFn);
@@ -318,6 +321,19 @@ void LLVMCodegenVisitor::createEntryPoint(Module& node)
             "GC_init",
             llvm::FunctionType::get(builder->getVoidTy(), false));
         builder->CreateCall(gcInitFn);
+    }
+    if (rootModule->properties.needsArgs) {
+        auto setArgsFn = module->getOrInsertFunction(
+                getMangledName("Args", "SetArgs"),
+                llvm::FunctionType::get(
+                    builder->getVoidTy(),
+                    {builder->getInt64Ty(), builder->getPtrTy()},
+                    false));
+        auto argIt = mainFn->arg_begin();
+        llvm::Value* argc = argIt++;
+        llvm::Value* argv = argIt;
+        auto argc64 = builder->CreateSExtOrTrunc(argc, builder->getInt64Ty());
+        builder->CreateCall(setArgsFn, {argc64, argv});
     }
 
     builder->CreateCall(functions["ob_" + node.name]);

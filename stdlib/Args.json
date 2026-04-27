@@ -1,0 +1,38 @@
+{
+    "properties": {
+        "needsArgs": true
+    },
+    "declarations": {
+        "constants": [],
+        "variables": [],
+        "types": []
+    },
+    "imports": [],
+    "moduleName": "Args",
+    "procedures": [
+        {
+            "name": "Count",
+            "parameters": [],
+            "returnType": "i64"
+        },
+        {
+            "name": "Get",
+            "parameters": [
+                {
+                    "name": "index",
+                    "reference": false,
+                    "type": "i64"
+                },
+                {
+                    "name": "out",
+                    "reference": false,
+                    "type": {
+                        "kind": "open array",
+                        "elementType": "char"
+                    }
+                }
+            ],
+            "returnType": "i64"
+        }
+    ]
+}

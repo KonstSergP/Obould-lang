@@ -176,6 +176,9 @@ void LLVMCodegenVisitor::visit(ProcedureParameter& node) {}
 
 void LLVMCodegenVisitor::visit(Import& node)
 {
+    if (!node.module) {
+        return;
+    }
     auto curModule = std::move(currentModule);
     auto curMain = isMainModule;
     auto wasImportedModule = importedModule;

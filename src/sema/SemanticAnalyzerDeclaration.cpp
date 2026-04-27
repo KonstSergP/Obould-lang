@@ -283,6 +283,7 @@ void SemanticAnalyzer::visit(Import& node)
 
     mod->accept(*this);
     rootModule->properties.needsGC |= mod->properties.needsGC;
+    rootModule->properties.needsArgs |= mod->properties.needsArgs;
 
     importedModule = wasImportedModule;
     currentModuleName = curName;

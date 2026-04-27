@@ -186,6 +186,7 @@ Properties parseProperties(const json& j)
 {
     Properties properties;
     properties.needsGC = j.value("needsGC", false);
+    properties.needsArgs = j.value("needsArgs", false);
     return properties;
 }
 

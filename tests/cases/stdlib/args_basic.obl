@@ -1,0 +1,15 @@
+module StdlibArgsBasic
+
+import Args;
+
+fn init() -> void
+var {
+    argc, arg0Len: i64;
+    arg0: char[256];
+}
+{
+    argc = Args.Count();
+    assert(argc >= 1, "argc should be at least 1");
+    arg0Len = Args.Get(0, arg0);
+    assert(arg0Len > 0, "argv[0] should not be empty");
+}
