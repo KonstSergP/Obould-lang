@@ -1,0 +1,132 @@
+module Strings
+
+fn export Length(text: char[]) -> i64
+var { i: i64; }
+{
+    i = 0;
+    while (i < len(text)) && (ord(text[i]) != 0) {
+        i = i + 1;
+    }
+    return i;
+}
+
+fn export Copy(src: char[], dst: &char[]) -> void
+var { i, limit: i64; }
+{
+    limit = len(dst) - 1;
+    if limit >= 0 {
+        i = 0;
+        while (i < limit) && (i < len(src)) && (ord(src[i]) != 0) {
+            dst[i] = src[i];
+            i = i + 1;
+        }
+        dst[i] = chr(0);
+    }
+}
+
+fn export Equals(left: char[], right: char[]) -> bool
+var { i, leftLen, rightLen: i64; result: bool; }
+{
+    leftLen = Length(left);
+    rightLen = Length(right);
+    result = leftLen == rightLen;
+
+    if result {
+        i = 0;
+        while (i < leftLen) && result {
+            if left[i] != right[i] {
+                result = false;
+            }
+            i = i + 1;
+        }
+    }
+
+    return result;
+}
+
+fn export EndsWith(text: char[], suffix: char[]) -> bool
+var { textLen, suffixLen, offset, i: i64; result: bool; }
+{
+    textLen = Length(text);
+    suffixLen = Length(suffix);
+    result = suffixLen <= textLen;
+
+    if result {
+        offset = textLen - suffixLen;
+        i = 0;
+        while (i < suffixLen) && result {
+            if text[offset + i] != suffix[i] {
+                result = false;
+            }
+            i = i + 1;
+        }
+    }
+
+    return result;
+}
+
+fn export StartsWith(text: char[], prefix: char[]) -> bool
+var { textLen, prefixLen, offset, i: i64; result: bool; }
+{
+    textLen = Length(text);
+    prefixLen = Length(prefix);
+    result = prefixLen <= textLen;
+
+    if result {
+        i = 0;
+        while (i < prefixLen) && result {
+            if text[i] != prefix[i] {
+                result = false;
+            }
+            i = i + 1;
+        }
+    }
+
+    return result;
+}
+
+fn export CopyRange(src: char[], start: i64, finish: i64, dst: &char[]) -> void
+var { i, j, limit, actualFinish, srcLen: i64; }
+{
+    limit = len(dst) - 1;
+    if limit >= 0 {
+        if start < 0 {
+            start = 0;
+        }
+        srcLen = Length(src);
+        actualFinish = finish;
+        if actualFinish > srcLen {
+            actualFinish = srcLen;
+        }
+        if actualFinish < start {
+            actualFinish = start;
+        }
+
+        i = start;
+        j = 0;
+        while (i < actualFinish) && (j < limit) {
+            dst[j] = src[i];
+            i = i + 1;
+            j = j + 1;
+        }
+        dst[j] = chr(0);
+    }
+}
+
+fn export Find(text: char[], target: char, start: i64) -> i64
+var { i, textLen, result: i64; }
+{
+    if start < 0 {
+        start = 0;
+    }
+    textLen = Length(text);
+    result = -1;
+    i = start;
+    while (i < textLen) && (result == -1) {
+        if text[i] == target {
+            result = i;
+        }
+        i = i + 1;
+    }
+    return result;
+}
