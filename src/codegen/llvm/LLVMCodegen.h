@@ -70,7 +70,7 @@ private:
     llvm::Function* declareFunction(ProcedureDeclaration& node);
     llvm::FunctionType* createFunctionType(const std::shared_ptr<TypeInfo>& type);
     llvm::GlobalVariable* createStructDescriptor(const std::shared_ptr<TypeInfo>& type);
-    llvm::Constant* createInitConstant(const std::shared_ptr<TypeInfo>& type);
+    void initializeDescriptors(llvm::Value* ptr, const std::shared_ptr<TypeInfo>& type);
     void makeStructCastCheck(llvm::Value* left, llvm::Value* right, int64_t rDepth);
     void createModuleInitializer(Module& node);
     void createEntryPoint(Module& node);
@@ -95,5 +95,6 @@ private:
     std::unordered_map<uint32_t, llvm::StructType*> structTypes;
     std::unordered_map<uint32_t, llvm::GlobalVariable*> descriptors;
     std::unordered_map<uint32_t, llvm::Value*> lengths;
+    std::vector<std::pair<std::shared_ptr<TypeInfo>, llvm::Value*>> globalsForDescInit;
 };
 }

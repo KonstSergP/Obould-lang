@@ -147,38 +147,58 @@ llvm::AllocaInst* LLVMCodegenVisitor::createEntryAlloca(llvm::Type* type, const 
     return entryBuilder.CreateAlloca(type, nullptr, name);
 }
 
-llvm::Constant* LLVMCodegenVisitor::createInitConstant(const std::shared_ptr<TypeInfo>& info)
+void LLVMCodegenVisitor::initializeDescriptors(llvm::Value* ptr, const std::shared_ptr<TypeInfo>& type)
 {
-    auto* ty = toLLVMType(info);
+    if (type->kind == TypeKind::Struct) {
+        builder->CreateStore(descriptors[type->id], ptr);
 
-    if (info->kind == TypeKind::Struct) {
-        auto* structTy = llvm::cast<llvm::StructType>(ty);
-        std::vector<llvm::Constant*> fields;
-        fields.push_back(descriptors[info->id]);
+        auto* ty = toLLVMType(type);
 
         std::vector<TypeInfo*> chain;
-        auto current = info;
+        auto current = type;
         while (current) {
             chain.push_back(current.get());
             current = current->baseType;
         }
         std::reverse(chain.begin(), chain.end());
 
+        int i = 1;
         for (const auto* typeInfo : chain) {
             for (const auto& f : typeInfo->fields) {
-                fields.push_back(createInitConstant(f.type));
+                auto* fieldPtr = builder->CreateStructGEP(ty, ptr, i++);
+                initializeDescriptors(fieldPtr, f.type);
             }
         }
+    }
+    if (type->kind == TypeKind::Array) {
+        auto* arrayTy = llvm::cast<llvm::ArrayType>(toLLVMType(type));
 
-        return llvm::ConstantStruct::get(structTy, fields);
+        auto* condBB = llvm::BasicBlock::Create(context, "descInit.cond", currentFunction);
+        auto* bodyBB = llvm::BasicBlock::Create(context, "descInit.body", currentFunction);
+        auto* stepBB = llvm::BasicBlock::Create(context, "descInit.step", currentFunction);
+        auto* afterBB = llvm::BasicBlock::Create(context, "descInit.end", currentFunction);
+        auto* counterPtr = createEntryAlloca(builder->getInt64Ty(), "descInit.counter");
+        builder->CreateStore(builder->getInt64(0), counterPtr);
+
+        builder->CreateBr(condBB);
+        builder->SetInsertPoint(condBB);
+
+        auto* cur = builder->CreateLoad(builder->getInt64Ty(), counterPtr, "descInit.counter");
+        auto* cond = builder->CreateICmpSLT(cur, builder->getInt64(type->length));
+        builder->CreateCondBr(cond, bodyBB, afterBB);
+
+        builder->SetInsertPoint(bodyBB);
+        auto* elemPtr = builder->CreateGEP(arrayTy, ptr, {builder->getInt64(0), cur});
+        initializeDescriptors(elemPtr, type->baseType);
+
+        builder->CreateBr(stepBB);
+        builder->SetInsertPoint(stepBB);
+        auto* next = builder->CreateAdd(cur, builder->getInt64(1), "descInit.counter.inc");
+        builder->CreateStore(next, counterPtr);
+        builder->CreateBr(condBB);
+
+        builder->SetInsertPoint(afterBB);
     }
-    if (info->kind == TypeKind::Array) {
-        auto* arrayTy = llvm::cast<llvm::ArrayType>(ty);
-        auto* elemInit = createInitConstant(info->baseType);
-        std::vector elems(info->length, elemInit);
-        return llvm::ConstantArray::get(arrayTy, elems);
-    }
-    return llvm::Constant::getNullValue(ty);
 }
 
 llvm::GlobalVariable* LLVMCodegenVisitor::createStructDescriptor(const std::shared_ptr<TypeInfo>& type)
@@ -268,6 +288,7 @@ void LLVMCodegenVisitor::createModuleInitializer(Module& node)
     functions[funcName] = func;
 
     if (importedModule) return;
+    currentFunction = func;
 
     auto* gVar = new llvm::GlobalVariable(
         *module,
@@ -293,14 +314,21 @@ void LLVMCodegenVisitor::createModuleInitializer(Module& node)
     builder->CreateStore(builder->getTrue(), gVar);
 
     for (auto& import : node.imports) {
-        auto callee = functions[getMangledName(import->realName, std::to_string(import->realName.length()) + import->realName)];
+        auto callee = functions[getMangledName(import->realName,
+                                               std::to_string(import->realName.length()) + import->realName)];
         builder->CreateCall(fnType, callee);
     }
+
+    for (auto& [t, v] : globalsForDescInit) {
+        initializeDescriptors(v, t);
+    }
+
     if (auto it = functions.find(getMangledName(node.name, "init")); it != functions.end()) {
         builder->CreateCall(fnType, it->second);
     }
 
     builder->CreateRetVoid();
+    currentFunction = nullptr;
 }
 
 void LLVMCodegenVisitor::createEntryPoint(Module& node)
@@ -312,6 +340,7 @@ void LLVMCodegenVisitor::createEntryPoint(Module& node)
         {builder->getInt32Ty(), builder->getPtrTy()},
         false);
     auto* mainFn = llvm::Function::Create(mainTy, llvm::GlobalValue::ExternalLinkage, "main", *module);
+    currentFunction = mainFn;
 
     auto* entry = llvm::BasicBlock::Create(context, "entry", mainFn);
     builder->SetInsertPoint(entry);
@@ -324,11 +353,11 @@ void LLVMCodegenVisitor::createEntryPoint(Module& node)
     }
     if (rootModule->properties.needsArgs) {
         auto setArgsFn = module->getOrInsertFunction(
-                getMangledName("Args", "SetArgs"),
-                llvm::FunctionType::get(
-                    builder->getVoidTy(),
-                    {builder->getInt64Ty(), builder->getPtrTy()},
-                    false));
+            getMangledName("Args", "SetArgs"),
+            llvm::FunctionType::get(
+                builder->getVoidTy(),
+                {builder->getInt64Ty(), builder->getPtrTy()},
+                false));
         auto argIt = mainFn->arg_begin();
         llvm::Value* argc = argIt++;
         llvm::Value* argv = argIt;
@@ -336,8 +365,9 @@ void LLVMCodegenVisitor::createEntryPoint(Module& node)
         builder->CreateCall(setArgsFn, {argc64, argv});
     }
 
-    builder->CreateCall(functions[getMangledName(node.name, std::to_string(node.name.length())+node.name)]);
+    builder->CreateCall(functions[getMangledName(node.name, std::to_string(node.name.length()) + node.name)]);
 
     builder->CreateRet(builder->getInt32(0));
+    currentFunction = nullptr;
 }
 }

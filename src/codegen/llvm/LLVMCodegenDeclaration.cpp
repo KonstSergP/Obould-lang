@@ -20,24 +20,28 @@ void LLVMCodegenVisitor::visit(VariableDeclaration& node)
     exportedType = false;
     auto& info = node.type->resolvedType;
     auto* ty = toLLVMType(info);
-    auto* initValue = createInitConstant(info);
 
     auto linkage = (node.isExported || importedModule)
                        ? llvm::GlobalValue::ExternalLinkage
                        : llvm::GlobalValue::InternalLinkage;
     if (currentFunction == nullptr) {
-        new llvm::GlobalVariable(
+        auto* g = new llvm::GlobalVariable(
             *module,
             ty,
             false,
             linkage,
-            importedModule ? nullptr : initValue,
+            nullptr,
             getMangledName(currentModule, node.name)
         );
+        if (!importedModule) {
+            g->setInitializer(llvm::Constant::getNullValue(ty));
+            globalsForDescInit.emplace_back(info, g);
+        }
     }
     else {
         auto* allocaInst = createEntryAlloca(ty, node.name);
-        builder->CreateStore(initValue, allocaInst);
+        builder->CreateStore(llvm::Constant::getNullValue(ty), allocaInst);
+        initializeDescriptors(allocaInst, info);
         locals[node.name] = allocaInst;
     }
 }

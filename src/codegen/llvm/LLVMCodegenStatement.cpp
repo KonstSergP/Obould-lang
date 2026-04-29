@@ -51,9 +51,11 @@ void LLVMCodegenVisitor::visitBuiltinProcedure(ProcedureCall& node)
 
         auto* sizeVal = llvm::ConstantExpr::getSizeOf(baseLLVM);
         auto* ptr = builder->CreateCall(mallocFn, {sizeVal});
-        auto* init = createInitConstant(baseType);
         builder->CreateStore(ptr, ptrAddr);
-        builder->CreateStore(init, ptr);
+
+        builder->CreateMemSet(ptr, builder->getInt8(0), sizeVal, llvm::MaybeAlign(8));
+        initializeDescriptors(ptr, baseType);
+
         lastValue = nullptr;
     }
     break;
