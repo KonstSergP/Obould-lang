@@ -1,19 +1,18 @@
 {
+    "properties": {
+        "needsGC": true
+    },
     "declarations": {
         "constants": [],
         "variables": [],
         "types": [
             {
-                "name": "FileHandle",
-                "type": {
-                    "kind": "incomplete"
-                }
-            },
-            {
                 "name": "File",
                 "type": {
                     "kind": "pointer",
-                    "targetType": "FileHandle"
+                    "targetType": {
+                        "kind": "incomplete"
+                    }
                 }
             },
             {

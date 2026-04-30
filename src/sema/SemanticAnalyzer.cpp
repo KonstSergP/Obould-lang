@@ -23,6 +23,7 @@ void SemanticAnalyzer::createBuiltinTypes()
     builtinTypes["byte"] = createNewType(TypeKind::Byte);
     builtinTypes["char"] = createNewType(TypeKind::Char);
     builtinTypes["void"] = createNewType(TypeKind::Void);
+    builtinTypes["set"] = createNewType(TypeKind::Set);
 }
 
 std::shared_ptr<TypeInfo> SemanticAnalyzer::getBuiltinType(TypeKind kind)
@@ -34,6 +35,7 @@ std::shared_ptr<TypeInfo> SemanticAnalyzer::getBuiltinType(TypeKind kind)
     case TypeKind::Byte: return builtinTypes.at("byte");
     case TypeKind::Char: return builtinTypes.at("char");
     case TypeKind::Void: return builtinTypes.at("void");
+    case TypeKind::Set: return builtinTypes.at("set");
     default:
         return createNewType(kind);
     }
@@ -80,6 +82,10 @@ void SemanticAnalyzer::addBuiltinProcedures(SymbolTable& symTable)
     registerBuiltin("new", BuiltinKind::NEW);
     registerBuiltin("len", BuiltinKind::LEN, TypeKind::i64);
     registerBuiltin("assert", BuiltinKind::ASSERT);
+    registerBuiltin("int", BuiltinKind::INT, TypeKind::i64);
+    registerBuiltin("float", BuiltinKind::FLOAT, TypeKind::f64);
+    registerBuiltin("ord", BuiltinKind::ORD, TypeKind::i64);
+    registerBuiltin("chr", BuiltinKind::CHR, TypeKind::Char);
 }
 
 bool SemanticAnalyzer::analyze(Module& module)

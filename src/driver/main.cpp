@@ -16,6 +16,7 @@
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Passes/PassBuilder.h>
+#include <llvm/IR/Verifier.h>
 
 #include "lexer/Lexer.h"
 #include "parser/Parser.h"
@@ -338,12 +339,13 @@ int main(int argc, char** argv)
         };
 
         std::ostringstream cmd;
-        cmd << "cc -o " << shellQuote(binPath.string());
+        cmd << "cc -Wl,--gc-sections -o " << shellQuote(binPath.string());
         for (const auto& obj : objFiles) {
             cmd << " " << shellQuote(obj);
         }
         cmd << " " << shellQuote(stdlibPath.string());
         cmd << " " << shellQuote(gcPath.string());
+        cmd << " -lm";
 
         int rc = std::system(cmd.str().c_str());
         if (rc != 0) {
@@ -465,6 +467,12 @@ int main(int argc, char** argv)
             obould::LLVMCodegenVisitor codegen;
             auto llvmModule = codegen.codegen(*module, program.get<bool>("main"));
 
+            if (llvm::verifyModule(*llvmModule, &llvm::errs())) {
+                llvm::errs() << "LLVM IR verification failed!\n";
+                llvmModule->print(llvm::errs(), nullptr);
+                exit(1);
+            }
+
             optimizeModule(*llvmModule, optLevel);
 
             fs::path objPath;
@@ -523,13 +531,14 @@ int main(int argc, char** argv)
                 };
 
                 std::ostringstream cmd;
-                cmd << "cc -o " << shellQuote(binPath.string());
+                cmd << "cc -Wl,--gc-sections -o " << shellQuote(binPath.string());
                 cmd << " " << shellQuote(objPath.string());
                 for (const auto& obj : objFiles) {
                     cmd << " " << shellQuote(obj);
                 }
                 cmd << " " << shellQuote(stdlibPath.string());
                 cmd << " " << shellQuote(gcPath.string());
+                cmd << " -lm";
 
                 int rc = std::system(cmd.str().c_str());
                 if (rc != 0) {
@@ -549,6 +558,12 @@ int main(int argc, char** argv)
 
             obould::LLVMCodegenVisitor codegen;
             auto llvmModule = codegen.codegen(*module, program.get<bool>("main"));
+
+            if (llvm::verifyModule(*llvmModule, &llvm::errs())) {
+                llvm::errs() << "LLVM IR verification failed!\n";
+                llvmModule->print(llvm::errs(), nullptr);
+                exit(1);
+            }
 
             optimizeModule(*llvmModule, optLevel);
 

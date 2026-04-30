@@ -1,0 +1,399 @@
+module StatementsCall
+
+const {
+    Size = 4;
+}
+
+type {
+    IntArr: i64[Size];
+    OpenIntArray: i64[];
+
+    export Entity: struct {
+        id: i64;
+    };
+
+    Player: struct (Entity) {
+        score: i64;
+        lives: i64;
+    };
+
+    Item: struct (Entity) {
+        value: i64;
+    };
+
+    PEntity: *Entity;
+    PPlayer: *Player;
+    PItem: *Item;
+
+    MathOp: (a: i64, b: i64) -> i64;
+    Predicate: (x: i64) -> bool;
+
+    StatsResult: struct {
+        sum: i64;
+        count: i64;
+        avg: f64;
+    };
+}
+
+var {
+    counter: i64;
+}
+
+fn incrementCounter() -> void
+{
+    counter = counter + 1;
+}
+
+fn resetCounter() -> void
+{
+    counter = 0;
+}
+
+fn addThree(a: i64, b: i64, c: i64, result: &i64) -> void
+{
+    result = a + b + c;
+}
+
+fn multiplyAndPrint(x: i64, y: i64) -> i64
+{
+    return x * y;
+}
+
+fn sumEntity(e: Entity) -> i64
+{
+    return e.id;
+}
+
+fn sumPlayer(p: Player) -> i64
+{
+    return p.score + p.lives;
+}
+
+fn transformPoint(p: Player, bonus: i64) -> i64
+{
+    return p.score + bonus;
+}
+
+fn updateEntity(e: &Entity, newId: i64) -> void
+{
+    e.id = newId;
+}
+
+fn updatePlayer(p: &Player, score: i64, lives: i64) -> void
+{
+    p.score = score;
+    p.lives = lives;
+}
+
+fn swapEntities(a: &Entity, b: &Entity) -> void
+var {
+    temp: i64;
+}
+{
+    temp = a.id;
+    a.id = b.id;
+    b.id = temp;
+}
+
+fn sumArray(arr: i64[]) -> i64
+var {
+    i: i64;
+    total: i64;
+}
+{
+    total = 0;
+    i = 0;
+    while i < len(arr) {
+        total = total + arr[i];
+        i = i + 1;
+    }
+    return total;
+}
+
+fn findMax(arr: i64[]) -> i64
+var {
+    i: i64;
+    max: i64;
+}
+{
+    max = arr[0];
+    i = 1;
+    while i < len(arr) {
+        if arr[i] > max {
+            max = arr[i];
+        }
+        i = i + 1;
+    }
+    return max;
+}
+
+fn scaleArray(arr: &i64[], factor: i64) -> void
+var {
+    i: i64;
+}
+{
+    i = 0;
+    while i < len(arr) {
+        arr[i] = arr[i] * factor;
+        i = i + 1;
+    }
+}
+
+fn incrementVar(s: &StatsResult) -> i64
+{
+    return s.sum + 1;
+}
+
+fn computeStats(arr: i64[], result: &StatsResult) -> void
+var {
+    i: i64;
+    total: i64;
+}
+{
+    total = 0;
+    result.count = len(arr);
+    i = 0;
+    while i < len(arr) {
+        total = total + arr[i];
+        i = i + 1;
+    }
+    result.sum = total;
+    if result.count > 0 {
+        result.avg = float(total);
+        result.avg = result.avg / float(result.count);
+    }
+    else {
+        result.avg = 0.0;
+    }
+}
+
+fn step1(x: i64) -> i64
+{
+    return x * 2;
+}
+
+fn step2(x: i64) -> i64
+{
+    return x + 10;
+}
+
+fn step3(x: i64) -> i64
+{
+    return x - 5;
+}
+
+fn pipeline(value: i64) -> i64
+var {
+    r1: i64;
+    r2: i64;
+    r3: i64;
+}
+{
+    r1 = step1(value);
+    r2 = step2(r1);
+    r3 = step3(r2);
+    return r3;
+}
+
+fn applyOp(a: i64, b: i64, op: MathOp) -> i64
+{
+    return op(a, b);
+}
+
+fn countIf(arr: i64[], pred: Predicate) -> i64
+var {
+    i: i64;
+    count: i64;
+}
+{
+    count = 0;
+    i = 0;
+    while i < len(arr) {
+        if pred(arr[i]) {
+            count = count + 1;
+        }
+        i = i + 1;
+    }
+    return count;
+}
+
+
+fn add(a: i64, b: i64) -> i64 { return a + b; }
+fn mul(a: i64, b: i64) -> i64 { return a * b; }
+fn isEven(x: i64) -> bool { return x mod 2 == 0; }
+fn isPositive(x: i64) -> bool { return x > 0; }
+
+
+fn processEntity(e: Entity) -> i64
+{
+    return e.id;
+}
+
+fn processPlayer(p: Player) -> i64
+{
+    return p.id * 100 + p.score;
+}
+
+fn boostPlayer(p: &Player, bonus: i64) -> void
+{
+    p.score = p.score + bonus;
+    p.lives = p.lives + 1;
+}
+
+fn IsEven(n: i64) -> bool
+var res: bool;
+{
+    if n == 0 {
+        res = true;
+    }
+    else {
+        res = IsOdd(n - 1);
+    }
+    return res;
+}
+
+fn IsOdd(n: i64) -> bool
+var res: bool;
+{
+    if n == 0 {
+        res = false;
+    }
+    else {
+        res = IsEven(n - 1);
+    }
+    return res;
+}
+
+
+fn init() -> void
+var {
+    result: i64;
+    x: i64;
+
+    arr1: IntArr;
+    arr2: i64[5];
+    smallArr: i64[3];
+
+    e1: Entity;
+    e2: Entity;
+    p1: Player;
+    p2: Player;
+    i1: Item;
+    stats: StatsResult;
+
+    op1: MathOp;
+    op2: MathOp;
+    pred1: Predicate;
+    pred2: Predicate;
+}
+{
+    counter = 0;
+    incrementCounter();
+    incrementCounter();
+    assert(counter == 2, "incrementCounter 3 times");
+
+    resetCounter();
+    assert(counter == 0, "resetCounter");
+
+    addThree(10, 20, 30, result);
+    assert(result == 60, "addThree result");
+
+    result = multiplyAndPrint(7, 8);
+    assert(result == 56, "multiplyAndPrint");
+
+    e1.id = 42;
+    assert(sumEntity(e1) == 42, "sumEntity");
+
+    p1.id = 5;
+    p1.score = 100;
+    p1.lives = 3;
+    assert(sumPlayer(p1) == 103, "sumPlayer");
+
+    assert(transformPoint(p1, 50) == 150, "transformPoint");
+
+    e1.id = 100;
+    updateEntity(e1, 200);
+    assert(e1.id == 200, "updateEntity");
+
+    updatePlayer(p1, 999, 5);
+    assert(p1.score == 999, "updatePlayer score");
+    assert(p1.lives == 5, "updatePlayer lives");
+
+    e1.id = 111;
+    e2.id = 222;
+    swapEntities(e1, e2);
+    assert(e1.id == 222, "swapEntities e1");
+    assert(e2.id == 111, "swapEntities e2");
+
+    arr1[0] = 1;
+    arr1[1] = 2;
+    arr1[2] = 3;
+    arr1[3] = 4;
+    assert(sumArray(arr1) == 10, "sumArray arr1");
+
+    arr2[0] = 10;
+    arr2[1] = 50;
+    arr2[2] = 30;
+    arr2[3] = 20;
+    arr2[4] = 40;
+    assert(sumArray(arr2) == 150, "sumArray arr2");
+    assert(findMax(arr2) == 50, "findMax arr2");
+
+    scaleArray(arr1, 10);
+    assert(arr1[0] == 10, "scaleArray [0]");
+    assert(arr1[1] == 20, "scaleArray [1]");
+    assert(arr1[2] == 30, "scaleArray [2]");
+    assert(arr1[3] == 40, "scaleArray [3]");
+
+    stats.sum = 0;
+    stats.count = 0;
+    stats.avg = 0.0;
+    
+    x = incrementVar(stats);
+    assert(x == 1, "incrementVar result");
+    
+    smallArr[0] = 10;
+    smallArr[1] = 20;
+    smallArr[2] = 30;
+    computeStats(smallArr, stats);
+    assert(stats.sum == 60, "computeStats sum");
+    assert(stats.count == 3, "computeStats count");
+    assert(stats.avg == 20.0, "computeStats avg");
+
+    result = pipeline(10);
+    assert(result == 25, "pipeline");
+
+    op1 = add;
+    op2 = mul;
+    assert(applyOp(5, 3, op1) == 8, "applyOp add");
+    assert(applyOp(5, 3, op2) == 15, "applyOp mul");
+
+    arr2[0] = 1;
+    arr2[1] = 2;
+    arr2[2] = 3;
+    arr2[3] = 4;
+    arr2[4] = 5;
+    pred1 = isEven;
+    pred2 = isPositive;
+    assert(countIf(arr2, pred1) == 2, "countIf isEven");
+    assert(countIf(arr2, pred2) == 5, "countIf isPositive");
+
+    e1.id = 10;
+    assert(processEntity(e1) == 10, "processEntity");
+
+    p1.id = 7;
+    p1.score = 50;
+    p1.lives = 2;
+    assert(processPlayer(p1) == 750, "processPlayer");
+
+    boostPlayer(p1, 100);
+    assert(p1.score == 150, "boostPlayer score");
+    assert(p1.lives == 3, "boostPlayer lives");
+
+    i1.id = 99;
+    i1.value = 500;
+    assert(processEntity(i1) == 99, "processEntity via Item");
+
+    assert(IsEven(18));
+    assert(IsOdd(19));
+}

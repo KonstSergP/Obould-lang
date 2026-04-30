@@ -1,0 +1,89 @@
+module OpsSubtraction
+
+const {
+    IntA = 100;
+    IntB = 15;
+
+    RealA = 5.5;
+    RealB = 2.25;
+
+    SetA = {0, 3..7, 20..30, 63};
+    SetB = {0, 1, 5..9, 15..25, 56..59};
+}
+
+type {
+    IntArr: i64[10];
+    RealArr: f64[10];
+    ByteArr: byte[10];
+    SetArr: set[10];
+}
+
+var {
+    GInt: i64;
+    GReal: f64;
+    GByte: byte;
+    GSet: set;
+    iArr: IntArr;
+    fArr: RealArr;
+    bArr: ByteArr;
+    sArr: SetArr;
+}
+
+fn init() -> void
+var {
+    LIntA, LIntB: i64;
+    LRealA, LRealB: f64;
+    LByteA, LByteB: byte;
+    LSetA, LSetB: set;
+}
+{
+    assert(IntA - IntB == 85);
+    assert(IntA - 2 * IntB == 70);
+    assert(50 - 30 == 20);
+    assert(100 - 20 * 2 - 10 == 50);
+    assert(100 - 200 == -100);
+
+    iArr[0] = 50; iArr[1] = 34;
+    LIntA = 100; LIntB = 25;
+    GInt = 10;
+    bArr[0] = 25; bArr[1] = 17;
+    LByteA = 10; LByteB = 3;
+    GByte = 46;
+
+    assert(iArr[0] - iArr[1] == 16);
+    assert(LIntA - LIntB == 75);
+    assert(LIntA - LIntB - iArr[0] - GInt == 15);
+
+    assert(bArr[0] - bArr[1] == 8);
+    assert(LByteA - LByteB == 7);
+    assert(GByte - bArr[0] - LByteA == 11);
+
+    assert(iArr[0] - bArr[1] == 33);
+    assert(GByte - GInt == 36);
+
+    fArr[0] = 10.5; fArr[1] = 4.25;
+    LRealA = 15.0; LRealB = 3.5;
+    GReal = 20.75;
+
+    assert(RealA - RealB == 3.25);
+    assert(RealA - 2.0 * RealB == 1.0);
+    assert(50.0 - 30.0 == 20.0);
+
+    assert(fArr[0] - fArr[1] == 6.25);
+    assert(LRealA - LRealB == 11.5);
+    assert(GReal - LRealA - fArr[1] == 1.5);
+
+    sArr[0] = {5, 6, 7}; sArr[1] = {5, 6};
+    LSetA = {3, 4}; LSetB = {4};
+    GSet = {1, 2, 6, 7, 10..12};
+
+    assert(2 in {0, 2} - {0, 1});
+    assert(!(0 in {0, 2} - {0, 1}));
+
+    assert(3 in SetA - SetB);
+    assert(!(5 in SetA - SetB));
+    assert(63 in SetA - SetB);
+
+    assert(7 in sArr[0] - sArr[1]);
+    assert(3 in LSetA - LSetB);
+}

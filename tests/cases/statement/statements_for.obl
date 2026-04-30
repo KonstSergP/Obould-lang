@@ -1,0 +1,163 @@
+module StatementsFor
+
+const {
+    StartVal = 1;
+    EndVal = 5;
+    StepConst = 2;
+    ArrayLen = 5;
+}
+
+type {
+    TestArray: i64[ArrayLen];
+}
+
+var {
+    arr: TestArray;
+}
+
+fn sumArray(a: TestArray) -> i64
+var {
+    i: i64;
+    s: i64;
+}
+{
+    s = 0;
+    for (i = 0, ArrayLen - 1, 1) {
+        s = s + a[i];
+    }
+    return s;
+}
+
+fn init() -> void
+var {
+    i: i64;
+    sum: i64;
+    count: i64;
+}
+{
+    arr[0] = 10;
+    arr[1] = 20;
+    arr[2] = 30;
+    arr[3] = 40;
+    arr[4] = 50;
+
+    sum = 0;
+    for (i = 10, 5, 1) {
+        sum = sum + i;
+    }
+    assert(sum == 0, "for 0 iterations: start > end with positive step");
+
+    sum = 0;
+    for (i = 0, 5, -1) {
+        sum = sum + i;
+    }
+    assert(sum == 0, "for 0 iterations: start < end with negative step");
+
+    sum = 0;
+    for (i = 5, 5, 1) {
+        sum = sum + 1;
+    }
+    assert(sum == 1, "for equal bounds: 1 iteration");
+
+    sum = 0;
+    for (i = 1, 10, 1) {
+        sum = sum + i;
+    }
+    assert(sum == 55, "for step 1: sum 1..10 = 55");
+    
+    sum = 0;
+    for (i = 0, 10, 2) {
+        sum = sum + i;
+    }
+    assert(sum == 30, "for step 2: sum 0,2,4,6,8,10 = 30");
+
+    sum = 0;
+    for (i = 10, 1, -1) {
+        sum = sum + i;
+    }
+    assert(sum == 55, "for step -1: recalculate = 55");
+    
+    sum = 0;
+    for (i = 20, 10, -2) {
+        sum = sum + i;
+    }
+    assert(sum == 90, "for step -2: sum 20,18,16,14,12,10 = 90");
+
+    sum = 0;
+    for (i = 0, 8, StepConst) {
+        sum = sum + i;
+    }
+    assert(sum == 20, "for with const step: 0+2+4+6+8 = 20");
+
+    sum = 0;
+    for (i = 0, 10, 2 + 1) {
+        sum = sum + i;
+    }
+    assert(sum == 18, "for step expression 2+1: 0+3+6+9 = 18");
+    
+    sum = 0;
+    for (i = 1, 20, 3 * 2) {
+        sum = sum + i;
+    }
+    assert(sum == 40, "for step expression 3*2: 1+7+13+19 = 40");
+
+    sum = 0;
+    for (i = StartVal, EndVal, StepConst) {
+        sum = sum + i;
+    }
+    assert(sum == 9, "for with const vars: 1+3+5 = 9");
+    
+    sum = 0;
+    for (i = 0, ArrayLen - 1, 1) {
+        sum = sum + arr[i];
+    }
+    assert(sum == 150, "for array summation: 10+20+30+40+50 = 150");
+
+    sum = 0;
+    for (i = 1, 5) {
+        sum = sum + i;
+    }
+    assert(sum == 15, "for default step: 1+2+3+4+5 = 15");
+    
+    sum = 0;
+    for (i = 0, 100) {
+        sum = sum + 1;
+    }
+    assert(sum == 101, "for default step count: 0..100 = 101 iterations");
+
+    sum = 0;
+    for (i = 0, 10) {
+        sum = sum + i;
+    }
+    assert(sum == 55, "for default step: sum 0..10 = 55");
+
+    sum = 0;
+    count = 0;
+    for (i = 1, 3) {
+        for (count = 1, 3) {
+            sum = sum + 1;
+        }
+    }
+    assert(sum == 9, "nested for: 3*3 = 9");
+
+    sum = sumArray(arr);
+    assert(sum == 150, "for in function: sumArray = 150");
+
+    sum = 0;
+    for (i = 1 + 1, 10 - 1) {
+        sum = sum + i;
+    }
+    assert(sum == 44, "for with boundary expressions: sum 2..9 = 44");
+
+    sum = 0;
+    for (i = 0, ArrayLen - 1) {
+        sum = sum + 1;
+    }
+    assert(sum == 5, "for with array length: 5 iterations");
+
+    sum = 0;
+    for (i = 0, StepConst * 2) {
+        sum = sum + i;
+    }
+    assert(sum == 10, "for const expr end, default step: 0+1+2+3+4 = 10");
+}

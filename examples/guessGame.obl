@@ -1,0 +1,47 @@
+module GuessGame
+
+import In, Out, Random;
+
+fn export Play() -> void
+var {
+    secret, guess, attempts: i64;
+    isGuessed: bool;
+}
+{
+    Random.Seed(0);
+    secret = Random.NextInt(100) + 1;
+    attempts = 0;
+    isGuessed = false;
+
+    Out.String("Welcome to 'Guess the Number'!"); Out.Ln();
+    Out.String("I have chosen a number between 1 and 100."); Out.Ln();
+
+    while !isGuessed {
+        Out.String("Enter your guess: ");
+        guess = In.Int();
+        attempts = attempts + 1;
+
+        if guess == 0 {
+            isGuessed = true;
+            Out.String("You gave up! The secret was ");
+            Out.Int(secret);
+            Out.Ln();
+        } else {
+            if guess < secret {
+                Out.String("Too small! Try again."); Out.Ln();
+            } else if guess > secret {
+                Out.String("Too big! Try again."); Out.Ln();
+            } else {
+                isGuessed = true;
+                Out.String("Congratulations! You guessed it in ");
+                Out.Int(attempts);
+                Out.String(" attempts."); Out.Ln();
+            }
+        }
+    }
+}
+
+fn init() -> void
+{
+    Play();
+}

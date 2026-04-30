@@ -44,7 +44,7 @@
                 },
                 {
                     "name": "keyword.operator.word.obould",
-                    "match": "\\b(div|mod|is)\\b"
+                    "match": "\\b(div|mod|is|in)\\b"
                 },
                 {
                     "name": "constant.language.obould",
@@ -56,7 +56,7 @@
             "patterns": [
                 {
                     "name": "support.type.obould",
-                    "match": "\\b(i64|f64|bool|char|byte|void)\\b"
+                    "match": "\\b(i64|f64|bool|char|byte|set|void)\\b"
                 }
             ]
         },

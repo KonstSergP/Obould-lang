@@ -1,0 +1,199 @@
+module StatementsWhile
+
+
+const {
+    Target = 10;
+    ZeroConst = 0;
+}
+
+fn init() -> void
+var {
+    i: i64;
+    sum: i64;
+    count: i64;
+    m: i64;
+    n: i64;
+}
+{
+    i = 10;
+    sum = 0;
+    while i < 5 {
+        sum = sum + i;
+        i = i + 1;
+    }
+    assert(sum == 0, "while 0 iterations: sum == 0");
+    assert(i == 10, "while 0 iterations: i unchanged");
+
+    while false {
+        sum = sum + 1;
+    }
+    assert(sum == 0, "while false: never executes");
+
+    i = 0;
+    sum = 0;
+    while i < 5 {
+        sum = sum + i;
+        i = i + 1;
+    }
+    assert(sum == 10, "while 5 iterations: sum = 0+1+2+3+4 = 10");
+    assert(i == 5, "while 5 iterations: i == 5");
+
+    count = 0;
+    i = 1;
+    while i <= 10 {
+        count = count + 1;
+        i = i + 1;
+    }
+    assert(count == 10, "while count to 10");
+
+    i = 1;
+    sum = 1;
+    while i <= 4 {
+        sum = sum * i;
+        i = i + 1;
+    }
+    assert(sum == 24, "while factorial 4: 1*2*3*4 = 24");
+
+    i = 0;
+    sum = 0;
+    while i < Target {
+        sum = sum + i;
+        i = i + 1;
+    }
+    assert(sum == 45, "while with const: sum 0..9 = 45");
+
+    i = 0;
+    sum = 0;
+    while i > 100 {
+        sum = sum + 1;
+    } elif i < 5 {
+        sum = sum + 10;
+        i = i + 1;
+    }
+    assert(sum == 50, "while only elif executes: 5*10 = 50");
+    assert(i == 5, "while only elif: i reaches 5");
+
+    m = 12;
+    n = 8;
+    while m > n {
+        m = m - n;
+    } elif n > m {
+        n = n - m;
+    }
+    assert(m == 4, "while alternating: GCD(12,8) m == 4");
+    assert(n == 4, "while alternating: GCD(12,8) n == 4");
+
+    m = 48;
+    n = 18;
+    while m > n {
+        m = m - n;
+    } elif n > m {
+        n = n - m;
+    }
+    assert(m == 6, "while alternating: GCD(48,18) m == 6");
+    assert(n == 6, "while alternating: GCD(48,18) n == 6");
+
+    i = 0;
+    sum = 0;
+    count = 0;
+    while i < 5 {
+        sum = sum + 1;
+        i = i + 1;
+        count = count + 1;
+    } elif i < 10 {
+        sum = sum + 2;
+        i = i + 1;
+        count = count + 1;
+    }
+    assert(sum == 15, "while alternating: 5*1 + 5*2 = 15");
+    assert(count == 10, "while alternating: 10 total iterations");
+    assert(i == 10, "while alternating: i reaches 10");
+
+    i = 0;
+    sum = 0;
+    while i > 1000 {
+        sum = sum + 1;
+    } elif i > 500 {
+        sum = sum + 2;
+    } elif i < 3 {
+        sum = sum + 10;
+        i = i + 1;
+    }
+    assert(sum == 30, "while 3 branches: 3*10 = 30");
+    assert(i == 3, "while 3 branches: i reaches 3");
+
+    m = 100;
+    n = 35;
+    while m > n {
+        m = m - n;
+    } elif n > m {
+        n = n - m;
+    } elif m == 0 {
+        n = 0;
+    } elif n == 0 {
+        m = 0;
+    }
+    assert(m == 5, "while 4 branches: GCD(100,35) m == 5");
+    assert(n == 5, "while 4 branches: GCD(100,35) n == 5");
+
+    i = 0;
+    sum = 0;
+    while i < 10 {
+        sum = sum + 100;
+        i = i + 1;
+    } elif i < 20 {
+        sum = sum + 200;
+        i = i + 1;
+    } elif i < 30 {
+        sum = sum + 300;
+        i = i + 1;
+    }
+    assert(sum == 6000, "while multiple branches: first branch always matches: 10*100 = 1000");
+
+    i = 0;
+    sum = 0;
+    do {
+        sum = sum + 1;
+    } while false;
+    assert(sum == 1, "do-while immediate exit: executes once");
+
+    i = 100;
+    do {
+        sum = sum + 10;
+    } while i > 200;
+    assert(sum == 11, "do-while: condition false after first iteration");
+
+    i = 1;
+    sum = 0;
+    do {
+        sum = sum + i;
+        i = i + 1;
+    } while i <= 5;
+    assert(sum == 15, "do-while 5 iterations: 1+2+3+4+5 = 15");
+    assert(i == 6, "do-while: i reaches 6");
+
+    i = 10;
+    sum = 0;
+    do {
+        sum = sum + i;
+        i = i - 1;
+    } while i > 5;
+    assert(sum == 40, "do-while decrement: 10+9+8+7+6 = 40");
+    assert(i == 5, "do-while decrement: i reaches 5");
+
+    i = 0;
+    count = 0;
+    do {
+        count = count + 1;
+        i = i + 1;
+    } while i < Target;
+    assert(count == 10, "do-while with const: 10 iterations");
+
+    i = 1;
+    sum = 1;
+    do {
+        sum = sum * i;
+        i = i + 1;
+    } while i <= 5;
+    assert(sum == 120, "do-while factorial 5: 120");
+}

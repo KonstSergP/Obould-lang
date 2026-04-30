@@ -1,0 +1,61 @@
+module OpsRelational
+
+const {
+    IntSmall = 10;
+    IntBig = 100;
+
+    RealSmall = -5.5;
+    RealBig = 2.25;
+}
+
+type {
+    IntArr: i64[5];
+    CharArr: char[10];
+}
+
+var {
+    GInt: i64;
+    GReal: f64;
+    iArr: IntArr;
+    cArr1, cArr2: CharArr;
+}
+
+fn init() -> void
+var {
+    LInt: i64;
+    LReal: f64;
+}
+{
+    LInt = 50;
+    GInt = 50;
+    assert(IntSmall < IntBig);
+    assert(IntBig > IntSmall);
+    assert(LInt <= GInt);
+    assert(LInt >= GInt);
+    assert(LInt < IntBig);
+    assert(GInt > IntSmall);
+    assert(-100 < 0);
+    assert(0 > -100);
+    assert((3 <= 3) && (-3 >= -3));
+
+    LReal = 0.0;
+    GReal = 0.0;
+    assert(RealSmall < RealBig);
+    assert(RealBig > RealSmall);
+    assert(LReal <= GReal);
+    assert(LReal >= GReal);
+    assert(RealSmall <= -5.5);
+    assert(RealBig >= 2.25);
+
+    cArr1 = "Apple";
+    cArr2 = "Banana";
+    assert("A" < "B");
+    assert("Z" > "A");
+    assert("a" > "A");
+    assert(cArr1 < cArr2);
+    assert(cArr2 > cArr1);
+    assert("Apple" <= "Apple");
+    assert("Banana" >= "Apple");
+    assert("App" < "Apple");
+    assert("Banana" > "Ban");
+}

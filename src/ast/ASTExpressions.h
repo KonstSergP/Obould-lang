@@ -10,7 +10,8 @@ namespace obould
 class BinaryExpression : public Expression
 {
 public:
-    enum class Op { Add, Sub, Mul, FDiv, IDiv, Mod, And, Or, Eq, Neq, Lt, Gt, Lte, Gte, Is };
+    enum class Op { Add, Sub, Mul, FDiv, IDiv, Mod, And, Or, Eq, Neq, Lt, Gt, Lte, Gte, Is, In };
+
     using RightType = std::variant<std::unique_ptr<Expression>, std::unique_ptr<Type>>;
 
     BinaryExpression(std::unique_ptr<Expression> l, RightType r, Op op)
@@ -92,9 +93,12 @@ public:
 class QualifiedNameNode : public Expression
 {
 public:
-    using Type = std::variant<std::monostate, std::unique_ptr<IdentifierExpression>, std::unique_ptr<MemberAccessExpression>>;
+    using Type = std::variant<std::monostate, std::unique_ptr<IdentifierExpression>, std::unique_ptr<
+                                  MemberAccessExpression>>;
+
     QualifiedNameNode(std::string first, std::string second)
-    : first(std::move(first)), second(std::move(second)) {}
+        : first(std::move(first)), second(std::move(second)) {}
+
     void accept(ASTVisitor& v) override;
 
     std::string first, second;
@@ -143,6 +147,22 @@ public:
     void accept(ASTVisitor& v) override;
 
     std::string value;
+};
+
+
+struct SetElement {
+    std::unique_ptr<Expression> start;
+    std::unique_ptr<Expression> end;
+};
+
+class SetLiteral : public Expression
+{
+public:
+    explicit SetLiteral(std::vector<SetElement> elems) : elements(std::move(elems)) {}
+
+    void accept(ASTVisitor& v) override;
+
+    std::vector<SetElement> elements;
 };
 
 

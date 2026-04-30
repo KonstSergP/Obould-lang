@@ -1,0 +1,60 @@
+module BuiltinFloat
+
+const {
+    IntValue = 42;
+    NegativeInt = -100;
+}
+
+fn getInt() -> i64 {
+    return 256;
+}
+
+fn init() -> void
+var {
+    a: f64;
+    b: i64;
+}
+{
+    a = float(0);
+    assert(a == 0.0, "float(0) == 0.0");
+
+    a = float(1);
+    assert(a == 1.0, "float(1) == 1.0");
+
+    a = float(42);
+    assert(a == 42.0, "float(42) == 42.0");
+
+    a = float(-10);
+    assert(a == -10.0, "float(-10) == -10.0");
+
+    a = float(-100);
+    assert(a == -100.0, "float(-100) == -100.0");
+
+    a = float(1000000);
+    assert(a == 1000000.0, "float(1000000) == 1000000.0");
+
+    a = float(IntValue);
+    assert(a == 42.0, "float(IntValue) == 42.0");
+
+    a = float(NegativeInt);
+    assert(a == -100.0, "float(NegativeInt) == -100.0");
+
+    a = float(getInt());
+    assert(a == 256.0, "float(getInt()) == 256.0");
+
+    b = 999;
+    a = float(b);
+    assert(a == 999.0, "float(b) where b=999");
+
+    a = float(10 + 20);
+    assert(a == 30.0, "float(10 + 20) == 30.0");
+
+    a = float(100 - 50);
+    assert(a == 50.0, "float(100 - 50) == 50.0");
+
+    a = float(10) + float(5);
+    assert(a == 15.0, "float(10) + float(5) == 15.0");
+
+    a = float(3) * float(4);
+    assert(a == 12.0, "float(3) * float(4) == 12.0");
+}

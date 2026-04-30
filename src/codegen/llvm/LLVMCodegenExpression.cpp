@@ -26,6 +26,11 @@ void LLVMCodegenVisitor::visit(StringLiteral& node)
     lastValue = getConstantValue(node);
 }
 
+void LLVMCodegenVisitor::visit(SetLiteral& node)
+{
+    lastValue = getConstantValue(node);
+}
+
 void LLVMCodegenVisitor::visit(Nil& node)
 {
     lastValue = llvm::ConstantPointerNull::get(builder->getPtrTy());
@@ -99,7 +104,7 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
 
     right->accept(*this);
     auto* rhs = lastValue;
-    auto rType = right->resolvedType;
+    auto& rType = right->resolvedType;
     if (!lhs || !rhs) {
         lastValue = nullptr;
         return;
@@ -238,22 +243,37 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
 
     switch (node.op) {
     case Op::Add:
-        lastValue = isInt
-                        ? builder->CreateAdd(lhs, rhs, "add")
-                        : builder->CreateFAdd(lhs, rhs, "fadd");
+        if (node.resolvedType->kind == TypeKind::Set)
+            lastValue = builder->CreateOr(lhs, rhs, "set.add");
+        else
+            lastValue = isInt
+                            ? builder->CreateAdd(lhs, rhs, "add")
+                            : builder->CreateFAdd(lhs, rhs, "fadd");
         break;
     case Op::Sub:
-        lastValue = isInt
-                        ? builder->CreateSub(lhs, rhs, "sub")
-                        : builder->CreateFSub(lhs, rhs, "fsub");
+        if (node.resolvedType->kind == TypeKind::Set)
+            lastValue = builder->CreateAnd(lhs, builder->CreateNot(rhs), "set.sub");
+        else
+            lastValue = isInt
+                            ? builder->CreateSub(lhs, rhs, "sub")
+                            : builder->CreateFSub(lhs, rhs, "fsub");
         break;
     case Op::Mul:
-        lastValue = isInt
-                        ? builder->CreateMul(lhs, rhs, "mul")
-                        : builder->CreateFMul(lhs, rhs, "fmul");
+        if (node.resolvedType->kind == TypeKind::Set)
+            lastValue = builder->CreateAnd(lhs, rhs, "set.mul");
+        else
+            lastValue = isInt
+                            ? builder->CreateMul(lhs, rhs, "mul")
+                            : builder->CreateFMul(lhs, rhs, "fmul");
         break;
     case Op::FDiv:
-        lastValue = builder->CreateFDiv(lhs, rhs, "fdiv");
+        if (node.resolvedType->kind == TypeKind::Set) {
+            auto l = builder->CreateOr(lhs, rhs);
+            auto r = builder->CreateNot(builder->CreateAnd(lhs, rhs));
+            lastValue = builder->CreateAnd(l, r, "set.div");
+        }
+        else
+            lastValue = builder->CreateFDiv(lhs, rhs, "fdiv");
         break;
     case Op::IDiv:
     {
@@ -265,7 +285,7 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
 
         auto* minusOne = llvm::ConstantInt::get(lhs->getType(), -1);
         auto* adjustment = builder->CreateSelect(isNegRem, minusOne, zero);
-        auto* finalDiv = builder->CreateAdd(q, adjustment, "div_oberon");
+        auto* finalDiv = builder->CreateAdd(q, adjustment, "div");
 
         lastValue = finalDiv;
         break;
@@ -278,7 +298,7 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
         auto* isNegRem = builder->CreateICmpSLT(r, zero, "rem_is_neg");
 
         auto* adjustment = builder->CreateSelect(isNegRem, rhs, zero);
-        auto* finalMod = builder->CreateAdd(r, adjustment, "mod_oberon");
+        auto* finalMod = builder->CreateAdd(r, adjustment, "mod");
 
         lastValue = finalMod;
         break;
@@ -349,7 +369,13 @@ void LLVMCodegenVisitor::visit(BinaryExpression& node)
             lastValue = builder->CreateICmpSGE(lhs, rhs, "gte");
         }
         break;
-
+    case Op::In:
+    {
+        auto* shifted = builder->CreateShl(builder->getInt64(1), lhs, "in.shl");
+        auto* andVal = builder->CreateAnd(rhs, shifted, "in.and");
+        lastValue = builder->CreateICmpNE(andVal, builder->getInt64(0), "in.cmp");
+        break;
+    }
     default:
         lastValue = nullptr;
         break;
@@ -373,7 +399,10 @@ void LLVMCodegenVisitor::visit(UnaryExpression& node)
 
     switch (node.op) {
     case Op::Negate:
-        if (operand->getType()->isIntegerTy()) {
+        if (node.resolvedType->kind == TypeKind::Set) {
+            lastValue = builder->CreateNot(operand, "set.neg");
+        }
+        else if (operand->getType()->isIntegerTy()) {
             lastValue = builder->CreateNeg(operand, "neg");
         }
         else {
@@ -418,12 +447,11 @@ void LLVMCodegenVisitor::visit(IdentifierExpression& node)
         }
     }
 
-    auto tyInfo = node.resolvedType;
-    if (lvalue || tyInfo->kind == TypeKind::Array || tyInfo->kind == TypeKind::Struct) {
+    if (lvalue || node.resolvedType->kind == TypeKind::Array || node.resolvedType->kind == TypeKind::Struct) {
         lastValue = ptr;
     }
     else {
-        auto* ty = toLLVMType(tyInfo);
+        auto* ty = toLLVMType(node.resolvedType);
         lastValue = builder->CreateLoad(ty, ptr);
     }
 }
@@ -471,7 +499,7 @@ void LLVMCodegenVisitor::visit(ArrayAccessExpression& node)
         lastValue = nullptr;
         return;
     }
-    if (lvalue) {
+    if (lvalue || node.resolvedType->kind == TypeKind::Array || node.resolvedType->kind == TypeKind::Struct) {
         lastValue = elemPtr;
     }
     else {
@@ -536,7 +564,7 @@ void LLVMCodegenVisitor::visit(MemberAccessExpression& node)
         return;
     }
 
-    if (lvalue) {
+    if (lvalue || node.resolvedType->kind == TypeKind::Array || node.resolvedType->kind == TypeKind::Struct) {
         lastValue = fieldPtr;
     }
     else {
@@ -557,12 +585,12 @@ void LLVMCodegenVisitor::visit(DereferenceExpression& node)
         return;
     }
 
-    if (!lvalue) {
-        auto* pointeeTy = toLLVMType(node.resolvedType);
-        lastValue = builder->CreateLoad(pointeeTy, ptrVal, "deref");
+    if (lvalue || node.resolvedType->kind == TypeKind::Array || node.resolvedType->kind == TypeKind::Struct) { // TODO: а эта проверка вообще нужна? нужен тестик
+        lastValue = ptrVal;
     }
     else {
-        lastValue = ptrVal;
+        auto* pointeeTy = toLLVMType(node.resolvedType);
+        lastValue = builder->CreateLoad(pointeeTy, ptrVal, "deref");
     }
 }
 

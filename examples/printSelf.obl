@@ -1,0 +1,56 @@
+module PrintSelf
+
+import Out;
+
+fn PrintEscaped(str: char[]) -> void
+var { i: i64; ch: char; }
+{
+    i = 0;
+    while (i < len(str)) && (ord(str[i]) != 0) {
+        ch = str[i];
+        if (ch == chr(34)) || (ch == chr(92)) {
+            Out.Char(chr(92));
+        }
+        Out.Char(ch);
+        i = i + 1;
+    }
+}
+
+fn init() -> void
+var { s: char[28][100]; i: i64; }
+{
+    s[0] = "module PrintSelf";
+    s[1] = "";
+    s[2] = "import Out;";
+    s[3] = "";
+    s[4] = "fn PrintEscaped(str: char[]) -> void";
+    s[5] = "var { i: i64; ch: char; }";
+    s[6] = "{";
+    s[7] = "    i = 0;";
+    s[8] = "    while (i < len(str)) && (ord(str[i]) != 0) {";
+    s[9] = "        ch = str[i];";
+    s[10] = "        if (ch == chr(34)) || (ch == chr(92)) {";
+    s[11] = "            Out.Char(chr(92));";
+    s[12] = "        }";
+    s[13] = "        Out.Char(ch);";
+    s[14] = "        i = i + 1;";
+    s[15] = "    }";
+    s[16] = "}";
+    s[17] = "";
+    s[18] = "fn init() -> void";
+    s[19] = "var { s: char[28][100]; i: i64; }";
+    s[20] = "{";
+    s[21] = "    for (i = 0, 20) { Out.String(s[i]); Out.Ln(); }";
+    s[22] = "    for (i = 0, 27) {";
+    s[23] = "        Out.String(\"    s[\"); Out.Int(i); Out.String(\"] = \");";
+    s[24] = "        Out.Char(chr(34)); PrintEscaped(s[i]); Out.Char(chr(34)); Out.String(\";\"); Out.Ln();";
+    s[25] = "    }";
+    s[26] = "    for (i = 21, 27) { Out.String(s[i]); Out.Ln(); }";
+    s[27] = "}";
+    for (i = 0, 20) { Out.String(s[i]); Out.Ln(); }
+    for (i = 0, 27) {
+        Out.String("    s["); Out.Int(i); Out.String("] = ");
+        Out.Char(chr(34)); PrintEscaped(s[i]); Out.Char(chr(34)); Out.String(";"); Out.Ln();
+    }
+    for (i = 21, 27) { Out.String(s[i]); Out.Ln(); }
+}

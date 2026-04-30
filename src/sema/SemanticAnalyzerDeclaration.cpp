@@ -275,6 +275,7 @@ void SemanticAnalyzer::visit(Import& node)
     auto mod = symbolFileParser.parse(node.realName);
     auto curName = currentModuleName;
     auto curModuleNames = std::move(moduleRealNames);
+    auto wasImportedModule = importedModule;
 
     importedModule = true;
     currentModuleName = node.realName;
@@ -282,8 +283,9 @@ void SemanticAnalyzer::visit(Import& node)
 
     mod->accept(*this);
     rootModule->properties.needsGC |= mod->properties.needsGC;
+    rootModule->properties.needsArgs |= mod->properties.needsArgs;
 
-    importedModule = false;
+    importedModule = wasImportedModule;
     currentModuleName = curName;
     moduleRealNames = curModuleNames;
     node.module = std::move(mod);

@@ -1,0 +1,75 @@
+module ParallelPrimes
+
+import Threads, Out;
+
+var {
+    PrimesFound1, PrimesFound2: i64;
+}
+
+fn IsPrime(n: i64) -> bool
+var { i: i64; ret: bool; }
+{
+    if n < 2 {
+        ret = false;
+    } else {
+        ret = true;
+        i = 2;
+        while ((i * i) <= n) && ret {
+            if (n mod i) == 0 {
+                ret = false;
+            }
+            i = i + 1;
+        }
+    }
+    return ret;
+}
+
+fn Worker1() -> void
+var { i: i64; }
+{
+    PrimesFound1 = 0;
+    for (i = 1, 50000) {
+        if IsPrime(i) {
+            PrimesFound1 = PrimesFound1 + 1;
+        }
+    }
+}
+
+fn Worker2() -> void
+var { i: i64; }
+{
+    PrimesFound2 = 0;
+    for (i = 50000, 100000) {
+        if IsPrime(i) {
+            PrimesFound2 = PrimesFound2 + 1;
+        }
+    }
+}
+
+fn init() -> void
+var {
+    t1, t2: Threads.Thread;
+    total: i64;
+}
+{
+    Out.String("Starting parallel prime search (1 to 100,000)..."); Out.Ln();
+
+    t1 = Threads.Start(Worker1);
+    t2 = Threads.Start(Worker2);
+
+    Threads.Join(t1);
+    Threads.Join(t2);
+
+    total = PrimesFound1 + PrimesFound2;
+
+    Out.String("--- Search Finished ---"); Out.Ln();
+    Out.String("Thread 1 found: "); Out.Int(PrimesFound1); Out.Ln();
+    Out.String("Thread 2 found: "); Out.Int(PrimesFound2); Out.Ln();
+    Out.String("Total primes:   "); Out.Int(total); Out.Ln();
+
+    if total == 9592 {
+        Out.String("Result is CORRECT!"); Out.Ln();
+    } else {
+        Out.String("Result is WRONG!"); Out.Ln();
+    }
+}

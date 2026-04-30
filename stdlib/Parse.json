@@ -1,0 +1,52 @@
+{
+    "properties": {
+        "needsGC": true
+    },
+    "declarations": {
+        "constants": [],
+        "variables": [],
+        "types": []
+    },
+    "imports": [],
+    "moduleName": "Parse",
+    "procedures": [
+        {
+            "name": "Int",
+            "parameters": [
+                {
+                    "name": "text",
+                    "reference": false,
+                    "type": {
+                        "kind": "open array",
+                        "elementType": "char"
+                    }
+                },
+                {
+                    "name": "value",
+                    "reference": true,
+                    "type": "i64"
+                }
+            ],
+            "returnType": "bool"
+        },
+        {
+            "name": "Real",
+            "parameters": [
+                {
+                    "name": "text",
+                    "reference": false,
+                    "type": {
+                        "kind": "open array",
+                        "elementType": "char"
+                    }
+                },
+                {
+                    "name": "value",
+                    "reference": true,
+                    "type": "f64"
+                }
+            ],
+            "returnType": "bool"
+        }
+    ]
+}

@@ -1,0 +1,74 @@
+{
+    "properties": {
+        "needsGC": true
+    },
+    "declarations": {
+        "constants": [],
+        "variables": [],
+        "types": [
+            {
+                "name": "Thread",
+                "type": {
+                    "kind": "pointer",
+                    "targetType": {
+                        "kind": "incomplete"
+                    }
+                }
+            }
+        ]
+    },
+    "imports": [],
+    "moduleName": "Threads",
+    "procedures": [
+        {
+            "name": "Start",
+            "parameters": [
+                {
+                    "name": "task",
+                    "reference": false,
+                    "type": {
+                        "parameters": [],
+                        "returnType": "void"
+                    }
+                }
+            ],
+            "returnType": "Thread"
+        },
+        {
+            "name": "StartI64",
+            "parameters": [
+                {
+                    "name": "task",
+                    "reference": false,
+                    "type": {
+                        "parameters": [
+                            {
+                                "name": "arg",
+                                "reference": false,
+                                "type": "i64"
+                            }
+                        ],
+                        "returnType": "void"
+                    }
+                },
+                {
+                    "name": "arg",
+                    "reference": false,
+                    "type": "i64"
+                }
+            ],
+            "returnType": "Thread"
+        },
+        {
+            "name": "Join",
+            "parameters": [
+                {
+                    "name": "t",
+                    "reference": false,
+                    "type": "Thread"
+                }
+            ],
+            "returnType": "void"
+        }
+    ]
+}

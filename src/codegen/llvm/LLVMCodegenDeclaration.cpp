@@ -20,24 +20,28 @@ void LLVMCodegenVisitor::visit(VariableDeclaration& node)
     exportedType = false;
     auto& info = node.type->resolvedType;
     auto* ty = toLLVMType(info);
-    auto* initValue = createInitConstant(info);
 
     auto linkage = (node.isExported || importedModule)
                        ? llvm::GlobalValue::ExternalLinkage
                        : llvm::GlobalValue::InternalLinkage;
     if (currentFunction == nullptr) {
-        new llvm::GlobalVariable(
+        auto* g = new llvm::GlobalVariable(
             *module,
             ty,
             false,
             linkage,
-            importedModule ? nullptr : initValue,
+            nullptr,
             getMangledName(currentModule, node.name)
         );
+        if (!importedModule) {
+            g->setInitializer(llvm::Constant::getNullValue(ty));
+            globalsForDescInit.emplace_back(info, g);
+        }
     }
     else {
         auto* allocaInst = createEntryAlloca(ty, node.name);
-        builder->CreateStore(initValue, allocaInst);
+        builder->CreateStore(llvm::Constant::getNullValue(ty), allocaInst);
+        initializeDescriptors(allocaInst, info);
         locals[node.name] = allocaInst;
     }
 }
@@ -162,6 +166,11 @@ void LLVMCodegenVisitor::visit(ProcedureDeclaration& node)
         if (!retVal) {
             retVal = llvm::Constant::getNullValue(retType);
         }
+        if (node.resolvedType->returnType->kind == TypeKind::Char
+            && node.returnExpression->resolvedType->kind == TypeKind::String
+            && node.returnExpression->resolvedType->length == 1) {
+            retVal = builder->CreateLoad(builder->getInt8Ty(), retVal);
+        }
         builder->CreateRet(retVal);
     }
     currentFunction = nullptr;
@@ -171,8 +180,12 @@ void LLVMCodegenVisitor::visit(ProcedureParameter& node) {}
 
 void LLVMCodegenVisitor::visit(Import& node)
 {
+    if (!node.module) {
+        return;
+    }
     auto curModule = std::move(currentModule);
     auto curMain = isMainModule;
+    auto wasImportedModule = importedModule;
     currentModule = node.module->name;
     importedModule = true;
     isMainModule = false;
@@ -180,7 +193,7 @@ void LLVMCodegenVisitor::visit(Import& node)
     node.module->accept(*this);
 
     currentModule = curModule;
-    importedModule = false;
+    importedModule = wasImportedModule;
     isMainModule = curMain;
 }
 

@@ -1,0 +1,98 @@
+module OpsDivision
+
+const {
+    IntA = 100;
+    IntB = 3;
+
+    RealA = 7.5;
+    RealB = 2.5;
+
+    SetA = {0, 3..7, 20..30, 63};
+    SetB = {0, 1, 5..9, 15..25, 56..59};
+}
+
+type {
+    IntArr: i64[10];
+    RealArr: f64[10];
+    ByteArr: byte[10];
+    SetArr: set[10];
+}
+
+var {
+    GInt: i64;
+    GReal: f64;
+    GByte: byte;
+    GSet: set;
+    iArr: IntArr;
+    fArr: RealArr;
+    bArr: ByteArr;
+    sArr: SetArr;
+}
+
+fn init() -> void
+var {
+    LIntA, LIntB: i64;
+    LRealA, LRealB: f64;
+    LByteA, LByteB: byte;
+    LSetA, LSetB: set;
+}
+{
+    assert(IntA div IntB == 33);
+    assert(IntA mod IntB == 1);
+    assert(50 div 7 == 7);
+    assert(50 mod 7 == 1);
+    assert((-100) div 3 == -34);
+    assert((-100) mod 3 == 2);
+
+    iArr[0] = 50; iArr[1] = 8;
+    LIntA = 75; LIntB = 10;
+    GInt = 100;
+    bArr[0] = 25; bArr[1] = 4;
+    LByteA = 14; LByteB = 5;
+    GByte = 46;
+
+    assert(iArr[0] div iArr[1] == 6);
+    assert(iArr[0] mod iArr[1] == 2);
+    assert(LIntA div LIntB == 7);
+    assert(GInt div LIntB == 10);
+
+    assert(bArr[0] div bArr[1] == 6);
+    assert(bArr[0] mod bArr[1] == 1);
+    assert(LByteA div LByteB == 2);
+    assert(GByte mod LByteB == 1);
+
+    assert(iArr[0] div bArr[1] == 12);
+    assert(GInt mod GByte == 8);
+
+    fArr[0] = 15.0; fArr[1] = 4.0;
+    LRealA = 5.0; LRealB = 2.0;
+    GReal = -7.5;
+
+    assert(RealA / RealB == 3.0);
+    assert(50.0 / 4.0 == 12.5);
+
+    assert(fArr[0] / fArr[1] == 3.75);
+    assert(LRealA / LRealB == 2.5);
+    assert(GReal / LRealB == -3.75);
+
+    sArr[0] = {5, 6}; sArr[1] = {5, 7};
+    LSetA = {3, 4}; LSetB = {4, 5};
+    GSet = {1, 2, 6, 7, 10..12};
+
+    assert(2 in {0, 2} / {0, 1});
+    assert(1 in {0, 2} / {0, 1});
+    assert(!(0 in {0, 2} / {0, 1}));
+
+    assert(1 in SetA / SetB);
+    assert(3 in SetA / SetB);
+    assert(!(0 in SetA / SetB));
+    assert(!(6 in SetA / SetB));
+    assert(63 in SetA / SetB);
+
+    assert(6 in sArr[0] / sArr[1]);
+    assert(7 in sArr[0] / sArr[1]);
+    assert(!(5 in sArr[0] / sArr[1]));
+
+    assert(3 in LSetA / LSetB);
+    assert(5 in LSetA / LSetB);
+}

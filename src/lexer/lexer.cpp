@@ -28,6 +28,8 @@ const std::unordered_map<std::string, TokenType> Lexer::keywords_ = {
     {"export", TokenType::KW_EXPORT},
     {"import", TokenType::KW_IMPORT},
     {"void",   TokenType::KW_VOID},
+    {"set",    TokenType::KW_SET},
+    {"in",     TokenType::KW_IN},
 };
 
 Lexer::Lexer(std::string source)
@@ -114,12 +116,12 @@ void Lexer::skipWhitespace() {
                     }
                 } else if (peekNext() == '*') {
                     // Multi-line comment
-                    advance(); // consume '/'
-                    advance(); // consume '*'
+                    advance();
+                    advance();
                     while (!isAtEnd()) {
                         if (peek() == '*' && peekNext() == '/') {
-                            advance(); // consume '*'
-                            advance(); // consume '/'
+                            advance();
+                            advance();
                             break;
                         }
                         advance();
@@ -251,11 +253,23 @@ Token Lexer::number() {
         advance();
     }
 
+    {
+        size_t savedPos = current_;
+        while (peek() >= 'A' && peek() <= 'F') {
+            advance();
+        }
+        if (peek() == 'H') {
+            advance();
+            std::string hexDigits = source_.substr(start_, current_ - start_ - 1);
+            return makeToken(TokenType::INTEGER, "0x" + hexDigits);
+        }
+        current_ = savedPos;
+    }
+
     // Check for decimal point (float)
     if (peek() == '.' && peekNext() != '.') {
-        // Make sure it's not ".." operator
         isFloat = true;
-        advance(); // consume '.'
+        advance();
         while (isDigit(peek())) {
             advance();
         }
@@ -264,7 +278,7 @@ Token Lexer::number() {
     // Check for exponent
     if (peek() == 'E' || peek() == 'e') {
         isFloat = true;
-        advance(); // consume 'E'
+        advance();
         if (peek() == '+' || peek() == '-') {
             advance();
         }
@@ -288,7 +302,7 @@ Token Lexer::string() {
             return errorToken("Unterminated string: newline in string literal");
         }
         if (peek() == '\\') {
-            advance(); // consume backslash
+            advance();
             if (isAtEnd()) {
                 return errorToken("Unterminated string: escape at end of file");
             }

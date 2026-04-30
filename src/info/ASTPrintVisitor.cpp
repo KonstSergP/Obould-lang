@@ -1,11 +1,10 @@
+#include <sstream>
 #include "ASTPrintVisitor.h"
+
 
 namespace obould
 {
 ASTPrintVisitor::ASTPrintVisitor(std::ostream& os) : os(os) {}
-
-
-// Helpers
 
 void ASTPrintVisitor::printNodeName(const std::string& name, const std::string& extraInfo) const
 {
@@ -34,6 +33,7 @@ static std::string binOpToString(const BinaryExpression::Op op)
     case BinaryExpression::Op::Gt: return ">";
     case BinaryExpression::Op::Gte: return ">=";
     case BinaryExpression::Op::Is: return "is";
+    case BinaryExpression::Op::In: return "in";
     default: throw std::runtime_error("Unknown binary expression type");
     }
 }
@@ -87,6 +87,11 @@ void ASTPrintVisitor::visit(BooleanLiteral& node)
     os << GREEN << (node.value ? "true" : "false") << RESET << std::endl;
 }
 
+void ASTPrintVisitor::visit(SetLiteral& node)
+{
+    os << GREEN << "{ " << node.elements.size() << " elements }" << RESET << std::endl;
+}
+
 void ASTPrintVisitor::visit(Nil& node)
 {
     os << "nil" << std::endl;
@@ -135,7 +140,8 @@ void ASTPrintVisitor::visit(QualifiedNameNode& node)
 
     if (auto* id = std::get_if<std::unique_ptr<IdentifierExpression>>(&node.realisation)) {
         printChild(*id, true);
-    } else if (auto* member = std::get_if<std::unique_ptr<MemberAccessExpression>>(&node.realisation)) {
+    }
+    else if (auto* member = std::get_if<std::unique_ptr<MemberAccessExpression>>(&node.realisation)) {
         printChild(*member, true);
     }
 }

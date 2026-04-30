@@ -36,6 +36,7 @@ std::string CCodegenVisitor::mapTypeName(const std::string& obouldType)
     if (obouldType == "char") return "char";
     if (obouldType == "byte") return "uint8_t";
     if (obouldType == "void") return "void";
+    if (obouldType == "set") return "uint64_t";
     return obouldType;
 }
 
@@ -48,7 +49,7 @@ std::string CCodegenVisitor::generateGuardName(const std::string& moduleName)
 
 std::string CCodegenVisitor::makePrefix(const std::string& moduleName)
 {
-    return "ob_" + std::to_string(moduleName.size()) + moduleName + "_";
+    return "ob_" + std::to_string(moduleName.length()) + moduleName + "_";
 }
 
 std::string CCodegenVisitor::getTypeString(Type& type)
@@ -70,6 +71,106 @@ std::string CCodegenVisitor::getExpressionString(Expression& expr)
     tempVisitor.procedureRefParams_ = procedureRefParams_;
     expr.accept(tempVisitor);
     return ss.str();
+}
+
+std::string CCodegenVisitor::resolveStructTypeName(const IdentifierType& type) const
+{
+    if (!type.moduleName.empty()) {
+        return makePrefix(type.moduleName) + type.name;
+    }
+    if (!moduleName_.empty()) {
+        return makePrefix(moduleName_) + type.name;
+    }
+    return type.name;
+}
+
+bool CCodegenVisitor::isStructType(const IdentifierType& type) const
+{
+    std::string fullTypeName = resolveStructTypeName(type);
+    for (const auto& st : structTypes_) {
+        if (st.first == fullTypeName) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool CCodegenVisitor::typeNeedsDescriptorInit(Type& type) const
+{
+    if (auto* identType = dynamic_cast<IdentifierType*>(&type)) {
+        return isStructType(*identType);
+    }
+    if (auto* arrType = dynamic_cast<ArrayType*>(&type)) {
+        return typeNeedsDescriptorInit(*arrType->elementType);
+    }
+    return false;
+}
+
+void CCodegenVisitor::emitDescriptorInitForStructMembers(const std::string& structTypeName, const std::string& targetExpr, int& loopCounter, std::set<std::string>& activeStructs)
+{
+    if (activeStructs.count(structTypeName) > 0) {
+        return;
+    }
+    activeStructs.insert(structTypeName);
+
+    std::string parentTypeName;
+    for (const auto& st : structTypes_) {
+        if (st.first == structTypeName) {
+            parentTypeName = st.second;
+            break;
+        }
+    }
+    if (!parentTypeName.empty() && localStructDecls_.count(parentTypeName) > 0) {
+        emitDescriptorInitForStructMembers(parentTypeName, targetExpr, loopCounter, activeStructs);
+    }
+
+    auto declIt = localStructDecls_.find(structTypeName);
+    if (declIt != localStructDecls_.end()) {
+        for (auto& field : declIt->second->fields) {
+            emitDescriptorInitForType(*field->type, targetExpr + "." + field->name, loopCounter, activeStructs);
+        }
+    }
+
+    activeStructs.erase(structTypeName);
+}
+
+void CCodegenVisitor::emitDescriptorInitForType(Type& type, const std::string& targetExpr, int& loopCounter, std::set<std::string>& activeStructs)
+{
+    if (auto* identType = dynamic_cast<IdentifierType*>(&type)) {
+        if (!isStructType(*identType)) {
+            return;
+        }
+
+        std::string structTypeName = resolveStructTypeName(*identType);
+        emitIndent();
+        os_ << targetExpr << "._desc = &" << structTypeName << "_desc;\n";
+        emitDescriptorInitForStructMembers(structTypeName, targetExpr, loopCounter, activeStructs);
+        return;
+    }
+
+    if (auto* arrType = dynamic_cast<ArrayType*>(&type)) {
+        if (!typeNeedsDescriptorInit(*arrType->elementType)) {
+            return;
+        }
+
+        std::string indexName = "_ob_desc_i" + std::to_string(loopCounter++);
+        std::string lengthExpr = getExpressionString(*arrType->length);
+
+        emitIndent();
+        os_ << "for (int64_t " << indexName << " = 0; " << indexName << " < " << lengthExpr << "; ++" << indexName << ") {\n";
+        increaseIndent();
+        emitDescriptorInitForType(*arrType->elementType, targetExpr + "[" + indexName + "]", loopCounter, activeStructs);
+        decreaseIndent();
+        emitIndent();
+        os_ << "}\n";
+    }
+}
+
+void CCodegenVisitor::emitDescriptorInitForType(Type& type, const std::string& targetExpr)
+{
+    int loopCounter = 0;
+    std::set<std::string> activeStructs;
+    emitDescriptorInitForType(type, targetExpr, loopCounter, activeStructs);
 }
 
 void CCodegenVisitor::emitTypeWithName(Type& type, const std::string& name)
@@ -122,6 +223,15 @@ void CCodegenVisitor::visit(StringLiteral& node)
     os_ << "\"";
 }
 
+void CCodegenVisitor::visit(SetLiteral& node)
+{
+    if (node.constantValue.has_value()) {
+        os_ << std::get<int64_t>(*node.constantValue) << "ULL";
+    } else {
+        os_ << "0ULL";
+    }
+}
+
 void CCodegenVisitor::visit(Nil& node)
 {
     os_ << "NULL";
@@ -156,26 +266,54 @@ void CCodegenVisitor::visit(BinaryExpression& node)
         return;
     }
 
+    if (node.op == BinaryExpression::Op::In) {
+        os_ << "((";
+        std::visit([this](auto&& arg) {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, std::unique_ptr<Expression>>) {
+                arg->accept(*this);
+            }
+        }, node.right);
+        os_ << " >> ";
+        node.left->accept(*this);
+        os_ << ") & 1)";
+        return;
+    }
+
+    bool isSetOp = node.left->resolvedType && node.left->resolvedType->kind == TypeKind::Set;
+
     os_ << "(";
     node.left->accept(*this);
 
-    switch (node.op) {
-        case BinaryExpression::Op::Add: os_ << " + "; break;
-        case BinaryExpression::Op::Sub: os_ << " - "; break;
-        case BinaryExpression::Op::Mul: os_ << " * "; break;
-        case BinaryExpression::Op::FDiv: os_ << " / "; break;
-        case BinaryExpression::Op::IDiv: os_ << " / "; break;
-        case BinaryExpression::Op::Mod: os_ << " % "; break;
-        case BinaryExpression::Op::And: os_ << " && "; break;
-        case BinaryExpression::Op::Or: os_ << " || "; break;
-        case BinaryExpression::Op::Eq: os_ << " == "; break;
-        case BinaryExpression::Op::Neq: os_ << " != "; break;
-        case BinaryExpression::Op::Lt: os_ << " < "; break;
-        case BinaryExpression::Op::Lte: os_ << " <= "; break;
-        case BinaryExpression::Op::Gt: os_ << " > "; break;
-        case BinaryExpression::Op::Gte: os_ << " >= "; break;
-        case BinaryExpression::Op::Is:
-            throw std::runtime_error("CCodegenVisitor: BinaryExpression::Op::Is reached in switch (should be handled above)");
+    if (isSetOp) {
+        switch (node.op) {
+            case BinaryExpression::Op::Add: os_ << " | "; break;
+            case BinaryExpression::Op::Sub: os_ << " & ~"; break;
+            case BinaryExpression::Op::Mul: os_ << " & "; break;
+            case BinaryExpression::Op::FDiv: os_ << " ^ "; break;
+            case BinaryExpression::Op::Eq: os_ << " == "; break;
+            case BinaryExpression::Op::Neq: os_ << " != "; break;
+            default:
+                throw std::runtime_error("CCodegenVisitor: unsupported operation on SET type");
+        }
+    } else {
+        switch (node.op) {
+            case BinaryExpression::Op::Add: os_ << " + "; break;
+            case BinaryExpression::Op::Sub: os_ << " - "; break;
+            case BinaryExpression::Op::Mul: os_ << " * "; break;
+            case BinaryExpression::Op::FDiv: os_ << " / "; break;
+            case BinaryExpression::Op::IDiv: os_ << " / "; break;
+            case BinaryExpression::Op::Mod: os_ << " % "; break;
+            case BinaryExpression::Op::And: os_ << " && "; break;
+            case BinaryExpression::Op::Or: os_ << " || "; break;
+            case BinaryExpression::Op::Eq: os_ << " == "; break;
+            case BinaryExpression::Op::Neq: os_ << " != "; break;
+            case BinaryExpression::Op::Lt: os_ << " < "; break;
+            case BinaryExpression::Op::Lte: os_ << " <= "; break;
+            case BinaryExpression::Op::Gt: os_ << " > "; break;
+            case BinaryExpression::Op::Gte: os_ << " >= "; break;
+            default: break;
+        }
     }
 
     std::visit([this](auto&& arg) {
@@ -192,10 +330,15 @@ void CCodegenVisitor::visit(BinaryExpression& node)
 
 void CCodegenVisitor::visit(UnaryExpression& node)
 {
-    switch (node.op) {
-        case UnaryExpression::Op::Negate: os_ << "(-"; break;
-        case UnaryExpression::Op::Not: os_ << "(!"; break;
-        case UnaryExpression::Op::Plus: os_ << "(+"; break;
+    bool isSet = node.operand->resolvedType && node.operand->resolvedType->kind == TypeKind::Set;
+    if (isSet && node.op == UnaryExpression::Op::Negate) {
+        os_ << "(~";
+    } else {
+        switch (node.op) {
+            case UnaryExpression::Op::Negate: os_ << "(-"; break;
+            case UnaryExpression::Op::Not: os_ << "(!"; break;
+            case UnaryExpression::Op::Plus: os_ << "(+"; break;
+        }
     }
     node.operand->accept(*this);
     os_ << ")";
@@ -374,6 +517,49 @@ void CCodegenVisitor::visit(ProcedureCall& node)
                 node.args[0]->accept(*this);
                 os_ << ")";
             }
+            return;
+        }
+        case BuiltinKind::INT:
+        {
+            if (node.args.empty()) break;
+            os_ << "((int64_t)(";
+            node.args[0]->accept(*this);
+            os_ << "))";
+            return;
+        }
+        case BuiltinKind::FLOAT:
+        {
+            if (node.args.empty()) break;
+            os_ << "((double)(";
+            node.args[0]->accept(*this);
+            os_ << "))";
+            return;
+        }
+        case BuiltinKind::ORD:
+        {
+            if (node.args.empty()) break;
+            auto argType = node.args[0]->resolvedType;
+            if (argType && argType->kind == TypeKind::String) {
+                os_ << "((int64_t)((uint8_t)((";
+                node.args[0]->accept(*this);
+                os_ << ")[0])))";
+            } else if (argType && argType->kind == TypeKind::Char) {
+                os_ << "((int64_t)((uint8_t)(";
+                node.args[0]->accept(*this);
+                os_ << ")))";
+            } else {
+                os_ << "((int64_t)(";
+                node.args[0]->accept(*this);
+                os_ << "))";
+            }
+            return;
+        }
+        case BuiltinKind::CHR:
+        {
+            if (node.args.empty()) break;
+            os_ << "((char)((uint8_t)(";
+            node.args[0]->accept(*this);
+            os_ << ")))";
             return;
         }
         default:
@@ -688,7 +874,7 @@ void CCodegenVisitor::visit(CaseLabel& node)
 void CCodegenVisitor::visit(IdentifierType& node)
 {
     static const std::set<std::string> primitiveTypes = {
-        "i64", "f64", "bool", "char", "byte", "void"
+        "i64", "f64", "bool", "char", "byte", "void", "set"
     };
 
     bool isPrimitive = primitiveTypes.count(node.name) > 0;
@@ -787,7 +973,7 @@ void CCodegenVisitor::visit(TypeDeclaration& node)
         }
         structTypes_.push_back({fullName, parentName});
 
-        std::vector<std::pair<std::string, std::string>> allFields;
+        std::vector<std::string> allFields;
 
         os_ << "struct " << fullName << " {\n";
         increaseIndent();
@@ -801,7 +987,7 @@ void CCodegenVisitor::visit(TypeDeclaration& node)
             if (it != structFields_.end()) {
                 for (const auto& field : it->second) {
                     emitIndent();
-                    os_ << field.second << " " << field.first << ";\n";
+                    os_ << field << ";\n";
                     allFields.push_back(field);
                 }
             }
@@ -809,31 +995,16 @@ void CCodegenVisitor::visit(TypeDeclaration& node)
 
         // Add own fields
         for (auto& field : structType->fields) {
-            std::string fieldType = getTypeString(*field->type);
-            allFields.push_back({field->name, fieldType});
+            std::stringstream fieldSs;
+            CCodegenVisitor fieldVisitor(fieldSs, mode_);
+            fieldVisitor.moduleName_ = moduleName_;
+            fieldVisitor.procedureRefParams_ = procedureRefParams_;
+            fieldVisitor.emitTypeWithName(*field->type, field->name);
+            std::string fieldDecl = fieldSs.str();
+            allFields.push_back(fieldDecl);
 
             emitIndent();
-            if (auto* arrType = dynamic_cast<ArrayType*>(field->type.get())) {
-                std::vector<Expression*> dimensions;
-                Type* currentType = field->type.get();
-
-                while (auto* arr = dynamic_cast<ArrayType*>(currentType)) {
-                    dimensions.push_back(arr->length.get());
-                    currentType = arr->elementType.get();
-                }
-
-                currentType->accept(*this);
-                os_ << " " << field->name;
-                for (auto* dim : dimensions) {
-                    os_ << "[";
-                    dim->accept(*this);
-                    os_ << "]";
-                }
-                os_ << ";\n";
-            } else {
-                field->type->accept(*this);
-                os_ << " " << field->name << ";\n";
-            }
+            os_ << fieldDecl << ";\n";
         }
 
         // Store all fields for future children
@@ -890,24 +1061,8 @@ void CCodegenVisitor::visit(VariableDeclaration& node)
     } else {
         node.type->accept(*this);
         os_ << " " << node.name << ";\n";
-
-        // Initialize _desc for struct variables (RTTI support)
-        if (auto* identType = dynamic_cast<IdentifierType*>(node.type.get())) {
-            std::string fullTypeName;
-            if (!identType->moduleName.empty()) {
-                fullTypeName = makePrefix(identType->moduleName) + identType->name;
-            } else if (!moduleName_.empty()) {
-                fullTypeName = makePrefix(moduleName_) + identType->name;
-            }
-            for (const auto& st : structTypes_) {
-                if (st.first == fullTypeName) {
-                    emitIndent();
-                    os_ << node.name << "._desc = &" << fullTypeName << "_desc;\n";
-                    break;
-                }
-            }
-        }
     }
+    emitDescriptorInitForType(*node.type, node.name);
 }
 
 void CCodegenVisitor::visit(ProcedureDeclaration& node)
@@ -1058,6 +1213,7 @@ void CCodegenVisitor::visit(Module& node)
 {
     moduleName_ = node.name;
     std::string guardName = generateGuardName(node.name);
+    localStructDecls_.clear();
 
     // Collect global variable and constant names for prefix handling
     globalVariables_.clear();
@@ -1114,6 +1270,14 @@ void CCodegenVisitor::visit(Module& node)
 
     // Local procedures
     collectProcParams(makePrefix(moduleName_), node.procedures, true);
+
+    if (node.declarations && node.declarations->types) {
+        for (auto& typeDecl : node.declarations->types->types) {
+            if (auto* structType = dynamic_cast<StructType*>(typeDecl->type.get())) {
+                localStructDecls_[makePrefix(moduleName_) + typeDecl->name] = structType;
+            }
+        }
+    }
 
     // Imported modules
     for (auto& import : node.imports) {
@@ -1275,6 +1439,7 @@ void CCodegenVisitor::visit(Module& node)
             os_ << "\n";
         }
 
+        os_ << "void " << makePrefix(moduleName_) << moduleName_ << "(void);\n\n";
         os_ << "#endif /* " << guardName << " */\n";
 
     } else {
@@ -1449,23 +1614,34 @@ void CCodegenVisitor::visit(Module& node)
             }
         }
 
-        if (isMain_) {
-            if (!hasInitProcedure_) {
-                throw std::runtime_error(
-                    "Error: --main flag specified but no 'init' procedure found in module '" +
-                    moduleName_ + "'. The entry point must be 'fn init() -> void'.");
-            }
+        std::string wrapperName = makePrefix(moduleName_) + std::to_string(moduleName_.length()) + moduleName_;
+        for (auto& import : node.imports) {
+            os_ << "extern void " << makePrefix(import->realName) << std::to_string(import->realName.length()) << import->realName << "(void);\n";
+        }
+        os_ << "void " << wrapperName << "(void) {\n";
+        os_ << "    static int _initialized = 0;\n";
+        os_ << "    if (_initialized) return;\n";
+        os_ << "    _initialized = 1;\n";
+        for (auto& import : node.imports) {
+            os_ << "    " << makePrefix(import->realName) << std::to_string(import->realName.length()) << import->realName << "();\n";
+        }
+        if (hasInitProcedure_) {
+            os_ << "    " << makePrefix(moduleName_) << "init();\n";
+        }
+        os_ << "}\n\n";
 
-            os_ << "/* Entry point */\n";
+        if (isMain_) {
             os_ << "int main(int argc, char** argv) {\n";
             if (node.properties.needsGC) {
                 os_ << "    GC_INIT();\n";
             }
-            os_ << "    " << makePrefix(moduleName_) << "init();\n";
+            if (node.properties.needsArgs) {
+                os_ << "    ob_4Args_SetArgs((int64_t)argc, argv);\n";
+            }
+            os_ << "    " << wrapperName << "();\n";
             os_ << "    return 0;\n";
             os_ << "}\n";
         }
     }
 }
-
 } // namespace obould

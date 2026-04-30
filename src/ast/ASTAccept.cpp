@@ -11,6 +11,7 @@ void IntegerLiteral::accept(ASTVisitor& v) { v.visit(*this); }
 void RealLiteral::accept(ASTVisitor& v) { v.visit(*this); }
 void BooleanLiteral::accept(ASTVisitor& v) { v.visit(*this); }
 void StringLiteral::accept(ASTVisitor& v) { v.visit(*this); }
+void SetLiteral::accept(ASTVisitor& v) { v.visit(*this); }
 void Nil::accept(ASTVisitor& v) { v.visit(*this); }
 void BinaryExpression::accept(ASTVisitor& v) { v.visit(*this); }
 void UnaryExpression::accept(ASTVisitor& v) { v.visit(*this); }

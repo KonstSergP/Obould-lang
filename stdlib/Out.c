@@ -19,7 +19,7 @@ void Bool(bool b) OB_SYMBOL("3Out_Bool");
 void Real(double x, int64_t digits) OB_SYMBOL("3Out_Real");
 void Ln(void) OB_SYMBOL("3Out_Ln");
 void Space(void) OB_SYMBOL("3Out_Space");
-void Out(void) OB_SYMBOL("Out");
+void Out(void) OB_SYMBOL("3Out_3Out");
 
 
 void String(const char* s, int64_t s_len)

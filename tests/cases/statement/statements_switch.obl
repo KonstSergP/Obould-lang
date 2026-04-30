@@ -1,0 +1,327 @@
+module StatementsSwitch
+
+import Out;
+
+const {
+    Val1 = 10;
+    Val2 = 20;
+}
+
+type {
+    export Entity: struct {
+        id: i64;
+    };
+
+    Player: struct (Entity) {
+        score: i64;
+    };
+
+    Item: struct (Entity) {
+        value: i64;
+    };
+
+    Enemy: struct (Entity) {
+        damage: i64;
+    };
+
+    PEntity: *Entity;
+    PPlayer: *Player;
+    PItem: *Item;
+    PEnemy: *Enemy;
+}
+
+fn createPlayer() -> PPlayer
+var {
+    p: PPlayer;
+}
+{
+    new(p);
+    p.id = 1;
+    p.score = 100;
+    return p;
+}
+
+fn createItem() -> PItem
+var {
+    p: PItem;
+}
+{
+    new(p);
+    p.id = 2;
+    p.value = 50;
+    return p;
+}
+
+fn init() -> void
+var {
+    x: i64;
+    result: i64;
+    b: byte;
+    ch: char;
+    p: PEntity;
+}
+{
+    x = 1;
+    result = 0;
+    switch x {
+        case 0: result = 100;
+        case 1: result = 200;
+        case 2: result = 300;
+        case 3: result = 400;
+    }
+    assert(result == 200, "switch i64: case 1 = 200");
+    
+    x = 0;
+    result = 0;
+    switch x {
+        case 0: result = 100;
+        case 1: result = 200;
+    }
+    assert(result == 100, "switch i64: case 0 = 100");
+
+    x = 99;
+    result = 500;
+    switch x {
+        case 0: result = 100;
+        case 1: result = 200;
+    }
+    assert(result == 500, "switch i64: no match keeps value");
+
+    b = 1;
+    result = 0;
+    switch b {
+        case 0: result = 10;
+        case 1: result = 20;
+        case 2: result = 30;
+    }
+    assert(result == 20, "switch byte: case 1 = 20");
+    
+    b = 255;
+    result = 0;
+    switch b {
+        case 255: result = 255;
+        case 0: result = 0;
+    }
+    assert(result == 255, "switch byte: case 255 = 255");
+    
+    b = 100;
+    result = 0;
+    switch b {
+        case 0: result = 10;
+        case 1: result = 20;
+    }
+    assert(result == 0, "switch byte: no match");
+
+    ch = "A";
+    result = 0;
+    switch ch {
+        case "A": result = 65;
+        case "B": result = 66;
+        case "C": result = 67;
+    }
+    assert(result == 65, "switch char: case A = 65");
+    
+    ch = "Z";
+    result = 0;
+    switch ch {
+        case "A": result = 65;
+        case "Z": result = 90;
+    }
+    assert(result == 90, "switch char: case Z = 90");
+    
+    ch = "a";
+    result = 0;
+    switch ch {
+        case "A": result = 65;
+        case "B": result = 66;
+    }
+    assert(result == 0, "switch char: no match");
+
+    p = createPlayer();
+    result = 0;
+    switch p {
+        case Player: result = 1;
+        case Item: result = 2;
+        case Enemy: result = 3;
+    }
+    assert(result == 1, "switch struct: Player = 1");
+    
+    p = createItem();
+    result = 0;
+    switch p {
+        case Player: result = 1;
+        case Item: result = 2;
+        case Enemy: result = 3;
+    }
+    assert(result == 2, "switch struct: Item = 2");
+
+    x = 5;
+    result = 0;
+    switch x {
+        case 0..3: result = 100;
+        case 4..7: result = 200;
+        case 8..10: result = 300;
+    }
+    assert(result == 200, "switch range: 5 in 4..7 = 200");
+    
+    x = 0;
+    result = 0;
+    switch x {
+        case 0..3: result = 100;
+        case 4..7: result = 200;
+    }
+    assert(result == 100, "switch range: 0 in 0..3 = 100");
+    
+    x = 10;
+    result = 0;
+    switch x {
+        case 0..3: result = 100;
+        case 4..7: result = 200;
+    }
+    assert(result == 0, "switch range: 10 not in ranges");
+
+    x = 2;
+    result = 0;
+    switch x {
+        case 5..1: result = 500;
+    }
+    assert(result == 500, "switch range auto-swap: 5..1 means 1..5");
+
+    ch = "M";
+    result = 0;
+    switch ch {
+        case "A".."Z": result = 1;
+        case "a".."z": result = 2;
+        case "0".."9": result = 3;
+    }
+    assert(result == 1, "switch char range: M in A..Z");
+    
+    ch = "m";
+    result = 0;
+    switch ch {
+        case "A".."Z": result = 1;
+        case "a".."z": result = 2;
+    }
+    assert(result == 2, "switch char range: m in a..z");
+
+    b = 50;
+    result = 0;
+    switch b {
+        case 0..49: result = 10;
+        case 50..99: result = 20;
+        case 100..200: result = 30;
+    }
+    assert(result == 20, "switch byte range: 50 in 50..99");
+
+    x = 0;
+    result = 0;
+    switch x {
+        case 0, 1, 2: result = 100;
+        case 3, 4, 5: result = 200;
+    }
+    assert(result == 100, "switch multi-label: 0,1,2 = 100");
+    
+    x = 2;
+    result = 0;
+    switch x {
+        case 0, 1, 2: result = 100;
+        case 3, 4, 5: result = 200;
+    }
+    assert(result == 100, "switch multi-label: 2 in 0,1,2");
+    
+    x = 4;
+    result = 0;
+    switch x {
+        case 0, 1, 2: result = 100;
+        case 3, 4, 5: result = 200;
+    }
+    assert(result == 200, "switch multi-label: 4 in 3,4,5");
+
+    x = 15;
+    result = 0;
+    switch x {
+        case 0, 1, 2: result = 100;
+        case 10..20, 30: result = 200;
+        case 25, 26, 27..29: result = 300;
+    }
+    assert(result == 200, "switch multi-label + range: 15 in 10..20");
+    
+    x = 27;
+    result = 0;
+    switch x {
+        case 0, 1, 2: result = 100;
+        case 10..20, 30: result = 200;
+        case 25, 26, 27..29: result = 300;
+    }
+    assert(result == 300, "switch multi-label + range: 27 in 27..29");
+
+    ch = "B";
+    result = 0;
+    switch ch {
+        case "A", "B", "C": result = 10;
+        case "X", "Y", "Z": result = 20;
+    }
+    assert(result == 10, "switch char multi-label: B in A,B,C");
+
+    result = 0;
+    switch Val1 {
+        case Val1: result = 1000;
+        case Val2: result = 2000;
+    }
+    assert(result == 1000, "switch const: Val1 = 1000");
+
+    x = 7;
+    result = 0;
+    switch x {
+        case 1..5: result = 100;
+        case 6..10: result = 200;
+    }
+    assert(result == 200, "switch expr: 7 in 6..10");
+
+    x = 5;
+    result = 0;
+    switch x {
+        case 5..10: result = 100;
+        case 5, 6, 7: result = 200;
+    }
+    assert(result == 100, "switch order: first match wins, 5 in 5..10");
+
+    x = 1;
+    result = 0;
+    switch x {
+        case 0: result = 0;
+        case 1:
+            result = 300;
+            switch 2 {
+                case 1: result = 0;
+                case 2: result = 400;
+            }
+        case 2: result = 0;
+    }
+    assert(result == 400, "switch nested: outer 1, inner 2 = 400");
+
+    b = 128;
+    result = 0;
+    switch b {
+        case 0..63: result = 10;
+        case 64..127: result = 20;
+        case 128..191: result = 30;
+        case 192..255: result = 40;
+    }
+    assert(result == 30, "switch byte ranges: 128 in 128..191");
+
+    x = 50;
+    result = 0;
+    switch x {
+        case 0: result = 1;
+        case 1: result = 2;
+        case 2: result = 3;
+        case 3: result = 4;
+        case 4: result = 5;
+        case 5..10: result = 6;
+        case 11..20: result = 7;
+        case 21..50: result = 8;
+        case 51..100: result = 9;
+    }
+    assert(result == 8, "switch large: 50 in 21..50");
+}

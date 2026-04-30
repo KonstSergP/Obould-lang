@@ -1,0 +1,89 @@
+module OpsMultiplication
+
+const {
+    IntA = 5;
+    IntB = 20;
+
+    RealA = 1.5;
+    RealB = -2.0;
+
+    SetA = {0, 3..7, 20..30, 63};
+    SetB = {0, 1, 5..9, 15..25, 56..59};
+}
+
+type {
+    IntArr: i64[10];
+    RealArr: f64[10];
+    ByteArr: byte[10];
+    SetArr: set[10];
+}
+
+var {
+    GInt: i64;
+    GReal: f64;
+    GByte: byte;
+    GSet: set;
+    iArr: IntArr;
+    fArr: RealArr;
+    bArr: ByteArr;
+    sArr: SetArr;
+}
+
+fn init() -> void
+var {
+    LIntA, LIntB: i64;
+    LRealA, LRealB: f64;
+    LByteA, LByteB: byte;
+    LSetA, LSetB: set;
+}
+{
+    assert(IntA * IntB == 100);
+    assert(IntA * 2 * IntB == 200);
+    assert(50 * 30 == 1500);
+    assert(-10 * 10 == -100);
+
+    iArr[0] = 5; iArr[1] = 12;
+    LIntA = 7; LIntB = 8;
+    GInt = 3;
+    bArr[0] = 5; bArr[1] = 4;
+    LByteA = 3; LByteB = 7;
+    GByte = 2;
+
+    assert(iArr[0] * iArr[1] == 60);
+    assert(LIntA * LIntB == 56);
+    assert(GInt * LIntA * iArr[0] == 105);
+
+    assert(bArr[0] * bArr[1] == 20);
+    assert(LByteA * LByteB == 21);
+    assert(GByte * bArr[0] * LByteA == 30);
+
+    assert(iArr[0] * bArr[1] == 20);
+    assert(GInt * GByte == 6);
+
+    fArr[0] = 3.5; fArr[1] = 4.0;
+    LRealA = 0.5; LRealB = 8.0;
+    GReal = -2.5;
+
+    assert(RealA * RealB == -3.0);
+    assert(RealA * 2.0 * RealB == -6.0);
+    assert(2.5 * 4.0 == 10.0);
+
+    assert(fArr[0] * fArr[1] == 14.0);
+    assert(LRealA * LRealB == 4.0);
+    assert(GReal * LRealB == -20.0);
+
+    sArr[0] = {5, 6, 7}; sArr[1] = {5, 6, 8};
+    LSetA = {3, 4}; LSetB = {4, 5};
+    GSet = {1, 2, 6, 7, 10..12};
+
+    assert(1 in {0, 1, 2} * {1, 3});
+    assert(!(0 in {0, 1, 2} * {1, 3}));
+
+    assert(0 in SetA * SetB);
+    assert(6 in SetA * SetB);
+    assert(21 in SetA * SetB);
+    assert(!(3 in SetA * SetB));
+
+    assert(6 in sArr[0] * sArr[1]);
+    assert(4 in LSetA * LSetB);
+}

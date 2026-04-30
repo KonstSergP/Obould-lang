@@ -1,0 +1,77 @@
+module BuiltinOrd
+
+const {
+    CharConst = "A";
+}
+
+fn getChar() -> char {
+    return "Z";
+}
+
+fn getBool() -> bool {
+    return true;
+}
+
+fn init() -> void
+var {
+    code: i64;
+    ch: char;
+    flag: bool;
+}
+{
+    code = ord("A");
+    assert(code == 65, "ord('A') == 65");
+
+    code = ord("a");
+    assert(code == 97, "ord('a') == 97");
+
+    code = ord("0");
+    assert(code == 48, "ord('0') == 48");
+
+    code = ord(" ");
+    assert(code == 32, "ord(' ') == 32");
+
+    code = ord("Z");
+    assert(code == 90, "ord('Z') == 90");
+
+    code = ord(CharConst);
+    assert(code == 65, "ord(CharConst) == 65");
+
+    code = ord(getChar());
+    assert(code == 90, "ord(getChar()) == 90");
+
+    ch = "B";
+    code = ord(ch);
+    assert(code == 66, "ord(ch) where ch='B'");
+
+    ch = "z";
+    code = ord(ch);
+    assert(code == 122, "ord(ch) where ch='z'");
+
+    code = ord(true);
+    assert(code == 1, "ord(true) == 1");
+
+    code = ord(false);
+    assert(code == 0, "ord(false) == 0");
+
+    code = ord(getBool());
+    assert(code == 1, "ord(getBool()) == 1");
+
+    flag = true;
+    code = ord(flag);
+    assert(code == 1, "ord(flag) where flag=true");
+
+    flag = false;
+    code = ord(flag);
+    assert(code == 0, "ord(flag) where flag=false");
+
+    ch = "A";
+    code = ord(ch) + 1;
+    assert(code == 66, "ord('A') + 1 == 66");
+
+    code = ord("a") - ord("A");
+    assert(code == 32, "ord('a') - ord('A') == 32");
+
+    code = ord(true) + ord(true);
+    assert(code == 2, "ord(true) + ord(true) == 2");
+}

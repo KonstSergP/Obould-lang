@@ -1,0 +1,44 @@
+module MonteCarloPi
+
+import Out, Random;
+
+fn export CalculatePi(iterations: i64) -> f64
+var {
+    i, insideCircle: i64;
+    x, y, pi: f64;
+}
+{
+    insideCircle = 0;
+    Random.Seed(2006);
+
+    for (i = 0, iterations) {
+        x = Random.NextReal();
+        y = Random.NextReal();
+
+        if (x * x) + (y * y) <= 1.0 {
+            insideCircle = insideCircle + 1;
+        }
+    }
+
+    pi = 4.0 * float(insideCircle) / float(iterations);
+
+    return pi;
+}
+
+fn init() -> void
+var {
+    piResult: f64;
+}
+{
+    Out.String("--- Monte Carlo Pi Approximation ---");
+    Out.Ln();
+
+    Out.String("Calculating with 100000000 iterations...");
+    Out.Ln();
+
+    piResult = CalculatePi(100000000);
+
+    Out.String("Result PI = ");
+    Out.Real(piResult, 5);
+    Out.Ln();
+}

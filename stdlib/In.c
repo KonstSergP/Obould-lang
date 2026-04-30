@@ -17,7 +17,7 @@ char Char(void) OB_SYMBOL("2In_Char");
 uint8_t Byte(void) OB_SYMBOL("2In_Byte");
 int64_t String(char* s, int64_t s_len) OB_SYMBOL("2In_String");
 int64_t Line(char* s, int64_t s_len) OB_SYMBOL("2In_Line");
-void In(void) OB_SYMBOL("In");
+void In(void) OB_SYMBOL("2In_2In");
 
 
 bool Done OB_SYMBOL("2In_Done") = true;

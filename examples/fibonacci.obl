@@ -1,0 +1,84 @@
+module Fibonacci
+
+import In, Out;
+
+
+type {
+    Mat2: struct {
+        m00, m01: i64;
+        m10, m11: i64;
+    };
+}
+
+fn MatrixMult(A: Mat2, B: Mat2, C: &Mat2) -> void
+{
+    C.m00 = A.m00 * B.m00 + A.m01 * B.m10;
+    C.m01 = A.m00 * B.m01 + A.m01 * B.m11;
+    C.m10 = A.m10 * B.m00 + A.m11 * B.m10;
+    C.m11 = A.m10 * B.m01 + A.m11 * B.m11;
+}
+
+fn MatrixPower(M: Mat2, p: i64, Res: &Mat2) -> void
+var {
+    baseMat: Mat2;
+    temp: Mat2;
+    pw: i64;
+}
+{
+    Res.m00 = 1; Res.m01 = 0;
+    Res.m10 = 0; Res.m11 = 1;
+    baseMat = M;
+    pw = p;
+
+    while pw > 0 {
+        if (pw mod 2) != 0 {
+            MatrixMult(Res, baseMat, temp);
+            Res = temp;
+        }
+
+        MatrixMult(baseMat, baseMat, temp);
+        baseMat = temp;
+
+        pw = pw div 2;
+    }
+}
+
+fn export Run() -> void
+var {
+    n: i64;
+    M, Res: Mat2;
+    isExit: bool;
+}
+{
+    isExit = false;
+    Out.String("Fibonacci Calculator"); Out.Ln();
+    Out.String("Max supported N is 92 (due to 64-bit int limits)."); Out.Ln();
+    Out.Ln();
+
+    while !isExit {
+        Out.String("Enter N (negative to exit): ");
+        n = In.Int();
+
+        if n < 0 {
+            Out.String("Exiting..."); Out.Ln();
+            isExit = true;
+        } else {
+            M.m00 = 1; M.m01 = 1;
+            M.m10 = 1; M.m11 = 0;
+
+            MatrixPower(M, n, Res);
+            // [ F(N+1)  F(N)   ]
+            // [ F(N)    F(N-1) ]
+
+            Out.String("  F("); Out.Int(n - 1); Out.String(") = "); Out.Int(Res.m11); Out.Ln();
+            Out.String("> F("); Out.Int(n);     Out.String(") = "); Out.Int(Res.m01); Out.Ln();
+            Out.String("  F("); Out.Int(n + 1); Out.String(") = "); Out.Int(Res.m00); Out.Ln();
+            Out.Ln();
+        }
+    }
+}
+
+fn init() -> void
+{
+    Run();
+}

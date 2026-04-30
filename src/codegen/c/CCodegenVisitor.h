@@ -1,5 +1,4 @@
 #pragma once
-#include <iostream>
 #include <sstream>
 #include <string>
 #include <set>
@@ -26,6 +25,7 @@ public:
     void visit(RealLiteral& node) override;
     void visit(BooleanLiteral& node) override;
     void visit(StringLiteral& node) override;
+    void visit(SetLiteral& node) override;
     void visit(Nil& node) override;
     void visit(BinaryExpression& node) override;
     void visit(UnaryExpression& node) override;
@@ -76,17 +76,13 @@ private:
     std::string indent_;
     std::string moduleName_;
 
-    // For collecting type string (used when we need to build type before name)
     std::stringstream typeBuffer_;
     bool collectingType_ = false;
 
-    // For array dimensions
     std::stringstream arrayDims_;
 
-    // Current typedef name (for struct/procedure type declarations)
     std::string currentTypedefName_;
 
-    // Reference parameter tracking
     std::set<std::string> referenceParams_;  // Names of reference parameters in current function
     // Open array parameter tracking: param name -> list of hidden len param names per dimension
     // "m" -> ["m_len", "m_len2", "m_len3"] for m: i64[][][]
@@ -99,22 +95,17 @@ private:
     // RTTI: struct name -> parent struct name (empty if no parent)
     std::vector<std::pair<std::string, std::string>> structTypes_;
 
-    // Struct field tracking for inheritance flattening
-    // Maps struct full name -> list of (field name, field type as string)
-    std::map<std::string, std::vector<std::pair<std::string, std::string>>> structFields_;
+    std::map<std::string, std::vector<std::string>> structFields_;
+    std::map<std::string, StructType*> localStructDecls_;
 
     // Global variable and constant tracking (names that need module prefix)
     std::set<std::string> globalVariables_;
     std::set<std::string> globalConstants_;
 
-    // When true, reference params are emitted as raw pointers (no dereference).
-    // Used for RTTI: `is` operator and type guards need the pointer, not the value.
     bool suppressDeref_ = false;
 
-    // Flag indicating this is the main module (should generate main() calling init())
     bool isMain_ = false;
 
-    // Track if init() procedure exists
     bool hasInitProcedure_ = false;
 
 public:
@@ -139,6 +130,12 @@ private:
 
     // Helper for expressions - returns the expression as string
     std::string getExpressionString(Expression& expr);
+    std::string resolveStructTypeName(const IdentifierType& type) const;
+    bool isStructType(const IdentifierType& type) const;
+    bool typeNeedsDescriptorInit(Type& type) const;
+    void emitDescriptorInitForStructMembers(const std::string& structTypeName, const std::string& targetExpr, int& loopCounter, std::set<std::string>& activeStructs);
+    void emitDescriptorInitForType(Type& type, const std::string& targetExpr, int& loopCounter, std::set<std::string>& activeStructs);
+    void emitDescriptorInitForType(Type& type, const std::string& targetExpr);
 
     // Helper to generate mangled prefix: "ob_{len}{moduleName}_"
     static std::string makePrefix(const std::string& moduleName);

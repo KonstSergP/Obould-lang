@@ -29,6 +29,16 @@ static fs::path getStdlibDir()
     return stdlib_dir;
 }
 
+static fs::path getStdlibArtifact(const std::string& lib, const std::string& ext)
+{
+    auto sourcePath = getStdlibDir() / (lib + ext);
+    if (fs::exists(sourcePath)) return sourcePath;
+
+    auto buildPath = fs::path(OBOULD_BUILD_DIR) / "system" / (lib + ext);
+    REQUIRE(fs::exists(buildPath));
+    return buildPath;
+}
+
 static fs::path getGcIncludeDir()
 {
     if (!gc_include_dir.empty()) return gc_include_dir;
@@ -64,11 +74,11 @@ static std::string transpileCompileRun(const std::string& moduleName,
         fs::create_directories(symDir);
     }
     for (auto& lib : stdlibs) {
-        fs::copy_file(getStdlibDir() / (lib + ".h"), tmpDir / (lib + ".h"),
+        fs::copy_file(getStdlibArtifact(lib, ".h"), tmpDir / (lib + ".h"),
                        fs::copy_options::overwrite_existing);
-        fs::copy_file(getStdlibDir() / (lib + ".c"), tmpDir / (lib + ".c"),
+        fs::copy_file(getStdlibArtifact(lib, ".c"), tmpDir / (lib + ".c"),
                        fs::copy_options::overwrite_existing);
-        fs::copy_file(getStdlibDir() / (lib + ".json"), symDir / (lib + ".json"),
+        fs::copy_file(getStdlibArtifact(lib, ".json"), symDir / (lib + ".json"),
                        fs::copy_options::overwrite_existing);
     }
 
@@ -92,6 +102,7 @@ static std::string transpileCompileRun(const std::string& moduleName,
         compileCmd += " " + (tmpDir / (lib + ".c")).string();
     }
     compileCmd += " " + (getGcLibDir() / "libgc.a").string();
+    compileCmd += " -lm";
     compileCmd += " 2>&1";
     REQUIRE(std::system(compileCmd.c_str()) == 0);
 
@@ -174,6 +185,7 @@ static std::string multiModuleRun(const std::vector<ModuleSource>& libs,
         compileCmd += " " + cf.string();
     }
     compileCmd += " " + (getGcLibDir() / "libgc.a").string();
+    compileCmd += " -lm";
     compileCmd += " 2>&1";
     REQUIRE(std::system(compileCmd.c_str()) == 0);
 
@@ -189,6 +201,10 @@ static std::string multiModuleRun(const std::vector<ModuleSource>& libs,
     return ss.str();
 }
 
+// ============================================================================
+// Basic tests
+// ============================================================================
+
 TEST_CASE("Hello world — WriteInt and WriteLn", "[ccodegen][basic]")
 {
     std::string src = R"(module Hello
@@ -200,6 +216,10 @@ fn init() -> void {
 )";
     REQUIRE(transpileCompileRun("Hello", src, {"Out"}) == "42\n");
 }
+
+// ============================================================================
+// Expression tests
+// ============================================================================
 
 TEST_CASE("Arithmetic expressions", "[ccodegen][expr]")
 {
@@ -235,6 +255,10 @@ var x: i64;
 )";
     REQUIRE(transpileCompileRun("Unary", src, {"Out"}) == "-5\n5\n");
 }
+
+// ============================================================================
+// Variable and constant tests
+// ============================================================================
 
 TEST_CASE("Local variables and assignment", "[ccodegen][var]")
 {
@@ -286,6 +310,10 @@ fn init() -> void {
 )";
     REQUIRE(transpileCompileRun("Globals", src, {"Out"}) == "99\n");
 }
+
+// ============================================================================
+// Control flow tests
+// ============================================================================
 
 TEST_CASE("If-else", "[ccodegen][control]")
 {
@@ -427,6 +455,10 @@ var x: i64;
     REQUIRE(transpileCompileRun("SwitchRange", src, {"Out"}) == "2\n");
 }
 
+// ============================================================================
+// Procedure and function tests
+// ============================================================================
+
 TEST_CASE("Function call and return value", "[ccodegen][proc]")
 {
     std::string src = R"(module FuncCall
@@ -509,6 +541,10 @@ fn init() -> void {
     REQUIRE(transpileCompileRun("Fib", src, {"Out"}) == "55\n");
 }
 
+// ============================================================================
+// Reference parameter tests
+// ============================================================================
+
 TEST_CASE("Reference parameters", "[ccodegen][ref]")
 {
     std::string src = R"(module RefParam
@@ -560,6 +596,10 @@ var n: i64;
 )";
     REQUIRE(transpileCompileRun("RefPass", src, {"Out"}) == "2\n");
 }
+
+// ============================================================================
+// Array tests
+// ============================================================================
 
 TEST_CASE("Array — basic indexing", "[ccodegen][array]")
 {
@@ -805,6 +845,10 @@ var {
     REQUIRE(transpileCompileRun("WhileElif", src, {"Out"}) == "3\n3\n");
 }
 
+// ============================================================================
+// Integration tests
+// ============================================================================
+
 TEST_CASE("Bubble sort with arrays and refs", "[ccodegen][integration]")
 {
     std::string src = R"(module BubbleSort
@@ -899,6 +943,10 @@ var {
     REQUIRE(transpileCompileRun("ForAfter", src, {"Out"}) == "68\n13\n");
 }
 
+// ============================================================================
+// Multi-module tests
+// ============================================================================
+
 TEST_CASE("Multi-module — import custom library", "[ccodegen][multimodule]")
 {
     ModuleSource mathLib = {"MathLib", R"(module MathLib
@@ -982,7 +1030,7 @@ fn init() -> void {
 
 TEST_CASE("Multi-module — two libraries", "[ccodegen][multimodule]")
 {
-    ModuleSource mathLib = {"Math", R"(module Math
+    ModuleSource mathLib = {"MyMath", R"(module MyMath
 
 fn export Double(x: i64) -> i64 {
     return x + x;
@@ -1008,14 +1056,14 @@ fn init() -> void {
 
     ModuleSource main = {"App", R"(module App
 
-import Math, Fmt, Out;
+import MyMath, Fmt, Out;
 
 fn init() -> void
 var x: i64;
 {
-    x = Math.Double(21);
+    x = MyMath.Double(21);
     Fmt.PrintLabeled(0, x);
-    x = Math.Double(x);
+    x = MyMath.Double(x);
     Fmt.PrintLabeled(1, x);
 }
 )"};
@@ -1252,6 +1300,115 @@ var {
     REQUIRE(transpileCompileRun("InheritedFields", src, {"Out"}) == "1204\n60\n");
 }
 
+TEST_CASE("RTTI — descriptors initialized in arrays and nested structs", "[ccodegen][rtti][array]")
+{
+    std::string src = R"(module DescriptorArrays
+import Out;
+
+type {
+    Base: struct {
+        value: i64;
+    };
+    Derived: struct (Base) {
+        extra: i64;
+    };
+    Other: struct (Base) {
+        left, right: i64;
+    };
+    Wrapper: struct (Base) {
+        item: Base;
+        width: i64;
+    };
+    ArrayWrapper: struct (Wrapper) {
+        items: Base[4];
+        count: i64;
+    };
+
+    DeepWrapper: struct (ArrayWrapper) {
+        index: i64;
+    };
+    DerivedBox: struct {
+        single: Derived;
+        many: Derived[2];
+    };
+}
+
+fn Identify(value: &Base) -> i64
+var result: i64;
+{
+    result = 0;
+    if value is Other {
+        result = 2;
+    }
+    if value is Derived {
+        result = 1;
+    }
+    return result;
+}
+
+fn init() -> void
+var {
+    derived: Derived;
+    other: Other;
+    base: Base;
+    wrapper: Wrapper;
+    arrayWrapper: ArrayWrapper;
+    deepWrapper: DeepWrapper;
+    bases: Base[3];
+    derivedItems: Derived[2];
+    box: DerivedBox;
+}
+{
+    derived.value = 0;
+    derived.extra = 5;
+    Out.Int(Identify(derived));
+    Out.Ln();
+    other.value = 0;
+    other.left = 3;
+    other.right = 4;
+    Out.Int(Identify(other));
+    Out.Ln();
+    base.value = 0;
+    Out.Int(Identify(base));
+    Out.Ln();
+
+    Out.Int(Identify(bases[0]));
+    Out.Ln();
+    Out.Int(Identify(derivedItems[0]));
+    Out.Ln();
+    Out.Int(Identify(wrapper.item));
+    Out.Ln();
+    Out.Int(Identify(arrayWrapper.items[0]));
+    Out.Ln();
+    Out.Int(Identify(deepWrapper.items[0]));
+    Out.Ln();
+    Out.Int(Identify(box.single));
+    Out.Ln();
+    Out.Int(Identify(box.many[1]));
+    Out.Ln();
+
+    wrapper.item = base;
+    arrayWrapper.items[1] = base;
+    bases[2] = base;
+
+    Out.Int(Identify(bases[1]));
+    Out.Ln();
+    Out.Int(Identify(bases[2]));
+    Out.Ln();
+    Out.Int(Identify(arrayWrapper.items[1]));
+    Out.Ln();
+    Out.Int(Identify(deepWrapper.items[2]));
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("DescriptorArrays", src, {"Out"}) ==
+        "1\n2\n0\n0\n1\n0\n0\n0\n1\n1\n0\n0\n0\n0\n");
+}
+
+// ============================================================================
+// Output tests
+// ============================================================================
+
 TEST_CASE("Output string type support", "[ccodegen][output]")
 {
     std::string src = R"(module OutputString
@@ -1268,6 +1425,10 @@ var {
 )";
     REQUIRE(transpileCompileRun("OutputString", src, {"Out"}) == "Hello, World!\n");
 }
+
+// ============================================================================
+// Open array tests
+// ============================================================================
 
 TEST_CASE("Open array — sum with len", "[ccodegen][openarray]")
 {
@@ -1719,6 +1880,10 @@ var {
     REQUIRE(multiModuleRun({arrLib}, main) == "2\n4\n6\n8\n10\n30\n");
 }
 
+// ============================================================================
+// Builtin function tests
+// ============================================================================
+
 TEST_CASE("Builtin len — fixed array", "[ccodegen][builtin][len]")
 {
     std::string src = R"(module LenFixed
@@ -1974,6 +2139,91 @@ var {
     REQUIRE(transpileCompileRun("AssertMsg", src, {"Out"}) == "10\n");
 }
 
+TEST_CASE("Builtin int — float to integer conversion", "[ccodegen][builtin][int]")
+{
+    std::string src = R"(module BuiltinInt
+import Out;
+fn init() -> void
+var {
+    a: i64;
+    b: f64;
+}
+{
+    b = 3.7;
+    a = int(b);
+    Out.Int(a);
+    Out.Ln();
+    Out.Int(int(-2.9));
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("BuiltinInt", src, {"Out"}) == "3\n-2\n");
+}
+
+TEST_CASE("Builtin float — integer to float conversion", "[ccodegen][builtin][float]")
+{
+    std::string src = R"(module BuiltinFloat
+import Out;
+fn init() -> void
+var {
+    x: i64;
+    y: f64;
+}
+{
+    x = 42;
+    y = float(x);
+    Out.Real(y, 1);
+    Out.Ln();
+    Out.Real(float(5) / float(2), 1);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("BuiltinFloat", src, {"Out"}) == "42.0\n2.5\n");
+}
+
+TEST_CASE("Builtin ord — bool char and set to integer", "[ccodegen][builtin][ord]")
+{
+    std::string src = R"(module BuiltinOrd
+import Out;
+fn init() -> void
+var {
+    s: set;
+}
+{
+    s = {0, 2, 5};
+    Out.Int(ord(true));
+    Out.Ln();
+    Out.Int(ord("A"));
+    Out.Ln();
+    Out.Int(ord(s));
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("BuiltinOrd", src, {"Out"}) == "1\n65\n37\n");
+}
+
+TEST_CASE("Builtin chr — integer to char conversion", "[ccodegen][builtin][chr]")
+{
+    std::string src = R"(module BuiltinChr
+import Out;
+fn init() -> void
+var c: char;
+{
+    c = chr(65);
+    Out.Char(c);
+    Out.Ln();
+    c = chr(97);
+    Out.Char(c);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("BuiltinChr", src, {"Out"}) == "A\na\n");
+}
+
+// ============================================================================
+// Forward declaration tests
+// ============================================================================
+
 TEST_CASE("Forward decl — type alias before struct definition", "[ccodegen][fwddecl]")
 {
     std::string src = R"(module FwdAlias
@@ -2051,6 +2301,10 @@ var {
 )";
     REQUIRE(transpileCompileRun("FwdInherit", src, {"Out"}) == "4\n1\n");
 }
+
+// ============================================================================
+// Linked list tests
+// ============================================================================
 
 TEST_CASE("Linked list — build and traverse", "[ccodegen][linkedlist]")
 {
@@ -2150,6 +2404,10 @@ var {
 )";
     REQUIRE(transpileCompileRun("LListOps", src, {"Out"}) == "4\n1\n");
 }
+
+// ============================================================================
+// Function type tests
+// ============================================================================
 
 TEST_CASE("Function type — basic call through variable", "[ccodegen][functype]")
 {
@@ -2353,6 +2611,10 @@ var {
     REQUIRE(transpileCompileRun("FnArray", src, {"Out"}) == "-5\n10\n25\n");
 }
 
+// ============================================================================
+// Random module tests
+// ============================================================================
+
 TEST_CASE("Random — Seed and NextInt deterministic", "[ccodegen][stdlib][random]")
 {
     std::string src = R"(module RndTest
@@ -2362,7 +2624,7 @@ var i: i64;
 {
     Random.Seed(42);
     for (i = 0, 4, 1) {
-        Out.Int(Random.NextInt(100));
+        Out.Int(Random.IntN(100));
         Out.Ln();
     }
 }
@@ -2379,7 +2641,7 @@ var i: i64;
 {
     Random.Seed(42);
     for (i = 0, 3, 1) {
-        if Random.NextBool() {
+        if Random.Bool() {
             Out.Int(1);
         } else {
             Out.Int(0);
@@ -2402,9 +2664,9 @@ var {
 }
 {
     Random.Seed(123);
-    a = Random.NextInt(1000);
+    a = Random.IntN(1000);
     Random.Seed(123);
-    b = Random.NextInt(1000);
+    b = Random.IntN(1000);
     if a == b {
         Out.Int(1);
     } else {
@@ -2415,6 +2677,87 @@ var {
 )";
     REQUIRE(transpileCompileRun("RndRepro", src, {"Out", "Random"}) == "1\n");
 }
+
+// ============================================================================
+// Strings module tests
+// ============================================================================
+
+TEST_CASE("Strings — length prefix suffix and equality", "[ccodegen][stdlib][strings]")
+{
+    std::string src = R"(module StringsPredicates
+import Strings, Out;
+fn init() -> void
+{
+    Out.Int(Strings.Length("obould"));
+    Out.Ln();
+    Out.Bool(Strings.StartsWith("obould", "obo"));
+    Out.Ln();
+    Out.Bool(Strings.EndsWith("obould", "uld"));
+    Out.Ln();
+    Out.Bool(Strings.Equals("obould", "oberon"));
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("StringsPredicates", src, {"Out", "Strings"}) == "6\nTrue\nTrue\nFalse\n");
+}
+
+TEST_CASE("Strings — find from offset and missing character", "[ccodegen][stdlib][strings]")
+{
+    std::string src = R"(module StringsFind
+import Strings, Out;
+fn init() -> void
+{
+    Out.Int(Strings.Find("banana", chr(97), 2));
+    Out.Ln();
+    Out.Int(Strings.Find("banana", chr(98), -3));
+    Out.Ln();
+    Out.Int(Strings.Find("banana", chr(122), 0));
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("StringsFind", src, {"Out", "Strings"}) == "3\n0\n-1\n");
+}
+
+// ============================================================================
+// Parse module tests
+// ============================================================================
+
+TEST_CASE("Parse — integers and reals", "[ccodegen][stdlib][parse]")
+{
+    std::string src = R"(module ParseValues
+import Parse, Out;
+fn init() -> void
+var {
+    i: i64;
+    r: f64;
+}
+{
+    if Parse.Int("-42", i) {
+        Out.Int(i);
+    } else {
+        Out.Int(0);
+    }
+    Out.Ln();
+
+    if Parse.Real("3.25", r) {
+        Out.Real(r, 2);
+    } else {
+        Out.Real(0.0, 2);
+    }
+    Out.Ln();
+
+    Out.Bool(Parse.Int("12x", i));
+    Out.Ln();
+    Out.Bool(Parse.Real("abc", r));
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("ParseValues", src, {"Out", "Parse"}) == "-42\n3.25\nFalse\nFalse\n");
+}
+
+// ============================================================================
+// In module tests
+// ============================================================================
 
 TEST_CASE("In — ReadInt from stdin", "[ccodegen][stdlib][in]")
 {
@@ -2472,6 +2815,10 @@ var {
 )";
     REQUIRE(transpileCompileRun("InChar", src, {"Out", "In"}, "ABC") == "ABC\n");
 }
+
+// ============================================================================
+// Files module tests
+// ============================================================================
 
 TEST_CASE("Files — write and read back integers", "[ccodegen][stdlib][files]")
 {
@@ -2564,4 +2911,663 @@ var {
 }
 )";
     REQUIRE(transpileCompileRun("FilesStr", src, {"Out", "Files"}) == "Hello\n");
+}
+
+// ============================================================================
+// Set tests
+// ============================================================================
+
+TEST_CASE("Set — literal and in operator", "[ccodegen][set]")
+{
+    std::string src = R"(module SetIn
+import Out;
+fn init() -> void
+var x: set;
+{
+    x = {0, 3, 5..11};
+    if 7 in x { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+    if 2 in x { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+    if 0 in x { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("SetIn", src, {"Out"}) == "1\n0\n1\n");
+}
+
+TEST_CASE("Set — union (+)", "[ccodegen][set]")
+{
+    std::string src = R"(module SetUnion
+import Out;
+fn init() -> void
+var {
+    a: set;
+    b: set;
+    c: set;
+}
+{
+    a = {1, 2, 3};
+    b = {3, 4, 5};
+    c = a + b;
+    if 1 in c { Out.Int(1); } else { Out.Int(0); }
+    if 4 in c { Out.Int(1); } else { Out.Int(0); }
+    if 6 in c { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("SetUnion", src, {"Out"}) == "110\n");
+}
+
+TEST_CASE("Set — difference (-)", "[ccodegen][set]")
+{
+    std::string src = R"(module SetDiff
+import Out;
+fn init() -> void
+var {
+    a: set;
+    b: set;
+    c: set;
+}
+{
+    a = {1, 2, 3, 4, 5};
+    b = {3, 4};
+    c = a - b;
+    if 1 in c { Out.Int(1); } else { Out.Int(0); }
+    if 3 in c { Out.Int(1); } else { Out.Int(0); }
+    if 5 in c { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("SetDiff", src, {"Out"}) == "101\n");
+}
+
+TEST_CASE("Set — intersection (*)", "[ccodegen][set]")
+{
+    std::string src = R"(module SetInter
+import Out;
+fn init() -> void
+var {
+    a: set;
+    b: set;
+    c: set;
+}
+{
+    a = {1, 2, 3, 4};
+    b = {3, 4, 5, 6};
+    c = a * b;
+    if 2 in c { Out.Int(1); } else { Out.Int(0); }
+    if 3 in c { Out.Int(1); } else { Out.Int(0); }
+    if 5 in c { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("SetInter", src, {"Out"}) == "010\n");
+}
+
+TEST_CASE("Set — symmetric difference (/)", "[ccodegen][set]")
+{
+    std::string src = R"(module SetSymDiff
+import Out;
+fn init() -> void
+var {
+    a: set;
+    b: set;
+    c: set;
+}
+{
+    a = {1, 2, 3};
+    b = {2, 3, 4};
+    c = a / b;
+    if 1 in c { Out.Int(1); } else { Out.Int(0); }
+    if 2 in c { Out.Int(1); } else { Out.Int(0); }
+    if 4 in c { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("SetSymDiff", src, {"Out"}) == "101\n");
+}
+
+TEST_CASE("Set — complement (unary minus)", "[ccodegen][set]")
+{
+    std::string src = R"(module SetCompl
+import Out;
+fn init() -> void
+var {
+    a: set;
+    b: set;
+}
+{
+    a = {0, 1, 2};
+    b = -a;
+    if 0 in b { Out.Int(1); } else { Out.Int(0); }
+    if 3 in b { Out.Int(1); } else { Out.Int(0); }
+    if 63 in b { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("SetCompl", src, {"Out"}) == "011\n");
+}
+
+TEST_CASE("Set — equality and inequality", "[ccodegen][set]")
+{
+    std::string src = R"(module SetEq
+import Out;
+fn init() -> void
+var {
+    a: set;
+    b: set;
+}
+{
+    a = {1, 2, 3};
+    b = {1, 2, 3};
+    if a == b { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+    b = {1, 2};
+    if a != b { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("SetEq", src, {"Out"}) == "1\n1\n");
+}
+
+TEST_CASE("Set — empty set", "[ccodegen][set]")
+{
+    std::string src = R"(module SetEmpty
+import Out;
+fn init() -> void
+var x: set;
+{
+    x = {};
+    if 0 in x { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+    x = x + {5};
+    if 5 in x { Out.Int(1); } else { Out.Int(0); }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("SetEmpty", src, {"Out"}) == "0\n1\n");
+}
+
+TEST_CASE("Set — combined operations", "[ccodegen][set]")
+{
+    std::string src = R"(module SetCombined
+import Out;
+fn init() -> void
+var {
+    evens: set;
+    odds: set;
+    small: set;
+    result: set;
+    i: i64;
+}
+{
+    evens = {0, 2, 4, 6, 8};
+    odds = {1, 3, 5, 7, 9};
+    small = {0..4};
+    result = (evens + odds) * small;
+    for (i = 0, 9, 1) {
+        if i in result {
+            Out.Int(i);
+        }
+    }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("SetCombined", src, {"Out"}) == "01234\n");
+}
+
+TEST_CASE("Set — range expressions with constants", "[ccodegen][set]")
+{
+    std::string src = R"(module SetConst
+import Out;
+const {
+    LO = 3;
+    HI = 7;
+}
+fn init() -> void
+var {
+    x: set;
+    i: i64;
+}
+{
+    x = {LO..HI};
+    for (i = 0, 9, 1) {
+        if i in x {
+            Out.Int(i);
+        }
+    }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("SetConst", src, {"Out"}) == "34567\n");
+}
+
+// ============================================================================
+// Threads module tests
+// ============================================================================
+
+TEST_CASE("Threads — start and join single thread", "[ccodegen][stdlib][threads]")
+{
+    std::string src = R"(module ThrSingle
+import Threads, Out;
+var done: i64;
+fn task() -> void {
+    done = 1;
+}
+fn init() -> void
+var t: Threads.Thread;
+{
+    done = 0;
+    t = Threads.Start(task);
+    Threads.Join(t);
+    Out.Int(done);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("ThrSingle", src, {"Out", "Threads"}) == "1\n");
+}
+
+TEST_CASE("Threads — two threads accumulate into global", "[ccodegen][stdlib][threads]")
+{
+    std::string src = R"(module ThrTwo
+import Threads, Out;
+var counter: i64;
+fn addTen() -> void {
+    counter = counter + 10;
+}
+fn addTwenty() -> void {
+    counter = counter + 20;
+}
+fn init() -> void
+var {
+    t1: Threads.Thread;
+    t2: Threads.Thread;
+}
+{
+    counter = 0;
+    t1 = Threads.Start(addTen);
+    Threads.Join(t1);
+    t2 = Threads.Start(addTwenty);
+    Threads.Join(t2);
+    Out.Int(counter);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("ThrTwo", src, {"Out", "Threads"}) == "30\n");
+}
+
+TEST_CASE("Threads — thread modifies global array", "[ccodegen][stdlib][threads]")
+{
+    std::string src = R"(module ThrArr
+import Threads, Out;
+var arr: i64[3];
+fn fillArr() -> void {
+    arr[0] = 10;
+    arr[1] = 20;
+    arr[2] = 30;
+}
+fn init() -> void
+var {
+    t: Threads.Thread;
+    i: i64;
+}
+{
+    t = Threads.Start(fillArr);
+    Threads.Join(t);
+    for (i = 0, 2, 1) {
+        Out.Int(arr[i]);
+        Out.Ln();
+    }
+}
+)";
+    REQUIRE(transpileCompileRun("ThrArr", src, {"Out", "Threads"}) == "10\n20\n30\n");
+}
+
+// ============================================================================
+// Module init ordering tests
+// ============================================================================
+
+TEST_CASE("Init — single module init called via wrapper", "[ccodegen][init]")
+{
+    std::string src = R"(module InitSingle
+import Out;
+fn init() -> void {
+    Out.Int(1);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("InitSingle", src, {"Out"}) == "1\n");
+}
+
+TEST_CASE("Init — imported module init called before main", "[ccodegen][init][multimodule]")
+{
+    ModuleSource lib = {"InitLib", R"(module InitLib
+import Out;
+fn init() -> void {
+    Out.Int(1);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource main = {"InitOrder", R"(module InitOrder
+import InitLib, Out;
+fn init() -> void {
+    Out.Int(2);
+    Out.Ln();
+}
+)"};
+
+    REQUIRE(multiModuleRun({lib}, main) == "1\n2\n");
+}
+
+TEST_CASE("Init — diamond import, init called once", "[ccodegen][init][multimodule]")
+{
+    ModuleSource shared = {"Shared", R"(module Shared
+import Out;
+fn init() -> void {
+    Out.Int(99);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource libA = {"LibA", R"(module LibA
+import Shared, Out;
+fn init() -> void {
+    Out.Int(10);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource libB = {"LibB", R"(module LibB
+import Shared, Out;
+fn init() -> void {
+    Out.Int(20);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource main = {"Diamond", R"(module Diamond
+import LibA, LibB, Out;
+fn init() -> void {
+    Out.Int(30);
+    Out.Ln();
+}
+)"};
+
+    REQUIRE(multiModuleRun({shared, libA, libB}, main) == "99\n10\n20\n30\n");
+}
+
+TEST_CASE("Init — module without init procedure", "[ccodegen][init][multimodule]")
+{
+    ModuleSource lib = {"NoInit", R"(module NoInit
+fn export Add(a, b: i64) -> i64 {
+    return a + b;
+}
+)"};
+
+    ModuleSource main = {"UseNoInit", R"(module UseNoInit
+import NoInit, Out;
+fn init() -> void {
+    Out.Int(NoInit.Add(3, 4));
+    Out.Ln();
+}
+)"};
+
+    REQUIRE(multiModuleRun({lib}, main) == "7\n");
+}
+
+TEST_CASE("Init — chain of imports A->B->C", "[ccodegen][init][multimodule]")
+{
+    ModuleSource modC = {"ModC", R"(module ModC
+import Out;
+fn init() -> void {
+    Out.Int(1);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource modB = {"ModB", R"(module ModB
+import ModC, Out;
+fn init() -> void {
+    Out.Int(2);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource main = {"ModA", R"(module ModA
+import ModB, ModC, Out;
+fn init() -> void {
+    Out.Int(3);
+    Out.Ln();
+}
+)"};
+
+    REQUIRE(multiModuleRun({modC, modB}, main) == "1\n2\n3\n");
+}
+
+TEST_CASE("Init — chain of imports A->B+C", "[ccodegen][init][multimodule]")
+{
+    ModuleSource modC = {"ModC", R"(module ModC
+import Out;
+fn init() -> void {
+    Out.Int(1);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource modB = {"ModB", R"(module ModB
+import Out;
+fn init() -> void {
+    Out.Int(2);
+    Out.Ln();
+}
+)"};
+
+    ModuleSource main = {"ModA", R"(module ModA
+import ModB, ModC, Out;
+fn init() -> void {
+    Out.Int(3);
+    Out.Ln();
+}
+)"};
+
+    REQUIRE(multiModuleRun({modC, modB}, main) == "2\n1\n3\n");
+}
+
+// ============================================================================
+// Hex and float-E literal tests
+// ============================================================================
+
+TEST_CASE("Literals — hex integers", "[ccodegen][literals]")
+{
+    std::string src = R"(module HexLit
+import Out;
+fn init() -> void {
+    Out.Int(0xFF);
+    Out.Ln();
+    Out.Int(0x0);
+    Out.Ln();
+    Out.Int(0x1A);
+    Out.Ln();
+    Out.Int(0x10);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("HexLit", src, {"Out"}) == "255\n0\n26\n16\n");
+}
+
+TEST_CASE("Literals — hex arithmetic", "[ccodegen][literals]")
+{
+    std::string src = R"(module HexArith
+import Out;
+fn init() -> void
+var x: i64;
+{
+    x = 0xA + 0xB;
+    Out.Int(x);
+    Out.Ln();
+    x = 0xFF - 0xF;
+    Out.Int(x);
+    Out.Ln();
+    x = 0x10 * 2;
+    Out.Int(x);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("HexArith", src, {"Out"}) == "21\n240\n32\n");
+}
+
+TEST_CASE("Literals — float with E notation", "[ccodegen][literals]")
+{
+    std::string src = R"(module FloatE
+import Out;
+fn init() -> void
+var f: f64;
+{
+    f = 1.5E2;
+    Out.Real(f, 1);
+    Out.Ln();
+    f = 2.0E-1;
+    Out.Real(f, 1);
+    Out.Ln();
+    f = 3.14E0;
+    Out.Real(f, 2);
+    Out.Ln();
+    f = 1.0E3;
+    Out.Real(f, 1);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("FloatE", src, {"Out"}) == "150.0\n0.2\n3.14\n1000.0\n");
+}
+
+TEST_CASE("Literals — float E with positive exponent", "[ccodegen][literals]")
+{
+    std::string src = R"(module FloatEPos
+import Out;
+fn init() -> void
+var f: f64;
+{
+    f = 5.0E+2;
+    Out.Real(f, 1);
+    Out.Ln();
+    f = 1.23E+1;
+    Out.Real(f, 1);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("FloatEPos", src, {"Out"}) == "500.0\n12.3\n");
+}
+
+TEST_CASE("Literals — float E arithmetic", "[ccodegen][literals]")
+{
+    std::string src = R"(module FloatECalc
+import Out;
+fn init() -> void
+var {
+    a: f64;
+    b: f64;
+}
+{
+    a = 1.0E2;
+    b = 2.5E1;
+    Out.Real(a + b, 1);
+    Out.Ln();
+    Out.Real(a / b, 1);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("FloatECalc", src, {"Out"}) == "125.0\n4.0\n");
+}
+
+TEST_CASE("Literals — hex in conditions and arrays", "[ccodegen][literals]")
+{
+    std::string src = R"(module HexUsage
+import Out;
+fn init() -> void
+var {
+    arr: i64[3];
+    i: i64;
+}
+{
+    arr[0] = 0xA;
+    arr[1] = 0xB;
+    arr[2] = 0xC;
+    for (i = 0, 2, 1) {
+        Out.Int(arr[i]);
+        Out.Ln();
+    }
+    if 0xA == 10 {
+        Out.Int(1);
+    } else {
+        Out.Int(0);
+    }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("HexUsage", src, {"Out"}) == "10\n11\n12\n1\n");
+}
+
+TEST_CASE("Literals — H-suffix hex integers", "[ccodegen][literals]")
+{
+    std::string src = R"(module HexHLit
+import Out;
+fn init() -> void {
+    Out.Int(0FFH);
+    Out.Ln();
+    Out.Int(1AH);
+    Out.Ln();
+    Out.Int(10H);
+    Out.Ln();
+    Out.Int(0H);
+    Out.Ln();
+    Out.Int(7FH);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("HexHLit", src, {"Out"}) == "255\n26\n16\n0\n127\n");
+}
+
+TEST_CASE("Literals — H-suffix hex arithmetic", "[ccodegen][literals]")
+{
+    std::string src = R"(module HexHArith
+import Out;
+fn init() -> void
+var x: i64;
+{
+    x = 0AH + 0BH;
+    Out.Int(x);
+    Out.Ln();
+    x = 0FFH - 0FH;
+    Out.Int(x);
+    Out.Ln();
+    x = 10H * 2;
+    Out.Int(x);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("HexHArith", src, {"Out"}) == "21\n240\n32\n");
+}
+
+TEST_CASE("Literals — H-suffix and 0x hex mixed", "[ccodegen][literals]")
+{
+    std::string src = R"(module HexMixed
+import Out;
+fn init() -> void {
+    if 0FFH == 0xFF {
+        Out.Int(1);
+    } else {
+        Out.Int(0);
+    }
+    Out.Ln();
+    if 10H == 0x10 {
+        Out.Int(1);
+    } else {
+        Out.Int(0);
+    }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("HexMixed", src, {"Out"}) == "1\n1\n");
 }
