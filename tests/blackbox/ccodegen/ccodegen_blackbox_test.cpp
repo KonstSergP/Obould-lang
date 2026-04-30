@@ -29,6 +29,16 @@ static fs::path getStdlibDir()
     return stdlib_dir;
 }
 
+static fs::path getStdlibArtifact(const std::string& lib, const std::string& ext)
+{
+    auto sourcePath = getStdlibDir() / (lib + ext);
+    if (fs::exists(sourcePath)) return sourcePath;
+
+    auto buildPath = fs::path(OBOULD_BUILD_DIR) / "system" / (lib + ext);
+    REQUIRE(fs::exists(buildPath));
+    return buildPath;
+}
+
 static fs::path getGcIncludeDir()
 {
     if (!gc_include_dir.empty()) return gc_include_dir;
@@ -64,11 +74,11 @@ static std::string transpileCompileRun(const std::string& moduleName,
         fs::create_directories(symDir);
     }
     for (auto& lib : stdlibs) {
-        fs::copy_file(getStdlibDir() / (lib + ".h"), tmpDir / (lib + ".h"),
+        fs::copy_file(getStdlibArtifact(lib, ".h"), tmpDir / (lib + ".h"),
                        fs::copy_options::overwrite_existing);
-        fs::copy_file(getStdlibDir() / (lib + ".c"), tmpDir / (lib + ".c"),
+        fs::copy_file(getStdlibArtifact(lib, ".c"), tmpDir / (lib + ".c"),
                        fs::copy_options::overwrite_existing);
-        fs::copy_file(getStdlibDir() / (lib + ".json"), symDir / (lib + ".json"),
+        fs::copy_file(getStdlibArtifact(lib, ".json"), symDir / (lib + ".json"),
                        fs::copy_options::overwrite_existing);
     }
 
@@ -2561,6 +2571,46 @@ var {
 }
 )";
     REQUIRE(transpileCompileRun("RndRepro", src, {"Out", "Random"}) == "1\n");
+}
+
+// ============================================================================
+// Strings module tests
+// ============================================================================
+
+TEST_CASE("Strings — length prefix suffix and equality", "[ccodegen][stdlib][strings]")
+{
+    std::string src = R"(module StringsPredicates
+import Strings, Out;
+fn init() -> void
+{
+    Out.Int(Strings.Length("obould"));
+    Out.Ln();
+    Out.Bool(Strings.StartsWith("obould", "obo"));
+    Out.Ln();
+    Out.Bool(Strings.EndsWith("obould", "uld"));
+    Out.Ln();
+    Out.Bool(Strings.Equals("obould", "oberon"));
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("StringsPredicates", src, {"Out", "Strings"}) == "6\nTrue\nTrue\nFalse\n");
+}
+
+TEST_CASE("Strings — find from offset and missing character", "[ccodegen][stdlib][strings]")
+{
+    std::string src = R"(module StringsFind
+import Strings, Out;
+fn init() -> void
+{
+    Out.Int(Strings.Find("banana", chr(97), 2));
+    Out.Ln();
+    Out.Int(Strings.Find("banana", chr(98), -3));
+    Out.Ln();
+    Out.Int(Strings.Find("banana", chr(122), 0));
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("StringsFind", src, {"Out", "Strings"}) == "3\n0\n-1\n");
 }
 
 // ============================================================================
