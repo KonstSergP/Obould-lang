@@ -2024,6 +2024,87 @@ var {
     REQUIRE(transpileCompileRun("AssertMsg", src, {"Out"}) == "10\n");
 }
 
+TEST_CASE("Builtin int — float to integer conversion", "[ccodegen][builtin][int]")
+{
+    std::string src = R"(module BuiltinInt
+import Out;
+fn init() -> void
+var {
+    a: i64;
+    b: f64;
+}
+{
+    b = 3.7;
+    a = int(b);
+    Out.Int(a);
+    Out.Ln();
+    Out.Int(int(-2.9));
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("BuiltinInt", src, {"Out"}) == "3\n-2\n");
+}
+
+TEST_CASE("Builtin float — integer to float conversion", "[ccodegen][builtin][float]")
+{
+    std::string src = R"(module BuiltinFloat
+import Out;
+fn init() -> void
+var {
+    x: i64;
+    y: f64;
+}
+{
+    x = 42;
+    y = float(x);
+    Out.Real(y, 1);
+    Out.Ln();
+    Out.Real(float(5) / float(2), 1);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("BuiltinFloat", src, {"Out"}) == "42.0\n2.5\n");
+}
+
+TEST_CASE("Builtin ord — bool char and set to integer", "[ccodegen][builtin][ord]")
+{
+    std::string src = R"(module BuiltinOrd
+import Out;
+fn init() -> void
+var {
+    s: set;
+}
+{
+    s = {0, 2, 5};
+    Out.Int(ord(true));
+    Out.Ln();
+    Out.Int(ord("A"));
+    Out.Ln();
+    Out.Int(ord(s));
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("BuiltinOrd", src, {"Out"}) == "1\n65\n37\n");
+}
+
+TEST_CASE("Builtin chr — integer to char conversion", "[ccodegen][builtin][chr]")
+{
+    std::string src = R"(module BuiltinChr
+import Out;
+fn init() -> void
+var c: char;
+{
+    c = chr(65);
+    Out.Char(c);
+    Out.Ln();
+    c = chr(97);
+    Out.Char(c);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("BuiltinChr", src, {"Out"}) == "A\na\n");
+}
+
 // ============================================================================
 // Forward declaration tests
 // ============================================================================

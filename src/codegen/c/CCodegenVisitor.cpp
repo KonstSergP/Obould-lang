@@ -519,6 +519,49 @@ void CCodegenVisitor::visit(ProcedureCall& node)
             }
             return;
         }
+        case BuiltinKind::INT:
+        {
+            if (node.args.empty()) break;
+            os_ << "((int64_t)(";
+            node.args[0]->accept(*this);
+            os_ << "))";
+            return;
+        }
+        case BuiltinKind::FLOAT:
+        {
+            if (node.args.empty()) break;
+            os_ << "((double)(";
+            node.args[0]->accept(*this);
+            os_ << "))";
+            return;
+        }
+        case BuiltinKind::ORD:
+        {
+            if (node.args.empty()) break;
+            auto argType = node.args[0]->resolvedType;
+            if (argType && argType->kind == TypeKind::String) {
+                os_ << "((int64_t)((uint8_t)((";
+                node.args[0]->accept(*this);
+                os_ << ")[0])))";
+            } else if (argType && argType->kind == TypeKind::Char) {
+                os_ << "((int64_t)((uint8_t)(";
+                node.args[0]->accept(*this);
+                os_ << ")))";
+            } else {
+                os_ << "((int64_t)(";
+                node.args[0]->accept(*this);
+                os_ << "))";
+            }
+            return;
+        }
+        case BuiltinKind::CHR:
+        {
+            if (node.args.empty()) break;
+            os_ << "((char)((uint8_t)(";
+            node.args[0]->accept(*this);
+            os_ << ")))";
+            return;
+        }
         default:
             break;
         }
