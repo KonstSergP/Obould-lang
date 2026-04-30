@@ -1300,6 +1300,111 @@ var {
     REQUIRE(transpileCompileRun("InheritedFields", src, {"Out"}) == "1204\n60\n");
 }
 
+TEST_CASE("RTTI — descriptors initialized in arrays and nested structs", "[ccodegen][rtti][array]")
+{
+    std::string src = R"(module DescriptorArrays
+import Out;
+
+type {
+    Base: struct {
+        value: i64;
+    };
+    Derived: struct (Base) {
+        extra: i64;
+    };
+    Other: struct (Base) {
+        left, right: i64;
+    };
+    Wrapper: struct (Base) {
+        item: Base;
+        width: i64;
+    };
+    ArrayWrapper: struct (Wrapper) {
+        items: Base[4];
+        count: i64;
+    };
+
+    DeepWrapper: struct (ArrayWrapper) {
+        index: i64;
+    };
+    DerivedBox: struct {
+        single: Derived;
+        many: Derived[2];
+    };
+}
+
+fn Identify(value: &Base) -> i64
+var result: i64;
+{
+    result = 0;
+    if value is Other {
+        result = 2;
+    }
+    if value is Derived {
+        result = 1;
+    }
+    return result;
+}
+
+fn init() -> void
+var {
+    derived: Derived;
+    other: Other;
+    base: Base;
+    wrapper: Wrapper;
+    arrayWrapper: ArrayWrapper;
+    deepWrapper: DeepWrapper;
+    bases: Base[3];
+    derivedItems: Derived[2];
+    box: DerivedBox;
+}
+{
+    derived.value = 0;
+    derived.extra = 5;
+    Out.Int(Identify(derived));
+    Out.Ln();
+    other.value = 0;
+    other.left = 3;
+    other.right = 4;
+    Out.Int(Identify(other));
+    Out.Ln();
+    base.value = 0;
+    Out.Int(Identify(base));
+    Out.Ln();
+
+    Out.Int(Identify(bases[0]));
+    Out.Ln();
+    Out.Int(Identify(derivedItems[0]));
+    Out.Ln();
+    Out.Int(Identify(wrapper.item));
+    Out.Ln();
+    Out.Int(Identify(arrayWrapper.items[0]));
+    Out.Ln();
+    Out.Int(Identify(deepWrapper.items[0]));
+    Out.Ln();
+    Out.Int(Identify(box.single));
+    Out.Ln();
+    Out.Int(Identify(box.many[1]));
+    Out.Ln();
+
+    wrapper.item = base;
+    arrayWrapper.items[1] = base;
+    bases[2] = base;
+
+    Out.Int(Identify(bases[1]));
+    Out.Ln();
+    Out.Int(Identify(bases[2]));
+    Out.Ln();
+    Out.Int(Identify(arrayWrapper.items[1]));
+    Out.Ln();
+    Out.Int(Identify(deepWrapper.items[2]));
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("DescriptorArrays", src, {"Out"}) ==
+        "1\n2\n0\n0\n1\n0\n0\n0\n1\n1\n0\n0\n0\n0\n");
+}
+
 // ============================================================================
 // Output tests
 // ============================================================================
@@ -2611,6 +2716,43 @@ fn init() -> void
 }
 )";
     REQUIRE(transpileCompileRun("StringsFind", src, {"Out", "Strings"}) == "3\n0\n-1\n");
+}
+
+// ============================================================================
+// Parse module tests
+// ============================================================================
+
+TEST_CASE("Parse — integers and reals", "[ccodegen][stdlib][parse]")
+{
+    std::string src = R"(module ParseValues
+import Parse, Out;
+fn init() -> void
+var {
+    i: i64;
+    r: f64;
+}
+{
+    if Parse.Int("-42", i) {
+        Out.Int(i);
+    } else {
+        Out.Int(0);
+    }
+    Out.Ln();
+
+    if Parse.Real("3.25", r) {
+        Out.Real(r, 2);
+    } else {
+        Out.Real(0.0, 2);
+    }
+    Out.Ln();
+
+    Out.Bool(Parse.Int("12x", i));
+    Out.Ln();
+    Out.Bool(Parse.Real("abc", r));
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("ParseValues", src, {"Out", "Parse"}) == "-42\n3.25\nFalse\nFalse\n");
 }
 
 // ============================================================================
