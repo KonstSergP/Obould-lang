@@ -73,6 +73,106 @@ std::string CCodegenVisitor::getExpressionString(Expression& expr)
     return ss.str();
 }
 
+std::string CCodegenVisitor::resolveStructTypeName(const IdentifierType& type) const
+{
+    if (!type.moduleName.empty()) {
+        return makePrefix(type.moduleName) + type.name;
+    }
+    if (!moduleName_.empty()) {
+        return makePrefix(moduleName_) + type.name;
+    }
+    return type.name;
+}
+
+bool CCodegenVisitor::isStructType(const IdentifierType& type) const
+{
+    std::string fullTypeName = resolveStructTypeName(type);
+    for (const auto& st : structTypes_) {
+        if (st.first == fullTypeName) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool CCodegenVisitor::typeNeedsDescriptorInit(Type& type) const
+{
+    if (auto* identType = dynamic_cast<IdentifierType*>(&type)) {
+        return isStructType(*identType);
+    }
+    if (auto* arrType = dynamic_cast<ArrayType*>(&type)) {
+        return typeNeedsDescriptorInit(*arrType->elementType);
+    }
+    return false;
+}
+
+void CCodegenVisitor::emitDescriptorInitForStructMembers(const std::string& structTypeName, const std::string& targetExpr, int& loopCounter, std::set<std::string>& activeStructs)
+{
+    if (activeStructs.count(structTypeName) > 0) {
+        return;
+    }
+    activeStructs.insert(structTypeName);
+
+    std::string parentTypeName;
+    for (const auto& st : structTypes_) {
+        if (st.first == structTypeName) {
+            parentTypeName = st.second;
+            break;
+        }
+    }
+    if (!parentTypeName.empty() && localStructDecls_.count(parentTypeName) > 0) {
+        emitDescriptorInitForStructMembers(parentTypeName, targetExpr, loopCounter, activeStructs);
+    }
+
+    auto declIt = localStructDecls_.find(structTypeName);
+    if (declIt != localStructDecls_.end()) {
+        for (auto& field : declIt->second->fields) {
+            emitDescriptorInitForType(*field->type, targetExpr + "." + field->name, loopCounter, activeStructs);
+        }
+    }
+
+    activeStructs.erase(structTypeName);
+}
+
+void CCodegenVisitor::emitDescriptorInitForType(Type& type, const std::string& targetExpr, int& loopCounter, std::set<std::string>& activeStructs)
+{
+    if (auto* identType = dynamic_cast<IdentifierType*>(&type)) {
+        if (!isStructType(*identType)) {
+            return;
+        }
+
+        std::string structTypeName = resolveStructTypeName(*identType);
+        emitIndent();
+        os_ << targetExpr << "._desc = &" << structTypeName << "_desc;\n";
+        emitDescriptorInitForStructMembers(structTypeName, targetExpr, loopCounter, activeStructs);
+        return;
+    }
+
+    if (auto* arrType = dynamic_cast<ArrayType*>(&type)) {
+        if (!typeNeedsDescriptorInit(*arrType->elementType)) {
+            return;
+        }
+
+        std::string indexName = "_ob_desc_i" + std::to_string(loopCounter++);
+        std::string lengthExpr = getExpressionString(*arrType->length);
+
+        emitIndent();
+        os_ << "for (int64_t " << indexName << " = 0; " << indexName << " < " << lengthExpr << "; ++" << indexName << ") {\n";
+        increaseIndent();
+        emitDescriptorInitForType(*arrType->elementType, targetExpr + "[" + indexName + "]", loopCounter, activeStructs);
+        decreaseIndent();
+        emitIndent();
+        os_ << "}\n";
+    }
+}
+
+void CCodegenVisitor::emitDescriptorInitForType(Type& type, const std::string& targetExpr)
+{
+    int loopCounter = 0;
+    std::set<std::string> activeStructs;
+    emitDescriptorInitForType(type, targetExpr, loopCounter, activeStructs);
+}
+
 void CCodegenVisitor::emitTypeWithName(Type& type, const std::string& name)
 {
     if (auto* arrType = dynamic_cast<ArrayType*>(&type)) {
@@ -830,7 +930,7 @@ void CCodegenVisitor::visit(TypeDeclaration& node)
         }
         structTypes_.push_back({fullName, parentName});
 
-        std::vector<std::pair<std::string, std::string>> allFields;
+        std::vector<std::string> allFields;
 
         os_ << "struct " << fullName << " {\n";
         increaseIndent();
@@ -844,7 +944,7 @@ void CCodegenVisitor::visit(TypeDeclaration& node)
             if (it != structFields_.end()) {
                 for (const auto& field : it->second) {
                     emitIndent();
-                    os_ << field.second << " " << field.first << ";\n";
+                    os_ << field << ";\n";
                     allFields.push_back(field);
                 }
             }
@@ -852,31 +952,16 @@ void CCodegenVisitor::visit(TypeDeclaration& node)
 
         // Add own fields
         for (auto& field : structType->fields) {
-            std::string fieldType = getTypeString(*field->type);
-            allFields.push_back({field->name, fieldType});
+            std::stringstream fieldSs;
+            CCodegenVisitor fieldVisitor(fieldSs, mode_);
+            fieldVisitor.moduleName_ = moduleName_;
+            fieldVisitor.procedureRefParams_ = procedureRefParams_;
+            fieldVisitor.emitTypeWithName(*field->type, field->name);
+            std::string fieldDecl = fieldSs.str();
+            allFields.push_back(fieldDecl);
 
             emitIndent();
-            if (auto* arrType = dynamic_cast<ArrayType*>(field->type.get())) {
-                std::vector<Expression*> dimensions;
-                Type* currentType = field->type.get();
-
-                while (auto* arr = dynamic_cast<ArrayType*>(currentType)) {
-                    dimensions.push_back(arr->length.get());
-                    currentType = arr->elementType.get();
-                }
-
-                currentType->accept(*this);
-                os_ << " " << field->name;
-                for (auto* dim : dimensions) {
-                    os_ << "[";
-                    dim->accept(*this);
-                    os_ << "]";
-                }
-                os_ << ";\n";
-            } else {
-                field->type->accept(*this);
-                os_ << " " << field->name << ";\n";
-            }
+            os_ << fieldDecl << ";\n";
         }
 
         // Store all fields for future children
@@ -933,24 +1018,8 @@ void CCodegenVisitor::visit(VariableDeclaration& node)
     } else {
         node.type->accept(*this);
         os_ << " " << node.name << ";\n";
-
-        // Initialize _desc for struct variables (RTTI support)
-        if (auto* identType = dynamic_cast<IdentifierType*>(node.type.get())) {
-            std::string fullTypeName;
-            if (!identType->moduleName.empty()) {
-                fullTypeName = makePrefix(identType->moduleName) + identType->name;
-            } else if (!moduleName_.empty()) {
-                fullTypeName = makePrefix(moduleName_) + identType->name;
-            }
-            for (const auto& st : structTypes_) {
-                if (st.first == fullTypeName) {
-                    emitIndent();
-                    os_ << node.name << "._desc = &" << fullTypeName << "_desc;\n";
-                    break;
-                }
-            }
-        }
     }
+    emitDescriptorInitForType(*node.type, node.name);
 }
 
 void CCodegenVisitor::visit(ProcedureDeclaration& node)
@@ -1101,6 +1170,7 @@ void CCodegenVisitor::visit(Module& node)
 {
     moduleName_ = node.name;
     std::string guardName = generateGuardName(node.name);
+    localStructDecls_.clear();
 
     // Collect global variable and constant names for prefix handling
     globalVariables_.clear();
@@ -1157,6 +1227,14 @@ void CCodegenVisitor::visit(Module& node)
 
     // Local procedures
     collectProcParams(makePrefix(moduleName_), node.procedures, true);
+
+    if (node.declarations && node.declarations->types) {
+        for (auto& typeDecl : node.declarations->types->types) {
+            if (auto* structType = dynamic_cast<StructType*>(typeDecl->type.get())) {
+                localStructDecls_[makePrefix(moduleName_) + typeDecl->name] = structType;
+            }
+        }
+    }
 
     // Imported modules
     for (auto& import : node.imports) {
