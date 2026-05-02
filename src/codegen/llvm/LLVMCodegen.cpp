@@ -147,8 +147,15 @@ llvm::AllocaInst* LLVMCodegenVisitor::createEntryAlloca(llvm::Type* type, const 
     return entryBuilder.CreateAlloca(type, nullptr, name);
 }
 
+static bool needsDescriptorInit(const std::shared_ptr<TypeInfo>& type) {
+    if (type->kind == TypeKind::Struct) return true;
+    if (type->kind == TypeKind::Array) return needsDescriptorInit(type->baseType);
+    return false;
+}
+
 void LLVMCodegenVisitor::initializeDescriptors(llvm::Value* ptr, const std::shared_ptr<TypeInfo>& type)
 {
+    if (!needsDescriptorInit(type)) return;
     if (type->kind == TypeKind::Struct) {
         builder->CreateStore(descriptors[type->id], ptr);
 
