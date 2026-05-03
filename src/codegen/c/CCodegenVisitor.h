@@ -95,9 +95,8 @@ private:
     // RTTI: struct name -> parent struct name (empty if no parent)
     std::vector<std::pair<std::string, std::string>> structTypes_;
 
-    // Struct field tracking for inheritance flattening
-    // Maps struct full name -> list of (field name, field type as string)
-    std::map<std::string, std::vector<std::pair<std::string, std::string>>> structFields_;
+    std::map<std::string, std::vector<std::string>> structFields_;
+    std::map<std::string, StructType*> localStructDecls_;
 
     // Global variable and constant tracking (names that need module prefix)
     std::set<std::string> globalVariables_;
@@ -131,6 +130,12 @@ private:
 
     // Helper for expressions - returns the expression as string
     std::string getExpressionString(Expression& expr);
+    std::string resolveStructTypeName(const IdentifierType& type) const;
+    bool isStructType(const IdentifierType& type) const;
+    bool typeNeedsDescriptorInit(Type& type) const;
+    void emitDescriptorInitForStructMembers(const std::string& structTypeName, const std::string& targetExpr, int& loopCounter, std::set<std::string>& activeStructs);
+    void emitDescriptorInitForType(Type& type, const std::string& targetExpr, int& loopCounter, std::set<std::string>& activeStructs);
+    void emitDescriptorInitForType(Type& type, const std::string& targetExpr);
 
     // Helper to generate mangled prefix: "ob_{len}{moduleName}_"
     static std::string makePrefix(const std::string& moduleName);

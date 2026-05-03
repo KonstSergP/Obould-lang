@@ -29,6 +29,16 @@ static fs::path getStdlibDir()
     return stdlib_dir;
 }
 
+static fs::path getStdlibArtifact(const std::string& lib, const std::string& ext)
+{
+    auto sourcePath = getStdlibDir() / (lib + ext);
+    if (fs::exists(sourcePath)) return sourcePath;
+
+    auto buildPath = fs::path(OBOULD_BUILD_DIR) / "system" / (lib + ext);
+    REQUIRE(fs::exists(buildPath));
+    return buildPath;
+}
+
 static fs::path getGcIncludeDir()
 {
     if (!gc_include_dir.empty()) return gc_include_dir;
@@ -64,11 +74,11 @@ static std::string transpileCompileRun(const std::string& moduleName,
         fs::create_directories(symDir);
     }
     for (auto& lib : stdlibs) {
-        fs::copy_file(getStdlibDir() / (lib + ".h"), tmpDir / (lib + ".h"),
+        fs::copy_file(getStdlibArtifact(lib, ".h"), tmpDir / (lib + ".h"),
                        fs::copy_options::overwrite_existing);
-        fs::copy_file(getStdlibDir() / (lib + ".c"), tmpDir / (lib + ".c"),
+        fs::copy_file(getStdlibArtifact(lib, ".c"), tmpDir / (lib + ".c"),
                        fs::copy_options::overwrite_existing);
-        fs::copy_file(getStdlibDir() / (lib + ".json"), symDir / (lib + ".json"),
+        fs::copy_file(getStdlibArtifact(lib, ".json"), symDir / (lib + ".json"),
                        fs::copy_options::overwrite_existing);
     }
 
@@ -1290,6 +1300,111 @@ var {
     REQUIRE(transpileCompileRun("InheritedFields", src, {"Out"}) == "1204\n60\n");
 }
 
+TEST_CASE("RTTI — descriptors initialized in arrays and nested structs", "[ccodegen][rtti][array]")
+{
+    std::string src = R"(module DescriptorArrays
+import Out;
+
+type {
+    Base: struct {
+        value: i64;
+    };
+    Derived: struct (Base) {
+        extra: i64;
+    };
+    Other: struct (Base) {
+        left, right: i64;
+    };
+    Wrapper: struct (Base) {
+        item: Base;
+        width: i64;
+    };
+    ArrayWrapper: struct (Wrapper) {
+        items: Base[4];
+        count: i64;
+    };
+
+    DeepWrapper: struct (ArrayWrapper) {
+        index: i64;
+    };
+    DerivedBox: struct {
+        single: Derived;
+        many: Derived[2];
+    };
+}
+
+fn Identify(value: &Base) -> i64
+var result: i64;
+{
+    result = 0;
+    if value is Other {
+        result = 2;
+    }
+    if value is Derived {
+        result = 1;
+    }
+    return result;
+}
+
+fn init() -> void
+var {
+    derived: Derived;
+    other: Other;
+    base: Base;
+    wrapper: Wrapper;
+    arrayWrapper: ArrayWrapper;
+    deepWrapper: DeepWrapper;
+    bases: Base[3];
+    derivedItems: Derived[2];
+    box: DerivedBox;
+}
+{
+    derived.value = 0;
+    derived.extra = 5;
+    Out.Int(Identify(derived));
+    Out.Ln();
+    other.value = 0;
+    other.left = 3;
+    other.right = 4;
+    Out.Int(Identify(other));
+    Out.Ln();
+    base.value = 0;
+    Out.Int(Identify(base));
+    Out.Ln();
+
+    Out.Int(Identify(bases[0]));
+    Out.Ln();
+    Out.Int(Identify(derivedItems[0]));
+    Out.Ln();
+    Out.Int(Identify(wrapper.item));
+    Out.Ln();
+    Out.Int(Identify(arrayWrapper.items[0]));
+    Out.Ln();
+    Out.Int(Identify(deepWrapper.items[0]));
+    Out.Ln();
+    Out.Int(Identify(box.single));
+    Out.Ln();
+    Out.Int(Identify(box.many[1]));
+    Out.Ln();
+
+    wrapper.item = base;
+    arrayWrapper.items[1] = base;
+    bases[2] = base;
+
+    Out.Int(Identify(bases[1]));
+    Out.Ln();
+    Out.Int(Identify(bases[2]));
+    Out.Ln();
+    Out.Int(Identify(arrayWrapper.items[1]));
+    Out.Ln();
+    Out.Int(Identify(deepWrapper.items[2]));
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("DescriptorArrays", src, {"Out"}) ==
+        "1\n2\n0\n0\n1\n0\n0\n0\n1\n1\n0\n0\n0\n0\n");
+}
+
 // ============================================================================
 // Output tests
 // ============================================================================
@@ -2024,6 +2139,87 @@ var {
     REQUIRE(transpileCompileRun("AssertMsg", src, {"Out"}) == "10\n");
 }
 
+TEST_CASE("Builtin int — float to integer conversion", "[ccodegen][builtin][int]")
+{
+    std::string src = R"(module BuiltinInt
+import Out;
+fn init() -> void
+var {
+    a: i64;
+    b: f64;
+}
+{
+    b = 3.7;
+    a = int(b);
+    Out.Int(a);
+    Out.Ln();
+    Out.Int(int(-2.9));
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("BuiltinInt", src, {"Out"}) == "3\n-2\n");
+}
+
+TEST_CASE("Builtin float — integer to float conversion", "[ccodegen][builtin][float]")
+{
+    std::string src = R"(module BuiltinFloat
+import Out;
+fn init() -> void
+var {
+    x: i64;
+    y: f64;
+}
+{
+    x = 42;
+    y = float(x);
+    Out.Real(y, 1);
+    Out.Ln();
+    Out.Real(float(5) / float(2), 1);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("BuiltinFloat", src, {"Out"}) == "42.0\n2.5\n");
+}
+
+TEST_CASE("Builtin ord — bool char and set to integer", "[ccodegen][builtin][ord]")
+{
+    std::string src = R"(module BuiltinOrd
+import Out;
+fn init() -> void
+var {
+    s: set;
+}
+{
+    s = {0, 2, 5};
+    Out.Int(ord(true));
+    Out.Ln();
+    Out.Int(ord("A"));
+    Out.Ln();
+    Out.Int(ord(s));
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("BuiltinOrd", src, {"Out"}) == "1\n65\n37\n");
+}
+
+TEST_CASE("Builtin chr — integer to char conversion", "[ccodegen][builtin][chr]")
+{
+    std::string src = R"(module BuiltinChr
+import Out;
+fn init() -> void
+var c: char;
+{
+    c = chr(65);
+    Out.Char(c);
+    Out.Ln();
+    c = chr(97);
+    Out.Char(c);
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("BuiltinChr", src, {"Out"}) == "A\na\n");
+}
+
 // ============================================================================
 // Forward declaration tests
 // ============================================================================
@@ -2480,6 +2676,83 @@ var {
 }
 )";
     REQUIRE(transpileCompileRun("RndRepro", src, {"Out", "Random"}) == "1\n");
+}
+
+// ============================================================================
+// Strings module tests
+// ============================================================================
+
+TEST_CASE("Strings — length prefix suffix and equality", "[ccodegen][stdlib][strings]")
+{
+    std::string src = R"(module StringsPredicates
+import Strings, Out;
+fn init() -> void
+{
+    Out.Int(Strings.Length("obould"));
+    Out.Ln();
+    Out.Bool(Strings.StartsWith("obould", "obo"));
+    Out.Ln();
+    Out.Bool(Strings.EndsWith("obould", "uld"));
+    Out.Ln();
+    Out.Bool(Strings.Equals("obould", "oberon"));
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("StringsPredicates", src, {"Out", "Strings"}) == "6\nTrue\nTrue\nFalse\n");
+}
+
+TEST_CASE("Strings — find from offset and missing character", "[ccodegen][stdlib][strings]")
+{
+    std::string src = R"(module StringsFind
+import Strings, Out;
+fn init() -> void
+{
+    Out.Int(Strings.Find("banana", chr(97), 2));
+    Out.Ln();
+    Out.Int(Strings.Find("banana", chr(98), -3));
+    Out.Ln();
+    Out.Int(Strings.Find("banana", chr(122), 0));
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("StringsFind", src, {"Out", "Strings"}) == "3\n0\n-1\n");
+}
+
+// ============================================================================
+// Parse module tests
+// ============================================================================
+
+TEST_CASE("Parse — integers and reals", "[ccodegen][stdlib][parse]")
+{
+    std::string src = R"(module ParseValues
+import Parse, Out;
+fn init() -> void
+var {
+    i: i64;
+    r: f64;
+}
+{
+    if Parse.Int("-42", i) {
+        Out.Int(i);
+    } else {
+        Out.Int(0);
+    }
+    Out.Ln();
+
+    if Parse.Real("3.25", r) {
+        Out.Real(r, 2);
+    } else {
+        Out.Real(0.0, 2);
+    }
+    Out.Ln();
+
+    Out.Bool(Parse.Int("12x", i));
+    Out.Ln();
+    Out.Bool(Parse.Real("abc", r));
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("ParseValues", src, {"Out", "Parse"}) == "-42\n3.25\nFalse\nFalse\n");
 }
 
 // ============================================================================
