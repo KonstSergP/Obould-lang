@@ -65,7 +65,7 @@ static char* to_c_string(const char* s, int64_t s_len)
     size_t max = (size_t)s_len;
 
     if (s == NULL) {
-        char* out =  GC_MALLOC(1);
+        char* out = GC_MALLOC_ATOMIC(1);
         if (out) out[0] = '\0';
         return out;
     }
@@ -75,7 +75,7 @@ static char* to_c_string(const char* s, int64_t s_len)
         actual++;
     }
 
-    char* out = GC_MALLOC(actual + 1);
+    char* out = GC_MALLOC_ATOMIC(actual + 1);
     if (!out) return NULL;
     if (actual > 0) {
         memcpy(out, s, actual);
@@ -90,8 +90,10 @@ File Open(const char* name, const char* mode, int64_t name_len, int64_t mode_len
     char* mode_c = to_c_string(mode, mode_len);
 
     if (!name_c || !mode_c) {
-        if (name_c) GC_FREE(name_c);
-        if (mode_c) GC_FREE(mode_c);
+        if (name_c)
+            GC_FREE(name_c);
+        if (mode_c)
+            GC_FREE(mode_c);
         return NULL;
     }
 
