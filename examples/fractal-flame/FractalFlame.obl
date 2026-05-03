@@ -1,0 +1,30 @@
+module FractalFlame
+
+import Args, FlameCli, FlameRenderer, FlameTypes, Images, Out;
+
+fn init() -> void
+var {
+    config: FlameTypes.Config;
+    image: Images.Image;
+    ok: bool;
+}
+{
+    ok = FlameCli.LoadConfig(config);
+    if ok {
+        image = FlameRenderer.Render(config);
+        if image == nil {
+            Out.String("Rendering failed."); Out.Ln();
+        } else {
+            ok = Images.SavePNG(image, config.outputPath);
+            if ok {
+                Out.String("Saved image to ");
+                Out.String(config.outputPath);
+                Out.Ln();
+            } else {
+                Out.String("Failed to save image to ");
+                Out.String(config.outputPath);
+                Out.Ln();
+            }
+        }
+    }
+}

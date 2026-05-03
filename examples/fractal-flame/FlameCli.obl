@@ -1,0 +1,444 @@
+module FlameCli
+
+import Args, FlameTypes, Out, Parse, Strings;
+
+fn PrintError(message: char[]) -> void
+{
+    Out.String("Error: ");
+    Out.String(message);
+    Out.Ln();
+}
+
+fn RequireValue(argc: i64, index: i64, option: char[]) -> bool
+var { result: bool; }
+{
+    result = index + 1 < argc;
+    if !result {
+        Out.String("Error: option requires a value: ");
+        Out.String(option);
+        Out.Ln();
+    }
+    return result;
+}
+
+fn ResolveFunctionName(name: char[]) -> i64
+var { result: i64; }
+{
+    result = FlameTypes.FuncInvalid;
+
+    if name == "linear" {
+        result = FlameTypes.FuncLinear;
+    } else if name == "sinusoidal" {
+        result = FlameTypes.FuncSinusoidal;
+    } else if name == "spherical" {
+        result = FlameTypes.FuncSpherical;
+    } else if name == "horseshoe" {
+        result = FlameTypes.FuncHorseshoe;
+    } else if name == "swirl" {
+        result = FlameTypes.FuncSwirl;
+    } else if name == "polar" {
+        result = FlameTypes.FuncPolar;
+    } else if name == "handkerchief" {
+        result = FlameTypes.FuncHandkerchief;
+    } else if name == "heart" {
+        result = FlameTypes.FuncHeart;
+    } else if name == "disk" {
+        result = FlameTypes.FuncDisk;
+    } else if name == "spiral" {
+        result = FlameTypes.FuncSpiral;
+    } else if name == "hyperbolic" {
+        result = FlameTypes.FuncHyperbolic;
+    } else if name == "diamond" {
+        result = FlameTypes.FuncDiamond;
+    } else if name == "ex" {
+        result = FlameTypes.FuncEx;
+    } else if name == "eyefish" {
+        result = FlameTypes.FuncEyefish;
+    } else if name == "tangent" {
+        result = FlameTypes.FuncTangent;
+    }
+
+    return result;
+}
+
+fn SetDefaults(config: &FlameTypes.Config) -> void
+{
+    config.width = 1920;
+    config.height = 1080;
+    config.seed = 5;
+    config.iterations = 1000000;
+    config.threads = 1;
+    config.symmetry = 1;
+    config.enableGamma = false;
+    config.gamma = 2.2;
+    config.outputPath = "result.png";
+
+    config.functionCount = 1;
+    config.functions[0].kind = FlameTypes.FuncLinear;
+    config.functions[0].weight = 1.0;
+
+    config.affineCount = 3;
+    config.affine[0].a = 0.5; config.affine[0].b = 0.0; config.affine[0].c = 0.0;
+    config.affine[0].d = 0.0; config.affine[0].e = 0.5; config.affine[0].f = 0.0;
+
+    config.affine[1].a = 0.5; config.affine[1].b = 0.0; config.affine[1].c = 0.5;
+    config.affine[1].d = 0.0; config.affine[1].e = 0.5; config.affine[1].f = 0.0;
+
+    config.affine[2].a = 0.5; config.affine[2].b = 0.0; config.affine[2].c = 0.25;
+    config.affine[2].d = 0.0; config.affine[2].e = 0.5; config.affine[2].f = 0.5;
+}
+
+fn ParseAffineGroup(text: char[], start: i64, finish: i64, affine: &FlameTypes.AffineParams) -> bool
+var {
+    fieldIndex, tokenStart, pos: i64;
+    token: char[FlameTypes.MaxCliText];
+    value: f64;
+    result, tokenOk: bool;
+}
+{
+    fieldIndex = 0;
+    tokenStart = start;
+    pos = start;
+    result = true;
+
+    while (pos <= finish) && result {
+        if (pos == finish) || (text[pos] == ",") {
+            Strings.CopyRange(text, tokenStart, pos, token);
+            tokenOk = Parse.Real(token, value);
+            if tokenOk {
+                if fieldIndex < 6 {
+                    switch fieldIndex {
+                        case 0:
+                            affine.a = value;
+                        case 1:
+                            affine.b = value;
+                        case 2:
+                            affine.c = value;
+                        case 3:
+                            affine.d = value;
+                        case 4:
+                            affine.e = value;
+                        case 5:
+                            affine.f = value;
+                    }
+                } else {
+                    result = false;
+                }
+                if result {
+                    fieldIndex = fieldIndex + 1;
+                    tokenStart = pos + 1;
+                }
+            } else {
+                result = false;
+            }
+        }
+        pos = pos + 1;
+    }
+
+    if result {
+        result = fieldIndex == 6;
+    }
+    return result;
+}
+
+fn ParseAffineList(text: char[], config: &FlameTypes.Config) -> bool
+var { start, pos, textLen: i64; result: bool; }
+{
+    config.affineCount = 0;
+    textLen = Strings.Length(text);
+    result = textLen > 0;
+
+    if result {
+        start = 0;
+        pos = 0;
+        while (pos <= textLen) && result {
+            if (pos == textLen) || (text[pos] == "/") {
+                if config.affineCount < FlameTypes.MaxAffine {
+                    result = ParseAffineGroup(text, start, pos, config.affine[config.affineCount]);
+                    if result {
+                        config.affineCount = config.affineCount + 1;
+                        start = pos + 1;
+                    }
+                } else {
+                    result = false;
+                }
+            }
+            pos = pos + 1;
+        }
+    }
+
+    if result {
+        result = config.affineCount > 0;
+    }
+    return result;
+}
+
+fn ParseFunctionItem(text: char[], start: i64, finish: i64, spec: &FlameTypes.TransformSpec) -> bool
+var {
+    colon: i64;
+    nameBuf, weightBuf: char[FlameTypes.MaxCliText];
+    weight: f64;
+    kind: i64;
+    result: bool;
+}
+{
+    colon = Strings.Find(text, ":", start);
+    result = (colon >= 0) && (colon < finish);
+
+    if result {
+        Strings.CopyRange(text, start, colon, nameBuf);
+        Strings.CopyRange(text, colon + 1, finish, weightBuf);
+        kind = ResolveFunctionName(nameBuf);
+        result = kind != FlameTypes.FuncInvalid;
+        if result {
+            result = Parse.Real(weightBuf, weight);
+            if result {
+                spec.kind = kind;
+                spec.weight = weight;
+            }
+        }
+    }
+
+    return result;
+}
+
+fn ParseFunctionList(text: char[], config: &FlameTypes.Config) -> bool
+var { start, pos, textLen: i64; result: bool; }
+{
+    config.functionCount = 0;
+    textLen = Strings.Length(text);
+    result = textLen > 0;
+
+    if result {
+        start = 0;
+        pos = 0;
+        while (pos <= textLen) && result {
+            if (pos == textLen) || (text[pos] == ",") {
+                if config.functionCount < FlameTypes.MaxFunctions {
+                    result = ParseFunctionItem(text, start, pos, config.functions[config.functionCount]);
+                    if result {
+                        config.functionCount = config.functionCount + 1;
+                        start = pos + 1;
+                    }
+                } else {
+                    result = false;
+                }
+            }
+            pos = pos + 1;
+        }
+    }
+
+    if result {
+        result = config.functionCount > 0;
+    }
+    return result;
+}
+
+fn Validate(config: FlameTypes.Config) -> bool
+var { result: bool; }
+{
+    result = true;
+
+    if config.width <= 0 {
+        PrintError("width must be > 0");
+        result = false;
+    } else if config.height <= 0 {
+        PrintError("height must be > 0");
+        result = false;
+    } else if config.iterations <= 0 {
+        PrintError("iterations must be > 0");
+        result = false;
+    } else if (config.threads <= 0) || (config.threads > FlameTypes.MaxThreads) {
+        PrintError("threads must be between 1 and MaxThreads");
+        result = false;
+    } else if config.affineCount <= 0 {
+        PrintError("at least one affine transform is required");
+        result = false;
+    } else if config.functionCount <= 0 {
+        PrintError("at least one variation is required");
+        result = false;
+    } else if config.symmetry <= 0 {
+        PrintError("symmetry must be >= 1");
+        result = false;
+    } else if config.enableGamma && (config.gamma <= 0.0) {
+        PrintError("gamma must be > 0 when gamma correction is enabled");
+        result = false;
+    } else if !Strings.EndsWith(config.outputPath, ".png") {
+        PrintError("output path must end with .png");
+        result = false;
+    }
+
+    return result;
+}
+
+fn export PrintHelp() -> void
+{
+    Out.String("Fractal flame for Obould\n");
+    Out.String("  --help                show this help\n");
+    Out.String("  -V, --version         version\n");
+    Out.String("  -w, --width N         image width\n");
+    Out.String("  -h, --height N        image height\n");
+    Out.String("  --seed N              RNG seed\n");
+    Out.String("  -i, --iteration-count N\n");
+    Out.String("  -t, --threads N       number of worker threads\n");
+    Out.String("  -o, --output-path FILE.png\n");
+    Out.String("  -g, --gamma-correction\n");
+    Out.String("  --gamma X             gamma coefficient\n");
+    Out.String("  -s, --symmetry-level N\n");
+    Out.String("  -ap, --affine-params a,b,c,d,e,f/...\n");
+    Out.String("  -f, --functions name:weight,name:weight\n");
+}
+
+fn export LoadConfig(config: &FlameTypes.Config) -> bool
+var {
+    argc, index, parsedInt: i64;
+    parsedReal: f64;
+    option, value: char[FlameTypes.MaxCliText];
+    result: bool;
+}
+{
+    SetDefaults(config);
+    argc = Args.Count();
+    index = 1;
+    result = true;
+
+    while (index < argc) && result {
+        Args.Get(index, option);
+
+        if option == "--help" {
+            PrintHelp();
+            result = false;
+            index = argc;
+        } else if (option == "-V") || (option == "--version") {
+            Out.String("fractal-flame-obould 0.1\n");
+            result = false;
+            index = argc;
+        } else if (option == "-g") || (option == "--gamma-correction") {
+            config.enableGamma = true;
+            index = index + 1;
+        } else if (option == "-w") || (option == "--width") {
+            result = RequireValue(argc, index, option);
+            if result {
+                Args.Get(index + 1, value);
+                result = Parse.Int(value, parsedInt);
+                if result {
+                    config.width = parsedInt;
+                    index = index + 2;
+                } else {
+                    PrintError("invalid width");
+                }
+            }
+        } else if (option == "-h") || (option == "--height") {
+            result = RequireValue(argc, index, option);
+            if result {
+                Args.Get(index + 1, value);
+                result = Parse.Int(value, parsedInt);
+                if result {
+                    config.height = parsedInt;
+                    index = index + 2;
+                } else {
+                    PrintError("invalid height");
+                }
+            }
+        } else if option == "--seed" {
+            result = RequireValue(argc, index, option);
+            if result {
+                Args.Get(index + 1, value);
+                result = Parse.Int(value, parsedInt);
+                if result {
+                    config.seed = parsedInt;
+                    index = index + 2;
+                } else {
+                    PrintError("invalid seed");
+                }
+            }
+        } else if (option == "-i") || (option == "--iteration-count") {
+            result = RequireValue(argc, index, option);
+            if result {
+                Args.Get(index + 1, value);
+                result = Parse.Int(value, parsedInt);
+                if result {
+                    config.iterations = parsedInt;
+                    index = index + 2;
+                } else {
+                    PrintError("invalid iteration count");
+                }
+            }
+        } else if (option == "-t") || (option == "--threads") {
+            result = RequireValue(argc, index, option);
+            if result {
+                Args.Get(index + 1, value);
+                result = Parse.Int(value, parsedInt);
+                if result {
+                    config.threads = parsedInt;
+                    index = index + 2;
+                } else {
+                    PrintError("invalid thread count");
+                }
+            }
+        } else if (option == "-o") || (option == "--output-path") {
+            result = RequireValue(argc, index, option);
+            if result {
+                Args.Get(index + 1, value);
+                Strings.Copy(value, config.outputPath);
+                index = index + 2;
+            }
+        } else if option == "--gamma" {
+            result = RequireValue(argc, index, option);
+            if result {
+                Args.Get(index + 1, value);
+                result = Parse.Real(value, parsedReal);
+                if result {
+                    config.gamma = parsedReal;
+                    index = index + 2;
+                } else {
+                    PrintError("invalid gamma value");
+                }
+            }
+        } else if (option == "-s") || (option == "--symmetry-level") {
+            result = RequireValue(argc, index, option);
+            if result {
+                Args.Get(index + 1, value);
+                result = Parse.Int(value, parsedInt);
+                if result {
+                    config.symmetry = parsedInt;
+                    index = index + 2;
+                } else {
+                    PrintError("invalid symmetry value");
+                }
+            }
+        } else if (option == "-ap") || (option == "--affine-params") {
+            result = RequireValue(argc, index, option);
+            if result {
+                Args.Get(index + 1, value);
+                result = ParseAffineList(value, config);
+                if result {
+                    index = index + 2;
+                } else {
+                    PrintError("invalid affine parameter list");
+                }
+            }
+        } else if (option == "-f") || (option == "--functions") {
+            result = RequireValue(argc, index, option);
+            if result {
+                Args.Get(index + 1, value);
+                result = ParseFunctionList(value, config);
+                if result {
+                    index = index + 2;
+                } else {
+                    PrintError("invalid function list");
+                }
+            }
+        } else {
+            Out.String("Error: unknown option ");
+            Out.String(option);
+            Out.Ln();
+            result = false;
+        }
+    }
+
+    if result {
+        result = Validate(config);
+    }
+    return result;
+}
