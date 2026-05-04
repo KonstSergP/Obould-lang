@@ -1,7 +1,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include "gc/gc.h"
+#include <gc.h>
 #include "Parse.h"
 
 

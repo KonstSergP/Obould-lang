@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include "gc/gc.h"
+#include <gc.h>
 #include "Files.h"
 
 #if defined(__APPLE__)

@@ -1,6 +1,6 @@
 #define GC_THREADS
 #include <stdint.h>
-#include "gc/gc.h"
+#include <gc.h>
 #include "Threads.h"
 
 #if defined(__APPLE__)
