@@ -69,6 +69,7 @@ std::string CCodegenVisitor::getExpressionString(Expression& expr)
     CCodegenVisitor tempVisitor(ss, mode_);
     tempVisitor.moduleName_ = moduleName_;
     tempVisitor.referenceParams_ = referenceParams_;
+    tempVisitor.referenceOpenArrayParams_ = referenceOpenArrayParams_;
     tempVisitor.procedureRefParams_ = procedureRefParams_;
     expr.accept(tempVisitor);
     return ss.str();
@@ -103,6 +104,26 @@ bool CCodegenVisitor::isStringLikeType(const std::shared_ptr<TypeInfo>& type) co
 {
     return type && (type->kind == TypeKind::String ||
         (type->kind == TypeKind::Array && type->baseType && type->baseType->kind == TypeKind::Char));
+}
+
+std::string CCodegenVisitor::getCharLiteralString(char value) const
+{
+    std::string out = "'";
+    switch (value) {
+        case '\n': out += "\\n"; break;
+        case '\t': out += "\\t"; break;
+        case '\\': out += "\\\\"; break;
+        case '\'': out += "\\'"; break;
+        default: out += value; break;
+    }
+    out += "'";
+    return out;
+}
+
+bool CCodegenVisitor::isSingleCharStringLiteral(Expression& expr) const
+{
+    auto* strLit = dynamic_cast<StringLiteral*>(&expr);
+    return strLit && strLit->value.length() == 1;
 }
 
 bool CCodegenVisitor::isNullableStringLikeType(const std::shared_ptr<TypeInfo>& type) const
@@ -328,6 +349,35 @@ void CCodegenVisitor::visit(BinaryExpression& node)
         node.op == BinaryExpression::Op::Gte) {
         if (std::holds_alternative<std::unique_ptr<Expression>>(node.right)) {
             auto& right = std::get<std::unique_ptr<Expression>>(node.right);
+            bool leftCharRightString = node.left->resolvedType && node.left->resolvedType->kind == TypeKind::Char &&
+                right->resolvedType && right->resolvedType->kind == TypeKind::String &&
+                isSingleCharStringLiteral(*right);
+            bool leftStringRightChar = node.left->resolvedType && node.left->resolvedType->kind == TypeKind::String &&
+                isSingleCharStringLiteral(*node.left) &&
+                right->resolvedType && right->resolvedType->kind == TypeKind::Char;
+
+            if (leftCharRightString || leftStringRightChar) {
+                std::string left = leftCharRightString
+                    ? getExpressionString(*node.left)
+                    : getCharLiteralString(dynamic_cast<StringLiteral*>(node.left.get())->value[0]);
+                std::string rightExpr = leftCharRightString
+                    ? getCharLiteralString(dynamic_cast<StringLiteral*>(right.get())->value[0])
+                    : getExpressionString(*right);
+
+                os_ << "(" << left;
+                switch (node.op) {
+                    case BinaryExpression::Op::Eq: os_ << " == "; break;
+                    case BinaryExpression::Op::Neq: os_ << " != "; break;
+                    case BinaryExpression::Op::Lt: os_ << " < "; break;
+                    case BinaryExpression::Op::Lte: os_ << " <= "; break;
+                    case BinaryExpression::Op::Gt: os_ << " > "; break;
+                    case BinaryExpression::Op::Gte: os_ << " >= "; break;
+                    default: break;
+                }
+                os_ << rightExpr << ")";
+                return;
+            }
+
             if (isStringLikeType(node.left->resolvedType) && isStringLikeType(right->resolvedType)) {
                 std::string left = getExpressionString(*node.left);
                 std::string rightExpr = getExpressionString(*right);
@@ -456,7 +506,7 @@ void CCodegenVisitor::visit(IdentifierExpression& node)
     bool isGlobalVar = globalVariables_.count(node.name) > 0;
     bool isGlobalConst = globalConstants_.count(node.name) > 0;
 
-    bool deref = isRefParam && !suppressDeref_;
+    bool deref = isRefParam && referenceOpenArrayParams_.count(node.name) == 0 && !suppressDeref_;
 
     if (deref) {
         os_ << "(*";
@@ -705,12 +755,23 @@ void CCodegenVisitor::visit(ProcedureCall& node)
         refParams = it->second;
     }
 
+    std::vector<ParamInfo> procParams;
+    if (node.procedureName->resolvedType &&
+        node.procedureName->resolvedType->kind == TypeKind::Procedure) {
+        procParams = node.procedureName->resolvedType->parameters;
+    }
+
     for (size_t i = 0; i < node.args.size(); ++i) {
         if (i > 0) os_ << ", ";
 
         bool isRefArg = (i < refParams.size()) && refParams[i];
+        auto paramType = (i < procParams.size()) ? procParams[i].type : nullptr;
 
         if (isRefArg) {
+            if (paramType && paramType->isOpenArray) {
+                node.args[i]->accept(*this);
+                continue;
+            }
             // Check if argument is a reference parameter in current scope
             if (auto* argIdent = dynamic_cast<IdentifierExpression*>(node.args[i].get())) {
                 if (referenceParams_.count(argIdent->name) > 0) {
@@ -726,6 +787,10 @@ void CCodegenVisitor::visit(ProcedureCall& node)
             os_ << "&(";
             node.args[i]->accept(*this);
             os_ << ")";
+        } else if (paramType && paramType->kind == TypeKind::Char &&
+                   isSingleCharStringLiteral(*node.args[i])) {
+            auto* strLit = dynamic_cast<StringLiteral*>(node.args[i].get());
+            os_ << getCharLiteralString(strLit->value[0]);
         } else {
             node.args[i]->accept(*this);
         }
@@ -1157,6 +1222,7 @@ void CCodegenVisitor::visit(ProcedureDeclaration& node)
 {
     // Clear and populate reference parameters for this function
     referenceParams_.clear();
+    referenceOpenArrayParams_.clear();
     openArrayParams_.clear();
     for (auto& param : node.parameters) {
         if (param->isReference) {
@@ -1164,6 +1230,9 @@ void CCodegenVisitor::visit(ProcedureDeclaration& node)
         }
         auto* oaType = dynamic_cast<OpenArrayType*>(param->type.get());
         if (oaType) {
+            if (param->isReference) {
+                referenceOpenArrayParams_.insert(param->name);
+            }
             std::vector<std::string> lenNames;
             lenNames.push_back(param->name + "_len");
             int dim = 1;
@@ -1247,12 +1316,13 @@ void CCodegenVisitor::visit(ProcedureDeclaration& node)
     os_ << "}\n\n";
 
     referenceParams_.clear();
+    referenceOpenArrayParams_.clear();
 }
 
 void CCodegenVisitor::visit(ProcedureParameter& node)
 {
     node.type->accept(*this);
-    if (node.isReference) {
+    if (node.isReference && !dynamic_cast<OpenArrayType*>(node.type.get())) {
         os_ << "*";
     }
     os_ << " " << node.name;

@@ -1462,6 +1462,35 @@ var {
     REQUIRE(transpileCompileRun("CharArrayCompare", src, {"Out"}) == "1\n");
 }
 
+TEST_CASE("Char literal string and reference open char array", "[ccodegen][output]")
+{
+    std::string src = R"(module CharRefOpenArray
+import Out;
+fn IsA(ch: char) -> bool {
+    return ch == "A";
+}
+fn Fill(dst: &char[]) -> void {
+    dst[0] = "A";
+    dst[1] = "B";
+    dst[2] = chr(0);
+}
+fn init() -> void
+var {
+    buf: char[4];
+}
+{
+    Fill(buf);
+    if IsA("A") && IsA(buf[0]) {
+        Out.String(buf);
+    } else {
+        Out.String("bad");
+    }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("CharRefOpenArray", src, {"Out"}) == "AB\n");
+}
+
 // ============================================================================
 // Open array tests
 // ============================================================================
