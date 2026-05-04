@@ -1,5 +1,6 @@
 #pragma once
 #include <sstream>
+#include <memory>
 #include <string>
 #include <set>
 #include <map>
@@ -8,6 +9,7 @@
 
 namespace obould
 {
+struct TypeInfo;
 
 enum class COutputMode
 {
@@ -130,6 +132,9 @@ private:
 
     // Helper for expressions - returns the expression as string
     std::string getExpressionString(Expression& expr);
+    std::string getArrayLengthExpression(Expression& expr, int dim = 0, bool includeStringTerminator = true);
+    bool isStringLikeType(const std::shared_ptr<TypeInfo>& type) const;
+    bool isNullableStringLikeType(const std::shared_ptr<TypeInfo>& type) const;
     std::string resolveStructTypeName(const IdentifierType& type) const;
     bool isStructType(const IdentifierType& type) const;
     bool typeNeedsDescriptorInit(Type& type) const;

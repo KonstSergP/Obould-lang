@@ -2,6 +2,7 @@
 #include "sema/TypeInfo.h"
 #include <algorithm>
 #include <cctype>
+#include <functional>
 #include <set>
 #include <stdexcept>
 
@@ -71,6 +72,43 @@ std::string CCodegenVisitor::getExpressionString(Expression& expr)
     tempVisitor.procedureRefParams_ = procedureRefParams_;
     expr.accept(tempVisitor);
     return ss.str();
+}
+
+std::string CCodegenVisitor::getArrayLengthExpression(Expression& expr, int dim, bool includeStringTerminator)
+{
+    auto* argIdent = dynamic_cast<IdentifierExpression*>(&expr);
+    auto oaIt = argIdent ? openArrayParams_.find(argIdent->name) : openArrayParams_.end();
+
+    if (oaIt != openArrayParams_.end() && dim < (int)oaIt->second.size()) {
+        return oaIt->second[dim];
+    }
+
+    if (expr.resolvedType && expr.resolvedType->length > 0 && dim == 0) {
+        int64_t length = expr.resolvedType->length;
+        if (includeStringTerminator && expr.resolvedType->kind == TypeKind::String) {
+            length += 1;
+        }
+        return std::to_string(length);
+    }
+
+    std::string argStr = getExpressionString(expr);
+    std::string subscripts;
+
+    for (int d = 0; d < dim; d++) subscripts += "[0]";
+
+    return "(sizeof(" + argStr + subscripts + ") / sizeof(" + argStr + subscripts + "[0]))";
+}
+
+bool CCodegenVisitor::isStringLikeType(const std::shared_ptr<TypeInfo>& type) const
+{
+    return type && (type->kind == TypeKind::String ||
+        (type->kind == TypeKind::Array && type->baseType && type->baseType->kind == TypeKind::Char));
+}
+
+bool CCodegenVisitor::isNullableStringLikeType(const std::shared_ptr<TypeInfo>& type) const
+{
+    return type && type->kind == TypeKind::Array && type->isOpenArray &&
+        type->baseType && type->baseType->kind == TypeKind::Char;
 }
 
 std::string CCodegenVisitor::resolveStructTypeName(const IdentifierType& type) const
@@ -282,6 +320,74 @@ void CCodegenVisitor::visit(BinaryExpression& node)
 
     bool isSetOp = node.left->resolvedType && node.left->resolvedType->kind == TypeKind::Set;
 
+    if (node.op == BinaryExpression::Op::Eq ||
+        node.op == BinaryExpression::Op::Neq ||
+        node.op == BinaryExpression::Op::Lt ||
+        node.op == BinaryExpression::Op::Lte ||
+        node.op == BinaryExpression::Op::Gt ||
+        node.op == BinaryExpression::Op::Gte) {
+        if (std::holds_alternative<std::unique_ptr<Expression>>(node.right)) {
+            auto& right = std::get<std::unique_ptr<Expression>>(node.right);
+            if (isStringLikeType(node.left->resolvedType) && isStringLikeType(right->resolvedType)) {
+                std::string left = getExpressionString(*node.left);
+                std::string rightExpr = getExpressionString(*right);
+
+                std::string op;
+                switch (node.op) {
+                    case BinaryExpression::Op::Eq: op = "=="; break;
+                    case BinaryExpression::Op::Neq: op = "!="; break;
+                    case BinaryExpression::Op::Lt: op = "<"; break;
+                    case BinaryExpression::Op::Lte: op = "<="; break;
+                    case BinaryExpression::Op::Gt: op = ">"; break;
+                    case BinaryExpression::Op::Gte: op = ">="; break;
+                    default: break;
+                }
+
+                bool leftNullable = isNullableStringLikeType(node.left->resolvedType);
+                bool rightNullable = isNullableStringLikeType(right->resolvedType);
+                std::string cmp = "strcmp(" + left + ", " + rightExpr + ") " + op + " 0";
+
+                if (node.op == BinaryExpression::Op::Eq) {
+                    if (leftNullable && rightNullable) {
+                        os_ << "((" << left << " == " << rightExpr << ") || ("
+                            << left << " && " << rightExpr << " && " << cmp << "))";
+                    } else if (leftNullable) {
+                        os_ << "(" << left << " && " << cmp << ")";
+                    } else if (rightNullable) {
+                        os_ << "(" << rightExpr << " && " << cmp << ")";
+                    } else {
+                        os_ << "(" << cmp << ")";
+                    }
+                    return;
+                }
+
+                if (node.op == BinaryExpression::Op::Neq) {
+                    if (leftNullable && rightNullable) {
+                        os_ << "((" << left << " != " << rightExpr << ") && (!"
+                            << left << " || !" << rightExpr << " || " << cmp << "))";
+                    } else if (leftNullable) {
+                        os_ << "(!" << left << " || " << cmp << ")";
+                    } else if (rightNullable) {
+                        os_ << "(!" << rightExpr << " || " << cmp << ")";
+                    } else {
+                        os_ << "(" << cmp << ")";
+                    }
+                    return;
+                }
+
+                if (leftNullable || rightNullable) {
+                    os_ << "(";
+                    if (leftNullable) os_ << left << " && ";
+                    if (rightNullable) os_ << rightExpr << " && ";
+                    os_ << cmp << ")";
+                } else {
+                    os_ << "(" << cmp << ")";
+                }
+                return;
+            }
+        }
+    }
+
     os_ << "(";
     node.left->accept(*this);
 
@@ -469,12 +575,7 @@ void CCodegenVisitor::visit(ProcedureCall& node)
             }
             
             if (argType && (argType->kind == TypeKind::Array || argType->kind == TypeKind::String)) {
-                if (argType->length > 0) {
-                    os_ << argType->length;
-                } else {
-                    std::string argStr = getExpressionString(*arg);
-                    os_ << "(sizeof(" << argStr << ") / sizeof(" << argStr << "[0]))";
-                }
+                os_ << getArrayLengthExpression(*arg, 0, false);
                 return;
             }
             
@@ -638,20 +739,7 @@ void CCodegenVisitor::visit(ProcedureCall& node)
             os_ << ", ";
             int dim = dimCount[idx]++;
             if (idx < (int)node.args.size()) {
-                auto* argIdent = dynamic_cast<IdentifierExpression*>(node.args[idx].get());
-                auto oaIt2 = argIdent ? openArrayParams_.find(argIdent->name) : openArrayParams_.end();
-
-                if (oaIt2 != openArrayParams_.end() && dim < (int)oaIt2->second.size()) {
-                    os_ << oaIt2->second[dim];
-                } else {
-                    std::string argStr = getExpressionString(*node.args[idx]);
-                    std::string subscripts;
-
-                    for (int d = 0; d < dim; d++) subscripts += "[0]";
-
-                    os_ << "(sizeof(" << argStr << subscripts
-                        << ") / sizeof(" << argStr << subscripts << "[0]))";
-                }
+                os_ << getArrayLengthExpression(*node.args[idx], dim);
             } else {
                 os_ << "0";
             }
@@ -1279,11 +1367,25 @@ void CCodegenVisitor::visit(Module& node)
         }
     }
 
-    // Imported modules
+    // Imported modules, including transitive imports already loaded by semantic analysis.
+    std::set<std::string> collectedImportModules;
+    std::function<void(Module&)> collectImportedModule = [&](Module& module) {
+        if (!collectedImportModules.insert(module.name).second) {
+            return;
+        }
+
+        collectProcParams(makePrefix(module.name), module.procedures, false);
+
+        for (auto& import : module.imports) {
+            if (import->module) {
+                collectImportedModule(*import->module);
+            }
+        }
+    };
+
     for (auto& import : node.imports) {
         if (import->module) {
-            std::string importPrefix = makePrefix(import->module->name);
-            collectProcParams(importPrefix, import->module->procedures, false);
+            collectImportedModule(*import->module);
         }
     }
 

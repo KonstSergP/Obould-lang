@@ -1426,6 +1426,42 @@ var {
     REQUIRE(transpileCompileRun("OutputString", src, {"Out"}) == "Hello, World!\n");
 }
 
+TEST_CASE("Output string literal passes hidden length", "[ccodegen][output]")
+{
+    std::string src = R"(module OutputStringLiteral
+import Out;
+fn init() -> void {
+    Out.String("abc123");
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("OutputStringLiteral", src, {"Out"}) == "abc123\n");
+}
+
+TEST_CASE("Char array comparison uses strcmp", "[ccodegen][output]")
+{
+    std::string src = R"(module CharArrayCompare
+import Out;
+fn IsText(s: char[]) -> bool {
+    return s == "text";
+}
+fn init() -> void
+var {
+    s: char[8];
+}
+{
+    s = "text";
+    if IsText(s) {
+        Out.Int(1);
+    } else {
+        Out.Int(0);
+    }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("CharArrayCompare", src, {"Out"}) == "1\n");
+}
+
 // ============================================================================
 // Open array tests
 // ============================================================================
