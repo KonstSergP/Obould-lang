@@ -1,6 +1,6 @@
 # Fractal Flame transpiled from Obould to C
 
-Порт рисолвалки фракталов `examples/fractal-flame-java` на Обольд в Си
+Порт генератора изображений фракталов `examples/fractal-flame-java` с Обольд в Си
 
 ## Сборка
 
