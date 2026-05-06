@@ -13,17 +13,17 @@ int64_t ob_7Strings_Length(char* text, int64_t text_len) {
     return i;
 }
 
-void ob_7Strings_Copy(char* src, char** dst, int64_t src_len, int64_t dst_len) {
+void ob_7Strings_Copy(char* src, char* dst, int64_t src_len, int64_t dst_len) {
     int64_t i;
     int64_t limit;
     limit = (dst_len - 1);
     if ((limit >= 0)) {
         i = 0;
         while ((((i < limit) && (i < src_len)) && (((int64_t)((uint8_t)(src[i]))) != 0))) {
-            (*dst)[i] = src[i];
+            dst[i] = src[i];
             i = (i + 1);
         };
-        (*dst)[i] = ((char)((uint8_t)(0)));
+        dst[i] = ((char)((uint8_t)(0)));
     };
 }
 
@@ -90,7 +90,7 @@ bool ob_7Strings_StartsWith(char* text, char* prefix, int64_t text_len, int64_t 
     return result;
 }
 
-void ob_7Strings_CopyRange(char* src, int64_t start, int64_t finish, char** dst, int64_t src_len, int64_t dst_len) {
+void ob_7Strings_CopyRange(char* src, int64_t start, int64_t finish, char* dst, int64_t src_len, int64_t dst_len) {
     int64_t i;
     int64_t j;
     int64_t limit;
@@ -112,11 +112,11 @@ void ob_7Strings_CopyRange(char* src, int64_t start, int64_t finish, char** dst,
         i = start;
         j = 0;
         while (((i < actualFinish) && (j < limit))) {
-            (*dst)[j] = src[i];
+            dst[j] = src[i];
             i = (i + 1);
             j = (j + 1);
         };
-        (*dst)[j] = ((char)((uint8_t)(0)));
+        dst[j] = ((char)((uint8_t)(0)));
     };
 }
 

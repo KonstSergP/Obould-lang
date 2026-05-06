@@ -1,0 +1,410 @@
+module FlameRenderer
+
+import FlameTypes, Images, Math, Out, Random, Threads;
+
+var {
+    ActiveConfig: FlameTypes.Config;
+    PreparedAffines: FlameTypes.AffineTransform[FlameTypes.MaxAffine];
+    ThreadHistograms: FlameTypes.PHistogram[FlameTypes.MaxThreads];
+    ThreadFailed: bool[FlameTypes.MaxThreads];
+}
+
+fn ApplyLinear(x: f64, y: f64, weight: f64, point: &FlameTypes.Point) -> void
+{
+    point.x = point.x + x * weight;
+    point.y = point.y + y * weight;
+}
+
+fn ApplySinusoidal(x: f64, y: f64, weight: f64, point: &FlameTypes.Point) -> void
+{
+    point.x = point.x + Math.Sin(x) * weight;
+    point.y = point.y + Math.Sin(y) * weight;
+}
+
+fn ApplySpherical(x: f64, y: f64, weight: f64, point: &FlameTypes.Point) -> void
+var { radius2, invRadius2: f64; }
+{
+    radius2 = x * x + y * y;
+    if radius2 != 0.0 {
+        invRadius2 = 1.0 / radius2;
+        point.x = point.x + x * invRadius2 * weight;
+        point.y = point.y + y * invRadius2 * weight;
+    }
+}
+
+fn ApplyHorseshoe(x: f64, y: f64, weight: f64, point: &FlameTypes.Point) -> void
+var { radius, coef: f64; }
+{
+    radius = Math.Sqrt(x * x + y * y);
+    if radius != 0.0 {
+        coef = 1.0 / radius;
+        point.x = point.x + (x - y) * (x + y) * coef * weight;
+        point.y = point.y + 2.0 * x * y * coef * weight;
+    }
+}
+
+fn ApplySwirl(x: f64, y: f64, weight: f64, point: &FlameTypes.Point) -> void
+var { radius2: f64; }
+{
+    radius2 = x * x + y * y;
+    point.x = point.x + (x * Math.Sin(radius2) - y * Math.Cos(radius2)) * weight;
+    point.y = point.y + (x * Math.Cos(radius2) + y * Math.Sin(radius2)) * weight;
+}
+
+fn ApplyPolar(x: f64, y: f64, weight: f64, point: &FlameTypes.Point) -> void
+var { radius, theta: f64; }
+{
+    radius = Math.Sqrt(x * x + y * y);
+    theta = Math.Atan2(x, y);
+    point.x = point.x + theta / Math.PI * weight;
+    point.y = point.y + (radius - 1.0) * weight;
+}
+
+fn ApplyHandkerchief(x: f64, y: f64, weight: f64, point: &FlameTypes.Point) -> void
+var { radius, theta: f64; }
+{
+    radius = Math.Sqrt(x * x + y * y);
+    theta = Math.Atan2(x, y);
+    point.x = point.x + radius * Math.Sin(theta + radius) * weight;
+    point.y = point.y + radius * Math.Cos(theta - radius) * weight;
+}
+
+fn ApplyHeart(x: f64, y: f64, weight: f64, point: &FlameTypes.Point) -> void
+var { radius, theta: f64; }
+{
+    radius = Math.Sqrt(x * x + y * y);
+    theta = Math.Atan2(x, y);
+    point.x = point.x + radius * Math.Sin(theta * radius) * weight;
+    point.y = point.y - radius * Math.Cos(theta * radius) * weight;
+}
+
+fn ApplyDisk(x: f64, y: f64, weight: f64, point: &FlameTypes.Point) -> void
+var { radius, theta, factor: f64; }
+{
+    radius = Math.Sqrt(x * x + y * y);
+    theta = Math.Atan2(x, y);
+    factor = theta / Math.PI;
+    point.x = point.x + factor * Math.Sin(Math.PI * radius) * weight;
+    point.y = point.y + factor * Math.Cos(Math.PI * radius) * weight;
+}
+
+fn ApplySpiral(x: f64, y: f64, weight: f64, point: &FlameTypes.Point) -> void
+var { radius, theta, invRadius: f64; }
+{
+    radius = Math.Sqrt(x * x + y * y);
+    if radius != 0.0 {
+        theta = Math.Atan2(x, y);
+        invRadius = 1.0 / radius;
+        point.x = point.x + invRadius * (Math.Cos(theta) + Math.Sin(radius)) * weight;
+        point.y = point.y + invRadius * (Math.Sin(theta) - Math.Cos(radius)) * weight;
+    }
+}
+
+fn ApplyHyperbolic(x: f64, y: f64, weight: f64, point: &FlameTypes.Point) -> void
+var { radius, theta: f64; }
+{
+    radius = Math.Sqrt(x * x + y * y);
+    if radius != 0.0 {
+        theta = Math.Atan2(x, y);
+        point.x = point.x + Math.Sin(theta) / radius * weight;
+        point.y = point.y + radius * Math.Cos(theta) * weight;
+    }
+}
+
+fn ApplyDiamond(x: f64, y: f64, weight: f64, point: &FlameTypes.Point) -> void
+var { radius, theta: f64; }
+{
+    radius = Math.Sqrt(x * x + y * y);
+    theta = Math.Atan2(x, y);
+    point.x = point.x + Math.Sin(theta) * Math.Cos(radius) * weight;
+    point.y = point.y + Math.Cos(theta) * Math.Sin(radius) * weight;
+}
+
+fn ApplyEx(x: f64, y: f64, weight: f64, point: &FlameTypes.Point) -> void
+var { radius, theta, p0, p1: f64; }
+{
+    radius = Math.Sqrt(x * x + y * y);
+    theta = Math.Atan2(x, y);
+    p0 = Math.Sin(theta + radius);
+    p1 = Math.Cos(theta - radius);
+    point.x = point.x + radius * (p0 * p0 * p0 + p1 * p1 * p1) * weight;
+    point.y = point.y + radius * (p0 * p0 * p0 - p1 * p1 * p1) * weight;
+}
+
+fn ApplyEyefish(x: f64, y: f64, weight: f64, point: &FlameTypes.Point) -> void
+var { coef, radius: f64; }
+{
+    radius = Math.Sqrt(x * x + y * y);
+    coef = 2.0 / (radius + 1.0);
+    point.x = point.x + coef * x * weight;
+    point.y = point.y + coef * y * weight;
+}
+
+fn ApplyTangent(x: f64, y: f64, weight: f64, point: &FlameTypes.Point) -> void
+{
+    point.x = point.x + Math.Sin(x) / Math.Cos(y) * weight;
+    point.y = point.y + Math.Tan(y) * weight;
+}
+
+fn ApplyVariations(x: f64, y: f64, point: &FlameTypes.Point) -> void
+var { i: i64; }
+{
+    point.x = 0.0;
+    point.y = 0.0;
+    i = 0;
+    while i < ActiveConfig.functionCount {
+        switch ActiveConfig.functions[i].kind {
+            case FlameTypes.FuncLinear:
+                ApplyLinear(x, y, ActiveConfig.functions[i].weight, point);
+            case FlameTypes.FuncSinusoidal:
+                ApplySinusoidal(x, y, ActiveConfig.functions[i].weight, point);
+            case FlameTypes.FuncSpherical:
+                ApplySpherical(x, y, ActiveConfig.functions[i].weight, point);
+            case FlameTypes.FuncHorseshoe:
+                ApplyHorseshoe(x, y, ActiveConfig.functions[i].weight, point);
+            case FlameTypes.FuncSwirl:
+                ApplySwirl(x, y, ActiveConfig.functions[i].weight, point);
+            case FlameTypes.FuncPolar:
+                ApplyPolar(x, y, ActiveConfig.functions[i].weight, point);
+            case FlameTypes.FuncHandkerchief:
+                ApplyHandkerchief(x, y, ActiveConfig.functions[i].weight, point);
+            case FlameTypes.FuncHeart:
+                ApplyHeart(x, y, ActiveConfig.functions[i].weight, point);
+            case FlameTypes.FuncDisk:
+                ApplyDisk(x, y, ActiveConfig.functions[i].weight, point);
+            case FlameTypes.FuncSpiral:
+                ApplySpiral(x, y, ActiveConfig.functions[i].weight, point);
+            case FlameTypes.FuncHyperbolic:
+                ApplyHyperbolic(x, y, ActiveConfig.functions[i].weight, point);
+            case FlameTypes.FuncDiamond:
+                ApplyDiamond(x, y, ActiveConfig.functions[i].weight, point);
+            case FlameTypes.FuncEx:
+                ApplyEx(x, y, ActiveConfig.functions[i].weight, point);
+            case FlameTypes.FuncEyefish:
+                ApplyEyefish(x, y, ActiveConfig.functions[i].weight, point);
+            case FlameTypes.FuncTangent:
+                ApplyTangent(x, y, ActiveConfig.functions[i].weight, point);
+        }
+        i = i + 1;
+    }
+}
+
+fn SetupTransforms() -> void
+var {
+    rng: Random.Generator;
+    i: i64;
+}
+{
+    Random.GenSeed(rng, ActiveConfig.seed);
+    i = 0;
+    while i < ActiveConfig.affineCount {
+        PreparedAffines[i].a = ActiveConfig.affine[i].a;
+        PreparedAffines[i].b = ActiveConfig.affine[i].b;
+        PreparedAffines[i].c = ActiveConfig.affine[i].c;
+        PreparedAffines[i].d = ActiveConfig.affine[i].d;
+        PreparedAffines[i].e = ActiveConfig.affine[i].e;
+        PreparedAffines[i].f = ActiveConfig.affine[i].f;
+        PreparedAffines[i].red = Random.GenBetween(rng, 0.0, 255.0);
+        PreparedAffines[i].green = Random.GenBetween(rng, 0.0, 255.0);
+        PreparedAffines[i].blue = Random.GenBetween(rng, 0.0, 255.0);
+        i = i + 1;
+    }
+}
+
+fn IterationsForThread(index: i64) -> i64
+var { base, extra, result: i64; }
+{
+    base = ActiveConfig.iterations div ActiveConfig.threads;
+    extra = ActiveConfig.iterations mod ActiveConfig.threads;
+    result = base;
+    if index < extra {
+        result = result + 1;
+    }
+    return result;
+}
+
+fn HistPlot(hist: FlameTypes.PHistogram, x: i64, y: i64, r: f64, g: f64, b: f64) -> void
+var { next: f64; }
+{
+    if (x >= 0) && (x < ActiveConfig.width) && (y >= 0) && (y < ActiveConfig.height) {
+        if hist.pixels[y][x].counter == 0 {
+            hist.pixels[y][x].red = r;
+            hist.pixels[y][x].green = g;
+            hist.pixels[y][x].blue = b;
+        } else {
+            next = float(hist.pixels[y][x].counter + 1);
+            hist.pixels[y][x].red = (hist.pixels[y][x].red * float(hist.pixels[y][x].counter) + r) / next;
+            hist.pixels[y][x].green = (hist.pixels[y][x].green * float(hist.pixels[y][x].counter) + g) / next;
+            hist.pixels[y][x].blue = (hist.pixels[y][x].blue * float(hist.pixels[y][x].counter) + b) / next;
+        }
+        hist.pixels[y][x].counter = hist.pixels[y][x].counter + 1;
+    }
+}
+
+fn Draw(hist: FlameTypes.PHistogram, iterations: i64, threadIndex: i64) -> void
+var {
+    rng: Random.Generator;
+    x, y, newX, newY, xMin, xMax, yMin, yMax: f64;
+    rotX, rotY, newRotX, newRotY, cosTheta, sinTheta: f64;
+    transformed: FlameTypes.Point;
+    affineIndex, step, symmetryIndex, pixelX, pixelY: i64;
+    affine: FlameTypes.AffineTransform;
+}
+{
+    if hist != nil {
+        if ActiveConfig.width > ActiveConfig.height {
+            xMin = -float(ActiveConfig.width) / float(ActiveConfig.height);
+            xMax = float(ActiveConfig.width) / float(ActiveConfig.height);
+            yMin = -1.0;
+            yMax = 1.0;
+        } else {
+            xMin = -1.0;
+            xMax = 1.0;
+            yMin = -float(ActiveConfig.height) / float(ActiveConfig.width);
+            yMax = float(ActiveConfig.height) / float(ActiveConfig.width);
+        }
+
+        Random.GenSeed(rng, ActiveConfig.seed + threadIndex * 104729 + 17);
+        x = Random.GenBetween(rng, xMin, xMax);
+        y = Random.GenBetween(rng, yMin, yMax);
+        cosTheta = Math.Cos(2.0 * Math.PI / float(ActiveConfig.symmetry));
+        sinTheta = Math.Sin(2.0 * Math.PI / float(ActiveConfig.symmetry));
+
+        step = 0 - FlameTypes.WarmupIterations;
+        while step < iterations {
+            affineIndex = Random.GenIntN(rng, ActiveConfig.affineCount);
+            affine = PreparedAffines[affineIndex];
+
+            newX = affine.a * x + affine.b * y + affine.c;
+            newY = affine.d * x + affine.e * y + affine.f;
+            x = newX;
+            y = newY;
+
+            ApplyVariations(x, y, transformed);
+            x = transformed.x;
+            y = transformed.y;
+
+            if step >= 0 {
+                rotX = x;
+                rotY = y;
+                symmetryIndex = 0;
+                while symmetryIndex < ActiveConfig.symmetry {
+                    pixelX = int((rotX - xMin) / (xMax - xMin) * float(ActiveConfig.width));
+                    pixelY = int((rotY - yMin) / (yMax - yMin) * float(ActiveConfig.height));
+
+                    newRotX = rotX * cosTheta - rotY * sinTheta;
+                    newRotY = rotX * sinTheta + rotY * cosTheta;
+                    rotX = newRotX;
+                    rotY = newRotY;
+
+                    if (pixelX >= 0) && (pixelX < ActiveConfig.width) && (pixelY >= 0) && (pixelY < ActiveConfig.height) {
+                        HistPlot(hist, pixelX, pixelY, affine.red, affine.green, affine.blue);
+                    }
+                    symmetryIndex = symmetryIndex + 1;
+                }
+            }
+
+            step = step + 1;
+        }
+    }
+}
+
+fn Worker(index: i64) -> void
+var { hist: FlameTypes.PHistogram; }
+{
+    new(hist);
+    ThreadHistograms[index] = hist;
+    ThreadFailed[index] = hist == nil;
+    if hist != nil {
+        Draw(hist, IterationsForThread(index), index);
+    }
+}
+
+fn export Render(config: FlameTypes.Config) -> Images.Image
+var {
+    image: Images.Image;
+    mainHist: FlameTypes.PHistogram;
+    handles: Threads.Thread[FlameTypes.MaxThreads];
+    index, x, y: i64;
+    allStarted: bool;
+    totalCnt: f64;
+    maxNormal, normal, power: f64;
+    r, g, b: i64;
+}
+{
+    ActiveConfig = config;
+    SetupTransforms();
+
+    new(mainHist);
+
+    for (index = 0, ActiveConfig.threads-1) {
+        handles[index] = Threads.StartI64(Worker, index);
+    }
+
+    for (index = 0, ActiveConfig.threads-1) {
+        Threads.Join(handles[index]);
+        if !ThreadFailed[index] {
+            for (y = 0, ActiveConfig.height-1) {
+                for (x = 0, ActiveConfig.width-1) {
+                    if ThreadHistograms[index].pixels[y][x].counter > 0 {
+                        if mainHist.pixels[y][x].counter == 0 {
+                            mainHist.pixels[y][x].red = ThreadHistograms[index].pixels[y][x].red;
+                            mainHist.pixels[y][x].green = ThreadHistograms[index].pixels[y][x].green;
+                            mainHist.pixels[y][x].blue = ThreadHistograms[index].pixels[y][x].blue;
+                        } else {
+                            totalCnt = float(mainHist.pixels[y][x].counter + ThreadHistograms[index].pixels[y][x].counter);
+                            mainHist.pixels[y][x].red = (mainHist.pixels[y][x].red * float(mainHist.pixels[y][x].counter) + ThreadHistograms[index].pixels[y][x].red * float(ThreadHistograms[index].pixels[y][x].counter)) / totalCnt;
+                            mainHist.pixels[y][x].green = (mainHist.pixels[y][x].green * float(mainHist.pixels[y][x].counter) + ThreadHistograms[index].pixels[y][x].green * float(ThreadHistograms[index].pixels[y][x].counter)) / totalCnt;
+                            mainHist.pixels[y][x].blue = (mainHist.pixels[y][x].blue * float(mainHist.pixels[y][x].counter) + ThreadHistograms[index].pixels[y][x].blue * float(ThreadHistograms[index].pixels[y][x].counter)) / totalCnt;
+                        }
+                        mainHist.pixels[y][x].counter = mainHist.pixels[y][x].counter + ThreadHistograms[index].pixels[y][x].counter;
+                    }
+                }
+            }
+        }
+    }
+
+    if ActiveConfig.enableGamma {
+        Out.String("Applying gamma correction...\n");
+        maxNormal = 0.0;
+        for (y = 0, ActiveConfig.height-1) {
+            for (x = 0, ActiveConfig.width-1) {
+                if mainHist.pixels[y][x].counter > 0 {
+                    normal = Math.Log10(float(mainHist.pixels[y][x].counter));
+                    if normal > maxNormal { maxNormal = normal; }
+                }
+            }
+        }
+
+        if maxNormal > 0.0 {
+            for (y = 0, ActiveConfig.height-1) {
+                for (x = 0, ActiveConfig.width-1) {
+                    if mainHist.pixels[y][x].counter > 0 {
+                        normal = Math.Log10(float(mainHist.pixels[y][x].counter)) / maxNormal;
+                        power = Math.Pow(normal, 1.0 / ActiveConfig.gamma);
+                        mainHist.pixels[y][x].red = mainHist.pixels[y][x].red * power;
+                        mainHist.pixels[y][x].green = mainHist.pixels[y][x].green * power;
+                        mainHist.pixels[y][x].blue = mainHist.pixels[y][x].blue * power;
+                    }
+                }
+            }
+        }
+    }
+
+    Out.String("Creating PNG image...\n");
+    image = Images.Create(ActiveConfig.width, ActiveConfig.height);
+    for (y = 0, ActiveConfig.height-1) {
+        for (x = 0, ActiveConfig.width-1) {
+            r = int(mainHist.pixels[y][x].red);
+            g = int(mainHist.pixels[y][x].green);
+            b = int(mainHist.pixels[y][x].blue);
+
+            if r > 255 { r = 255; } if r < 0 { r = 0; }
+            if g > 255 { g = 255; } if g < 0 { g = 0; }
+            if b > 255 { b = 255; } if b < 0 { b = 0; }
+
+            Images.SetRGB(image, x, y, r, g, b);
+        }
+    }
+    return image;
+}

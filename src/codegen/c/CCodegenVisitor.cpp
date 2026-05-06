@@ -2,6 +2,7 @@
 #include "sema/TypeInfo.h"
 #include <algorithm>
 #include <cctype>
+#include <functional>
 #include <set>
 #include <stdexcept>
 
@@ -68,9 +69,67 @@ std::string CCodegenVisitor::getExpressionString(Expression& expr)
     CCodegenVisitor tempVisitor(ss, mode_);
     tempVisitor.moduleName_ = moduleName_;
     tempVisitor.referenceParams_ = referenceParams_;
+    tempVisitor.referenceOpenArrayParams_ = referenceOpenArrayParams_;
     tempVisitor.procedureRefParams_ = procedureRefParams_;
     expr.accept(tempVisitor);
     return ss.str();
+}
+
+std::string CCodegenVisitor::getArrayLengthExpression(Expression& expr, int dim, bool includeStringTerminator)
+{
+    auto* argIdent = dynamic_cast<IdentifierExpression*>(&expr);
+    auto oaIt = argIdent ? openArrayParams_.find(argIdent->name) : openArrayParams_.end();
+
+    if (oaIt != openArrayParams_.end() && dim < (int)oaIt->second.size()) {
+        return oaIt->second[dim];
+    }
+
+    if (expr.resolvedType && expr.resolvedType->length > 0 && dim == 0) {
+        int64_t length = expr.resolvedType->length;
+        if (includeStringTerminator && expr.resolvedType->kind == TypeKind::String) {
+            length += 1;
+        }
+        return std::to_string(length);
+    }
+
+    std::string argStr = getExpressionString(expr);
+    std::string subscripts;
+
+    for (int d = 0; d < dim; d++) subscripts += "[0]";
+
+    return "(sizeof(" + argStr + subscripts + ") / sizeof(" + argStr + subscripts + "[0]))";
+}
+
+bool CCodegenVisitor::isStringLikeType(const std::shared_ptr<TypeInfo>& type) const
+{
+    return type && (type->kind == TypeKind::String ||
+        (type->kind == TypeKind::Array && type->baseType && type->baseType->kind == TypeKind::Char));
+}
+
+std::string CCodegenVisitor::getCharLiteralString(char value) const
+{
+    std::string out = "'";
+    switch (value) {
+        case '\n': out += "\\n"; break;
+        case '\t': out += "\\t"; break;
+        case '\\': out += "\\\\"; break;
+        case '\'': out += "\\'"; break;
+        default: out += value; break;
+    }
+    out += "'";
+    return out;
+}
+
+bool CCodegenVisitor::isSingleCharStringLiteral(Expression& expr) const
+{
+    auto* strLit = dynamic_cast<StringLiteral*>(&expr);
+    return strLit && strLit->value.length() == 1;
+}
+
+bool CCodegenVisitor::isNullableStringLikeType(const std::shared_ptr<TypeInfo>& type) const
+{
+    return type && type->kind == TypeKind::Array && type->isOpenArray &&
+        type->baseType && type->baseType->kind == TypeKind::Char;
 }
 
 std::string CCodegenVisitor::resolveStructTypeName(const IdentifierType& type) const
@@ -282,6 +341,103 @@ void CCodegenVisitor::visit(BinaryExpression& node)
 
     bool isSetOp = node.left->resolvedType && node.left->resolvedType->kind == TypeKind::Set;
 
+    if (node.op == BinaryExpression::Op::Eq ||
+        node.op == BinaryExpression::Op::Neq ||
+        node.op == BinaryExpression::Op::Lt ||
+        node.op == BinaryExpression::Op::Lte ||
+        node.op == BinaryExpression::Op::Gt ||
+        node.op == BinaryExpression::Op::Gte) {
+        if (std::holds_alternative<std::unique_ptr<Expression>>(node.right)) {
+            auto& right = std::get<std::unique_ptr<Expression>>(node.right);
+            bool leftCharRightString = node.left->resolvedType && node.left->resolvedType->kind == TypeKind::Char &&
+                right->resolvedType && right->resolvedType->kind == TypeKind::String &&
+                isSingleCharStringLiteral(*right);
+            bool leftStringRightChar = node.left->resolvedType && node.left->resolvedType->kind == TypeKind::String &&
+                isSingleCharStringLiteral(*node.left) &&
+                right->resolvedType && right->resolvedType->kind == TypeKind::Char;
+
+            if (leftCharRightString || leftStringRightChar) {
+                std::string left = leftCharRightString
+                    ? getExpressionString(*node.left)
+                    : getCharLiteralString(dynamic_cast<StringLiteral*>(node.left.get())->value[0]);
+                std::string rightExpr = leftCharRightString
+                    ? getCharLiteralString(dynamic_cast<StringLiteral*>(right.get())->value[0])
+                    : getExpressionString(*right);
+
+                os_ << "(" << left;
+                switch (node.op) {
+                    case BinaryExpression::Op::Eq: os_ << " == "; break;
+                    case BinaryExpression::Op::Neq: os_ << " != "; break;
+                    case BinaryExpression::Op::Lt: os_ << " < "; break;
+                    case BinaryExpression::Op::Lte: os_ << " <= "; break;
+                    case BinaryExpression::Op::Gt: os_ << " > "; break;
+                    case BinaryExpression::Op::Gte: os_ << " >= "; break;
+                    default: break;
+                }
+                os_ << rightExpr << ")";
+                return;
+            }
+
+            if (isStringLikeType(node.left->resolvedType) && isStringLikeType(right->resolvedType)) {
+                std::string left = getExpressionString(*node.left);
+                std::string rightExpr = getExpressionString(*right);
+
+                std::string op;
+                switch (node.op) {
+                    case BinaryExpression::Op::Eq: op = "=="; break;
+                    case BinaryExpression::Op::Neq: op = "!="; break;
+                    case BinaryExpression::Op::Lt: op = "<"; break;
+                    case BinaryExpression::Op::Lte: op = "<="; break;
+                    case BinaryExpression::Op::Gt: op = ">"; break;
+                    case BinaryExpression::Op::Gte: op = ">="; break;
+                    default: break;
+                }
+
+                bool leftNullable = isNullableStringLikeType(node.left->resolvedType);
+                bool rightNullable = isNullableStringLikeType(right->resolvedType);
+                std::string cmp = "strcmp(" + left + ", " + rightExpr + ") " + op + " 0";
+
+                if (node.op == BinaryExpression::Op::Eq) {
+                    if (leftNullable && rightNullable) {
+                        os_ << "((" << left << " == " << rightExpr << ") || ("
+                            << left << " && " << rightExpr << " && " << cmp << "))";
+                    } else if (leftNullable) {
+                        os_ << "(" << left << " && " << cmp << ")";
+                    } else if (rightNullable) {
+                        os_ << "(" << rightExpr << " && " << cmp << ")";
+                    } else {
+                        os_ << "(" << cmp << ")";
+                    }
+                    return;
+                }
+
+                if (node.op == BinaryExpression::Op::Neq) {
+                    if (leftNullable && rightNullable) {
+                        os_ << "((" << left << " != " << rightExpr << ") && (!"
+                            << left << " || !" << rightExpr << " || " << cmp << "))";
+                    } else if (leftNullable) {
+                        os_ << "(!" << left << " || " << cmp << ")";
+                    } else if (rightNullable) {
+                        os_ << "(!" << rightExpr << " || " << cmp << ")";
+                    } else {
+                        os_ << "(" << cmp << ")";
+                    }
+                    return;
+                }
+
+                if (leftNullable || rightNullable) {
+                    os_ << "(";
+                    if (leftNullable) os_ << left << " && ";
+                    if (rightNullable) os_ << rightExpr << " && ";
+                    os_ << cmp << ")";
+                } else {
+                    os_ << "(" << cmp << ")";
+                }
+                return;
+            }
+        }
+    }
+
     os_ << "(";
     node.left->accept(*this);
 
@@ -350,7 +506,7 @@ void CCodegenVisitor::visit(IdentifierExpression& node)
     bool isGlobalVar = globalVariables_.count(node.name) > 0;
     bool isGlobalConst = globalConstants_.count(node.name) > 0;
 
-    bool deref = isRefParam && !suppressDeref_;
+    bool deref = isRefParam && referenceOpenArrayParams_.count(node.name) == 0 && !suppressDeref_;
 
     if (deref) {
         os_ << "(*";
@@ -469,12 +625,7 @@ void CCodegenVisitor::visit(ProcedureCall& node)
             }
             
             if (argType && (argType->kind == TypeKind::Array || argType->kind == TypeKind::String)) {
-                if (argType->length > 0) {
-                    os_ << argType->length;
-                } else {
-                    std::string argStr = getExpressionString(*arg);
-                    os_ << "(sizeof(" << argStr << ") / sizeof(" << argStr << "[0]))";
-                }
+                os_ << getArrayLengthExpression(*arg, 0, false);
                 return;
             }
             
@@ -604,12 +755,23 @@ void CCodegenVisitor::visit(ProcedureCall& node)
         refParams = it->second;
     }
 
+    std::vector<ParamInfo> procParams;
+    if (node.procedureName->resolvedType &&
+        node.procedureName->resolvedType->kind == TypeKind::Procedure) {
+        procParams = node.procedureName->resolvedType->parameters;
+    }
+
     for (size_t i = 0; i < node.args.size(); ++i) {
         if (i > 0) os_ << ", ";
 
         bool isRefArg = (i < refParams.size()) && refParams[i];
+        auto paramType = (i < procParams.size()) ? procParams[i].type : nullptr;
 
         if (isRefArg) {
+            if (paramType && paramType->isOpenArray) {
+                node.args[i]->accept(*this);
+                continue;
+            }
             // Check if argument is a reference parameter in current scope
             if (auto* argIdent = dynamic_cast<IdentifierExpression*>(node.args[i].get())) {
                 if (referenceParams_.count(argIdent->name) > 0) {
@@ -625,6 +787,10 @@ void CCodegenVisitor::visit(ProcedureCall& node)
             os_ << "&(";
             node.args[i]->accept(*this);
             os_ << ")";
+        } else if (paramType && paramType->kind == TypeKind::Char &&
+                   isSingleCharStringLiteral(*node.args[i])) {
+            auto* strLit = dynamic_cast<StringLiteral*>(node.args[i].get());
+            os_ << getCharLiteralString(strLit->value[0]);
         } else {
             node.args[i]->accept(*this);
         }
@@ -638,20 +804,7 @@ void CCodegenVisitor::visit(ProcedureCall& node)
             os_ << ", ";
             int dim = dimCount[idx]++;
             if (idx < (int)node.args.size()) {
-                auto* argIdent = dynamic_cast<IdentifierExpression*>(node.args[idx].get());
-                auto oaIt2 = argIdent ? openArrayParams_.find(argIdent->name) : openArrayParams_.end();
-
-                if (oaIt2 != openArrayParams_.end() && dim < (int)oaIt2->second.size()) {
-                    os_ << oaIt2->second[dim];
-                } else {
-                    std::string argStr = getExpressionString(*node.args[idx]);
-                    std::string subscripts;
-
-                    for (int d = 0; d < dim; d++) subscripts += "[0]";
-
-                    os_ << "(sizeof(" << argStr << subscripts
-                        << ") / sizeof(" << argStr << subscripts << "[0]))";
-                }
+                os_ << getArrayLengthExpression(*node.args[idx], dim);
             } else {
                 os_ << "0";
             }
@@ -1069,6 +1222,7 @@ void CCodegenVisitor::visit(ProcedureDeclaration& node)
 {
     // Clear and populate reference parameters for this function
     referenceParams_.clear();
+    referenceOpenArrayParams_.clear();
     openArrayParams_.clear();
     for (auto& param : node.parameters) {
         if (param->isReference) {
@@ -1076,6 +1230,9 @@ void CCodegenVisitor::visit(ProcedureDeclaration& node)
         }
         auto* oaType = dynamic_cast<OpenArrayType*>(param->type.get());
         if (oaType) {
+            if (param->isReference) {
+                referenceOpenArrayParams_.insert(param->name);
+            }
             std::vector<std::string> lenNames;
             lenNames.push_back(param->name + "_len");
             int dim = 1;
@@ -1159,12 +1316,13 @@ void CCodegenVisitor::visit(ProcedureDeclaration& node)
     os_ << "}\n\n";
 
     referenceParams_.clear();
+    referenceOpenArrayParams_.clear();
 }
 
 void CCodegenVisitor::visit(ProcedureParameter& node)
 {
     node.type->accept(*this);
-    if (node.isReference) {
+    if (node.isReference && !dynamic_cast<OpenArrayType*>(node.type.get())) {
         os_ << "*";
     }
     os_ << " " << node.name;
@@ -1279,11 +1437,25 @@ void CCodegenVisitor::visit(Module& node)
         }
     }
 
-    // Imported modules
+    // Imported modules, including transitive imports already loaded by semantic analysis.
+    std::set<std::string> collectedImportModules;
+    std::function<void(Module&)> collectImportedModule = [&](Module& module) {
+        if (!collectedImportModules.insert(module.name).second) {
+            return;
+        }
+
+        collectProcParams(makePrefix(module.name), module.procedures, false);
+
+        for (auto& import : module.imports) {
+            if (import->module) {
+                collectImportedModule(*import->module);
+            }
+        }
+    };
+
     for (auto& import : node.imports) {
         if (import->module) {
-            std::string importPrefix = makePrefix(import->module->name);
-            collectProcParams(importPrefix, import->module->procedures, false);
+            collectImportedModule(*import->module);
         }
     }
 

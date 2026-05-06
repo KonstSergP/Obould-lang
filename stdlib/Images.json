@@ -1,0 +1,114 @@
+{
+    "declarations": {
+        "constants": [],
+        "variables": [],
+        "types": [
+            {
+                "name": "Image",
+                "type": {
+                    "kind": "pointer",
+                    "targetType": {
+                        "kind": "incomplete"
+                    }
+                }
+            }
+        ]
+    },
+    "imports": [],
+    "moduleName": "Images",
+    "procedures": [
+        {
+            "name": "Create",
+            "parameters": [
+                {
+                    "name": "w",
+                    "reference": false,
+                    "type": "i64"
+                },
+                {
+                    "name": "h",
+                    "reference": false,
+                    "type": "i64"
+                }
+            ],
+            "returnType": "Image"
+        },
+        {
+            "name": "Width",
+            "parameters": [
+                {
+                    "name": "img",
+                    "reference": false,
+                    "type": "Image"
+                }
+            ],
+            "returnType": "i64"
+        },
+        {
+            "name": "Height",
+            "parameters": [
+                {
+                    "name": "img",
+                    "reference": false,
+                    "type": "Image"
+                }
+            ],
+            "returnType": "i64"
+        },
+        {
+            "name": "SetRGB",
+            "parameters": [
+                {
+                    "name": "img",
+                    "reference": false,
+                    "type": "Image"
+                },
+                {
+                    "name": "x",
+                    "reference": false,
+                    "type": "i64"
+                },
+                {
+                    "name": "y",
+                    "reference": false,
+                    "type": "i64"
+                },
+                {
+                    "name": "r",
+                    "reference": false,
+                    "type": "byte"
+                },
+                {
+                    "name": "g",
+                    "reference": false,
+                    "type": "byte"
+                },
+                {
+                    "name": "b",
+                    "reference": false,
+                    "type": "byte"
+                }
+            ],
+            "returnType": "void"
+        },
+        {
+            "name": "SavePNG",
+            "parameters": [
+                {
+                    "name": "img",
+                    "reference": false,
+                    "type": "Image"
+                },
+                {
+                    "name": "path",
+                    "reference": false,
+                    "type": {
+                        "kind": "open array",
+                        "elementType": "char"
+                    }
+                }
+            ],
+            "returnType": "bool"
+        }
+    ]
+}

@@ -1,5 +1,6 @@
 #pragma once
 #include <sstream>
+#include <memory>
 #include <string>
 #include <set>
 #include <map>
@@ -8,6 +9,7 @@
 
 namespace obould
 {
+struct TypeInfo;
 
 enum class COutputMode
 {
@@ -84,6 +86,7 @@ private:
     std::string currentTypedefName_;
 
     std::set<std::string> referenceParams_;  // Names of reference parameters in current function
+    std::set<std::string> referenceOpenArrayParams_;
     // Open array parameter tracking: param name -> list of hidden len param names per dimension
     // "m" -> ["m_len", "m_len2", "m_len3"] for m: i64[][][]
     std::map<std::string, std::vector<std::string>> openArrayParams_;
@@ -130,6 +133,11 @@ private:
 
     // Helper for expressions - returns the expression as string
     std::string getExpressionString(Expression& expr);
+    std::string getArrayLengthExpression(Expression& expr, int dim = 0, bool includeStringTerminator = true);
+    std::string getCharLiteralString(char value) const;
+    bool isSingleCharStringLiteral(Expression& expr) const;
+    bool isStringLikeType(const std::shared_ptr<TypeInfo>& type) const;
+    bool isNullableStringLikeType(const std::shared_ptr<TypeInfo>& type) const;
     std::string resolveStructTypeName(const IdentifierType& type) const;
     bool isStructType(const IdentifierType& type) const;
     bool typeNeedsDescriptorInit(Type& type) const;

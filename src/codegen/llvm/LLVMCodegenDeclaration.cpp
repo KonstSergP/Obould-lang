@@ -40,7 +40,12 @@ void LLVMCodegenVisitor::visit(VariableDeclaration& node)
     }
     else {
         auto* allocaInst = createEntryAlloca(ty, node.name);
-        builder->CreateStore(llvm::Constant::getNullValue(ty), allocaInst);
+        uint64_t allocSize = module->getDataLayout().getTypeAllocSize(ty);
+        if (allocSize <= 1024) {
+            builder->CreateStore(llvm::Constant::getNullValue(ty), allocaInst);
+        } else {
+            builder->CreateMemSet(allocaInst, builder->getInt8(0), allocSize, llvm::MaybeAlign(1));
+        }
         initializeDescriptors(allocaInst, info);
         locals[node.name] = allocaInst;
     }

@@ -1426,6 +1426,71 @@ var {
     REQUIRE(transpileCompileRun("OutputString", src, {"Out"}) == "Hello, World!\n");
 }
 
+TEST_CASE("Output string literal passes hidden length", "[ccodegen][output]")
+{
+    std::string src = R"(module OutputStringLiteral
+import Out;
+fn init() -> void {
+    Out.String("abc123");
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("OutputStringLiteral", src, {"Out"}) == "abc123\n");
+}
+
+TEST_CASE("Char array comparison uses strcmp", "[ccodegen][output]")
+{
+    std::string src = R"(module CharArrayCompare
+import Out;
+fn IsText(s: char[]) -> bool {
+    return s == "text";
+}
+fn init() -> void
+var {
+    s: char[8];
+}
+{
+    s = "text";
+    if IsText(s) {
+        Out.Int(1);
+    } else {
+        Out.Int(0);
+    }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("CharArrayCompare", src, {"Out"}) == "1\n");
+}
+
+TEST_CASE("Char literal string and reference open char array", "[ccodegen][output]")
+{
+    std::string src = R"(module CharRefOpenArray
+import Out;
+fn IsA(ch: char) -> bool {
+    return ch == "A";
+}
+fn Fill(dst: &char[]) -> void {
+    dst[0] = "A";
+    dst[1] = "B";
+    dst[2] = chr(0);
+}
+fn init() -> void
+var {
+    buf: char[4];
+}
+{
+    Fill(buf);
+    if IsA("A") && IsA(buf[0]) {
+        Out.String(buf);
+    } else {
+        Out.String("bad");
+    }
+    Out.Ln();
+}
+)";
+    REQUIRE(transpileCompileRun("CharRefOpenArray", src, {"Out"}) == "AB\n");
+}
+
 // ============================================================================
 // Open array tests
 // ============================================================================

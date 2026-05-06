@@ -75,6 +75,15 @@ void emitSymbolFile(obould::Module& module, const std::filesystem::path& symDir)
     generator.saveToFile(symPath.string());
 }
 
+std::string linkerGcSectionsFlag()
+{
+#if defined(__APPLE__)
+    return "-Wl,-dead_strip";
+#else
+    return "-Wl,--gc-sections";
+#endif
+}
+
 void emitObjectFile(llvm::Module& module, const std::filesystem::path& outPath)
 {
     llvm::InitializeNativeTarget();
@@ -339,7 +348,7 @@ int main(int argc, char** argv)
         };
 
         std::ostringstream cmd;
-        cmd << "cc -Wl,--gc-sections -o " << shellQuote(binPath.string());
+        cmd << "cc " << linkerGcSectionsFlag() << " -o " << shellQuote(binPath.string());
         for (const auto& obj : objFiles) {
             cmd << " " << shellQuote(obj);
         }
@@ -531,7 +540,7 @@ int main(int argc, char** argv)
                 };
 
                 std::ostringstream cmd;
-                cmd << "cc -Wl,--gc-sections -o " << shellQuote(binPath.string());
+                cmd << "cc " << linkerGcSectionsFlag() << " -o " << shellQuote(binPath.string());
                 cmd << " " << shellQuote(objPath.string());
                 for (const auto& obj : objFiles) {
                     cmd << " " << shellQuote(obj);

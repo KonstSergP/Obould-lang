@@ -1,0 +1,79 @@
+module FlameTypes
+
+const {
+    export MaxAffine = 16;
+    export MaxFunctions = 16;
+    export MaxThreads = 16;
+    export MaxPath = 256;
+    export MaxCliText = 512;
+    export MaxName = 64;
+    export WarmupIterations = 20;
+
+    export FuncInvalid = 0;
+    export FuncLinear = 1;
+    export FuncSinusoidal = 2;
+    export FuncSpherical = 3;
+    export FuncHorseshoe = 4;
+    export FuncSwirl = 5;
+    export FuncPolar = 6;
+    export FuncHandkerchief = 7;
+    export FuncHeart = 8;
+    export FuncDisk = 9;
+    export FuncSpiral = 10;
+    export FuncHyperbolic = 11;
+    export FuncDiamond = 12;
+    export FuncEx = 13;
+    export FuncEyefish = 14;
+    export FuncTangent = 15;
+
+    export MaxWidth = 3840;
+    export MaxHeight = 2160;
+}
+
+type {
+    export Point: struct {
+        export x, export y: f64;
+    };
+
+    export AffineParams: struct {
+        export a, export b, export c: f64;
+        export d, export e, export f: f64;
+    };
+
+    export AffineTransform: struct {
+        export a, export b, export c: f64;
+        export d, export e, export f: f64;
+        export red, export green, export blue: f64;
+    };
+
+    export TransformSpec: struct {
+        export kind: i64;
+        export weight: f64;
+    };
+
+    export Config: struct {
+        export width, export height: i64;
+        export seed: i64;
+        export iterations: i64;
+        export threads: i64;
+        export symmetry: i64;
+        export enableGamma: bool;
+        export gamma: f64;
+        export outputPath: char[MaxPath];
+        export affineCount: i64;
+        export functionCount: i64;
+        export affine: AffineParams[MaxAffine];
+        export functions: TransformSpec[MaxFunctions];
+    };
+
+    export HistPixel: struct {
+            export red, export green, export blue: f64;
+            export counter: i64;
+    };
+
+    export Histogram: struct {
+        export pixels: HistPixel[MaxHeight][MaxWidth];
+    };
+
+    export PHistogram: *Histogram;
+}
